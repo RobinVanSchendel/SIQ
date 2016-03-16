@@ -54,9 +54,9 @@ public class GUI implements ActionListener {
 	JList<File> jFiles = new JList<File>(model);
 	File subject;
 	//JTextField left = new JTextField("ttaggcacatgacccgtgtttcctcac");
-	JTextField left = new JTextField("");
+	JTextField left = new JTextField("GCATGCGTCGACCCgggaggcctgatttca");
 	//JTextField right = new JTextField("cagtggtgtaaatgctggtccatggct");
-	JTextField right = new JTextField("");
+	JTextField right = new JTextField("CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT");
 	JComboBox<String> pamChooser;
 	JCheckBox maskLowQuality = new JCheckBox("maskLowQuality");
 	JCheckBox maskLowQualityRemove = new JCheckBox("maskLowQualityRemove");
@@ -222,7 +222,7 @@ public class GUI implements ActionListener {
 						fillInPamSite(s.seqString().toString());
 						subject = chooser.getSelectedFile();
 						model.insertElementAt(subject, 0);
-						if(si.hasNext()){
+						if(si.hasNext() && !mbc.tryToMatchFasta()){
 							hasTwoSequences = true;
 							JOptionPane.showMessageDialog(guiFrame, "You selected a fasta file with two sequences\n"+s.getName()+"\n"+si.nextSequence().getName()+"\nI will search for translocations");
 						}
@@ -380,34 +380,6 @@ public class GUI implements ActionListener {
 			sequences = Utils.fillArrayListSequences(subject);
 			System.out.println("We loaded "+sequences.size()+" sequences");
 		}
-		BufferedReader is = null;
-		try {
-			is = new BufferedReader(new FileReader(subject));
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		//get a SequenceDB of all sequences in the file
-		SequenceIterator si = IOTools.readFastaDNA(is, null);
-		Sequence subject = null;
-		Sequence subject2 = null;
-		
-		while(si.hasNext()){
-			try {
-				if(subject == null){
-					subject = si.nextSequence();
-				}
-				if(subject2 == null && si.hasNext()){
-					subject2 = si.nextSequence();
-				}
-			} catch (NoSuchElementException e) {
-				e.printStackTrace();
-			} catch (BioException e) {
-				e.printStackTrace();
-			}
-			
-		}
-		
-		ABITrace trace = null;
 		Chromatogram chromo = null;
 		try {
 			chromo = ChromatogramFactory.create(f);
@@ -416,6 +388,11 @@ public class GUI implements ActionListener {
 		}
 		//SymbolList symbols = trace.getSequence();
 		String name = f.getName();
+		
+		Sequence subject = Utils.matchNameSequence(sequences,name);
+		if(subject == null){
+			System.err.println("No Match could be found");
+		}
 		if(checkLeftRight){
 			if(left.length()>0 && right.length()>0){
 				//System.out.println("hier!");
@@ -424,39 +401,6 @@ public class GUI implements ActionListener {
 				int rightPos = subject.seqString().indexOf(right.toLowerCase());
 				
 				if(leftPos < 0 && rightPos < 0){
-					JOptionPane.showMessageDialog(guiFrame,
-						    "left and right cannot be found in the fasta file"
-						    		+ " please select the correct flanks!",
-						    "left + right problem",
-						    JOptionPane.ERROR_MESSAGE);
-					System.out.println(subject.seqString());
-					System.out.println((left+right).toLowerCase());
-					return null;
-				}
-				if(subject2 == null && leftPos > rightPos){
-					JOptionPane.showMessageDialog(guiFrame,
-						    "The left flank can be found, but past the right flank, which cannot be correct"
-						    		+ " please select the correct flanks!",
-						    "left + right problem",
-						    JOptionPane.ERROR_MESSAGE);
-					System.out.println(subject.seqString());
-					System.out.println("leftPost:"+leftPos +":rightPos"+rightPos);
-					return null;
-				}
-				if(subject2 == null && leftRightPos < 0) {
-					System.out.println("error!");
-					JOptionPane.showMessageDialog(guiFrame,
-						    "left and right flank cannot be found connected in the fasta file."
-						    + " If you are using two break sites, all is ok",
-						    "left + right found, but not connected",
-						    JOptionPane.WARNING_MESSAGE);
-				}
-			}
-			//translocation, look for right in the other file
-			if(subject2 != null){
-				int leftPos = subject.seqString().indexOf(left.toLowerCase());
-				int rightPos = subject2.seqString().indexOf(right.toLowerCase());
-				if(left.length()== 0 || right.length() == 0 || (leftPos < 0 && rightPos < 0)){
 					JOptionPane.showMessageDialog(guiFrame,
 						    "left and right cannot be found in the fasta file"
 						    		+ " please select the correct flanks!",
@@ -478,7 +422,7 @@ public class GUI implements ActionListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		CompareSequence cs = new CompareSequence(subject, subject2, query, left, right, (String)pamChooser.getSelectedItem());
+		CompareSequence cs = new CompareSequence(subject, null, query, left, right, (String)pamChooser.getSelectedItem());
 		cs.setAndDetermineCorrectRange(quals, 0.05);
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);

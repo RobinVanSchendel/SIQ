@@ -190,4 +190,13 @@ public class Utils {
 		return al;
 		
 	}
+	public static Sequence matchNameSequence(ArrayList<Sequence> sequences,
+			String name) {
+		for(Sequence s: sequences){
+			if(name.contains(s.getName())){
+				return s;
+			}
+		}
+		return null;
+	}
 }
