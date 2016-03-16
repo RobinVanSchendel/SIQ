@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="lib" path="C:/javaLib/core-1.8.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/sequencing-1.8.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/bytecode-1.8.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/alignment-1.8.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/biojava-alignment-4.0.0.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/biojava-core-4.0.0.jar" sourcepath="C:/javaLib/biojava-core-4.0.0-sources.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/Jillion-4.2.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
