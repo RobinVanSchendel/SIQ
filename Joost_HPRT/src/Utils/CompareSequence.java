@@ -19,12 +19,21 @@ public class CompareSequence {
 	private final static String replacementFlank = "FLK1";
 	private String leftSite, rightSite;
 	public final static int minimalRangeSize = 100;
+	private static final int ALLLOWEDJUMPDISTANCE = 2;
 	private ArrayList<Range> ranges = new ArrayList<Range>();
 	private boolean masked = false;
 	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, String left, String right, String pamSite) {
 		this.subject = subject;
 		this.subject2 = subject2;
 		this.query = query;
+		if(left == null){
+			System.err.println("Specified left is null, that is not allowed");
+			System.exit(0);
+		}
+		if(right == null){
+			System.err.println("Specified left is null, that is not allowed");
+			System.exit(0);
+		}
 		this.leftSite = left;
 		this.rightSite = right;
 		if(pamSite != null){
@@ -65,7 +74,7 @@ public class CompareSequence {
 		//System.out.println(subject2.seqString().toString());
 		if(left != null && left.length()>=15 && right != null && right.length()>=15){
 			leftPos = subject.seqString().indexOf(left)+left.length();
-			System.out.println(right);
+			//System.out.println(right);
 			if(subject2 != null){
 				rightPos = subject2.seqString().indexOf(right);
 			}
@@ -81,26 +90,26 @@ public class CompareSequence {
 			else{
 				flankTwo = findRight(subject.seqString().substring(rightPos), seqRemain);
 			}
-			//System.out.println("flankOne"+""+flankOne);
-			//System.out.println("flankTwo"+""+flankTwo);
+			//System.out.println("flankOne"+":"+flankOne.length());
+			//System.out.println("flankTwo"+":"+flankTwo.length());
 			if(flankOne.length()<minimumSizeWithLeftRight || flankTwo.length()<minimumSizeWithLeftRight ){
-				System.out.println(flankOne.length());
-				System.out.println(flankOne);
-				System.out.println(flankTwo.length());
-				System.out.println(flankTwo);
+				//System.out.println(flankOne.length());
+				//System.out.println(flankOne);
+				//System.out.println(flankTwo.length());
+				//System.out.println(flankTwo);
 				if(flankOne.length()>=minimumSizeWithoutLeftRight && flankTwo.length()<minimumSizeWithoutLeftRight ){
 					this.leftFlank = flankOne;
 					this.setRemarks("Cannot find the second flank of the event, please do it manually");
-					System.out.println("Cannot find the second flank of the event, please do it manually");
-					System.err.println("Cannot find the second flank of the event, please do it manually");
+					//System.out.println("Cannot find the second flank of the event, please do it manually");
+					//System.err.println("Cannot find the second flank of the event, please do it manually");
 				}
 				else if(flankOne.length()<50 && flankTwo.length()<50 ){
 					this.setRemarks("Cannot find the flanks of the event, please do it manually");
-					System.err.println("Cannot find the flanks of the event, please do it manually");
+					//System.err.println("Cannot find the flanks of the event, please do it manually");
 				}
 				else{
 					this.setRemarks("Not exactly sure what is happening, but something is wrong");
-					System.err.println("Not exactly sure what is happening, but something is wrong");
+					//System.err.println("Not exactly sure what is happening, but something is wrong");
 				}
 			}
 		}
@@ -233,13 +242,14 @@ public class CompareSequence {
 				posWithinSubjectTwo--;
 			}
 		}
-		if(madeMinimal){
-			this.setRemarks("Made deletion and insertion minimal, probably that means the cut was at a different location, moved by "+moved+" positions");
-		}
+		//no longer report as people might see it as an error, while it is more of a warning
+		//if(madeMinimal){
+			//this.setRemarks("Made deletion and insertion minimal, probably that means the cut was at a different location, moved by "+moved+" positions");
+		//}
 		String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
 		if(insertDelCommon.length()>10){
 			this.setRemarks("Probably there is a mismatch somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
-			System.err.println("Probably there is a mismatch somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
+			//System.err.println("Probably there is a mismatch somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
 		}
 	}
 	private String findRight(String substring, String query) {
@@ -250,12 +260,16 @@ public class CompareSequence {
 		}
 		String first = Utils.longestCommonSubstring(substring, query);
 		String leftOver = substring.substring(0,substring.indexOf(first));
-		//System.out.println("substring:"+substring);
-		//System.out.println("first:"+first);
-		//System.out.println("query:"+query);
 		String queryOver = query.substring(0,query.indexOf(first));
-		if(Utils.longestCommonSubstring(leftOver, queryOver).length()>10){
-			return Utils.longestCommonSubstring(leftOver, queryOver);
+		String second = Utils.longestCommonSubstring(leftOver, queryOver);
+		if(second.length()>10){
+			//check if we allow the jump, previously this led to deletions not being spotted
+			int locFirstSub = substring.indexOf(first);
+			int secSecondSubEnd = substring.indexOf(second)+second.length();
+			int jumpDist = locFirstSub-secSecondSubEnd;
+			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
+				return second;
+			}
 		}
 		return first;
 	}
@@ -263,7 +277,15 @@ public class CompareSequence {
 		String first = Utils.longestCommonSubstring(substring, query);
 		String leftOver = substring.substring(substring.indexOf(first)+first.length());
 		String queryOver = query.substring(query.indexOf(first)+first.length());
+		String second = Utils.longestCommonSubstring(leftOver, queryOver);
 		if(Utils.longestCommonSubstring(leftOver, queryOver).length()>10){
+			//check if we allow the jump, previously this led to deletions not being spotted
+			int locFirstSub = substring.indexOf(first);
+			int secSecondSubEnd = substring.indexOf(second)+second.length();
+			int jumpDist = locFirstSub-secSecondSubEnd;
+			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
+				return second;
+			}
 			return Utils.longestCommonSubstring(leftOver, queryOver);
 		}
 		return first;
@@ -351,8 +373,8 @@ public class CompareSequence {
 		return "";
 	}
 	public int getDelStart(){
-		System.out.println(this.getName());
-		System.out.println(leftFlank);
+		//System.out.println(this.getName());
+		//System.out.println(leftFlank);
 		return subject.seqString().indexOf(leftFlank.toLowerCase())+leftFlank.length();
 	}
 	public int getDelEnd(){
@@ -405,9 +427,9 @@ public class CompareSequence {
 				for(;j<=end;j++){
 					tempDNA += dna.charAt((int) j);
 				}
-				System.out.println(this.getName());
-				System.out.println(r);
-				System.out.println(tempDNA);
+				//System.out.println(this.getName());
+				//System.out.println(r);
+				//System.out.println(tempDNA);
 			}
 			while(tempDNA.length()<dna.length()){
 				tempDNA += "X";
@@ -450,9 +472,9 @@ public class CompareSequence {
 				for(;j<=end;j++){
 					tempDNA += dna.charAt((int) j);
 				}
-				System.out.println(this.getName());
-				System.out.println(correct);
-				System.out.println(tempDNA);
+				//System.out.println(this.getName());
+				//System.out.println(correct);
+				//System.out.println(tempDNA);
 				while(tempDNA.length()<dna.length()){
 					tempDNA += "X";
 				}
