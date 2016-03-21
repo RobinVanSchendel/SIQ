@@ -67,7 +67,7 @@ public class GUI implements ActionListener {
     {
         //make sure the program exits when the frame closes
         guiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        guiFrame.setTitle("Joost's Sequence Analyzer");
+        guiFrame.setTitle("Robin's Sanger Sequence Analyzer");
         guiFrame.setSize(1200,600);
       
         //This will center the JFrame in the middle of the screen
@@ -137,6 +137,7 @@ public class GUI implements ActionListener {
         
         //make sure the JFrame is visible
         guiFrame.setVisible(true);
+        guiFrame.setExtendedState(guiFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
     }
 
 	@Override
@@ -203,8 +204,8 @@ public class GUI implements ActionListener {
 					subject = null;
 					model.remove(0);
 				}
-				System.out.println("HERE");
-				System.out.println(chooser.getSelectedFile());
+				//System.out.println("HERE");
+				//System.out.println(chooser.getSelectedFile());
 				//try to see if this is a Fasta file
 				BufferedReader is = null;
 				try {
