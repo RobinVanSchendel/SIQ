@@ -138,6 +138,11 @@ public class GUI implements ActionListener {
         //make sure the JFrame is visible
         guiFrame.setVisible(true);
         guiFrame.setExtendedState(guiFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
+        
+        File tempFile = new File("C:/Users/rvanschendel/Documents/Project_Primase");
+        if(tempFile.exists() && tempFile.isDirectory()){
+        	this.chooser.setCurrentDirectory(tempFile);
+        }
     }
 
 	@Override

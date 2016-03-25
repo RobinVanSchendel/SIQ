@@ -53,8 +53,8 @@ public class CompareSequence {
 		int size = Utils.longestCommonSubstring(query.seqString().toString(), subject.seqString().toString()).length();
 		String rc = Utils.longestCommonSubstring(Utils.reverseComplement(query.seqString().toString()), subject.seqString().toString());
 		int altSize = rc.length();
-		System.out.println(this.getName());
-		System.out.println("size: "+size+" rcSize: "+altSize);
+		//System.out.println(this.getName());
+		//System.out.println("size: "+size+" rcSize: "+altSize);
 		//take the reverse complement of the query.
 		if(altSize>size){
 			try {
