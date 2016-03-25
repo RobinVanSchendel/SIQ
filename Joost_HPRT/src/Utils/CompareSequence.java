@@ -7,6 +7,7 @@ import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojava.bio.symbol.SymbolList;
 import org.jcvi.jillion.core.Range;
 import org.jcvi.jillion.core.qual.QualitySequence;
+import org.jcvi.jillion.core.qual.QualitySequenceBuilder;
 
 
 public class CompareSequence {
@@ -18,11 +19,14 @@ public class CompareSequence {
 	private int pamSiteLocation;
 	private final static String replacementFlank = "FLK1";
 	private String leftSite, rightSite;
-	public final static int minimalRangeSize = 100;
+	public final static int minimalRangeSize = 40;
 	private static final int ALLLOWEDJUMPDISTANCE = 2;
 	private ArrayList<Range> ranges = new ArrayList<Range>();
 	private boolean masked = false;
-	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, String left, String right, String pamSite) {
+	private QualitySequence quals;
+	public enum Type {WT, SNV, DELETION, INDEL, INSERTION, UNKNOWN};
+	
+	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, QualitySequence quals, String left, String right, String pamSite) {
 		this.subject = subject;
 		this.subject2 = subject2;
 		this.query = query;
@@ -34,6 +38,7 @@ public class CompareSequence {
 			System.err.println("Specified left is null, that is not allowed");
 			System.exit(0);
 		}
+		this.quals = quals;
 		this.leftSite = left;
 		this.rightSite = right;
 		if(pamSite != null){
@@ -48,12 +53,15 @@ public class CompareSequence {
 		int size = Utils.longestCommonSubstring(query.seqString().toString(), subject.seqString().toString()).length();
 		String rc = Utils.longestCommonSubstring(Utils.reverseComplement(query.seqString().toString()), subject.seqString().toString());
 		int altSize = rc.length();
-		//System.out.println(this.getName());
-		//System.out.println("size: "+size+" rcSize: "+altSize);
+		System.out.println(this.getName());
+		System.out.println("size: "+size+" rcSize: "+altSize);
 		//take the reverse complement of the query.
 		if(altSize>size){
 			try {
 				this.query = DNATools.createDNASequence(Utils.reverseComplement(query.seqString().toString()), this.query.getName());
+				//also turn around the quality
+				QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
+				quals = qsb.reverse().build();
 			} catch (IllegalSymbolException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -330,9 +338,27 @@ public class CompareSequence {
 			delLength -= 3;
 		}
 		String ret = getName()+spacer+getSubject()+spacer+query.seqString()+spacer+getLeftFlank(size)+spacer+getDel()+spacer+getRightFlank(size)+spacer+getInsertion()+spacer+this.getDelStart()+spacer+this.getDelEnd()+
-				spacer+(this.getDelStart()-this.pamSiteLocation)+spacer+(this.getDelEnd()-this.pamSiteLocation)+spacer+homology+spacer+homologyLength+spacer+delLength+spacer+this.getInsertion().length()+spacer+this.getRevCompInsertion()
+				spacer+(this.getDelStart()-this.pamSiteLocation)+spacer+(this.getDelEnd()-this.pamSiteLocation)+spacer+homology+spacer+homologyLength+spacer+delLength+spacer+this.getInsertion().length()+spacer+getType()+spacer+this.getRevCompInsertion()
 				+spacer+this.getRangesString()+spacer+masked+spacer+getRemarks();
 		return ret;
+	}
+	private Type getType() {
+		if(this.getDel().length()== 0 && this.getInsertion().length() == 0){
+			return Type.WT;
+		}
+		else if(this.getDel().length()== 1 && this.getInsertion().length() == 1){
+			return Type.SNV;
+		}
+		else if(this.getDel().length()== 0 && this.getInsertion().length() > 0){
+			return Type.INSERTION;
+		}
+		else if(this.getDel().length()> 0 && this.getInsertion().length() == 0){
+			return Type.DELETION;
+		}
+		else if(this.getDel().length()> 0 && this.getInsertion().length() > 0){
+			return Type.INDEL;
+		}
+		return Type.UNKNOWN;
 	}
 	private String getSubject() {
 		String ret = subject.getName();
@@ -361,7 +387,8 @@ public class CompareSequence {
 		this.remarks += remark;
 	}
 	public static String getOneLineHeader() {
-		return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
+		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
+		return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tType\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 	}
 	public String getRevCompInsertion(){
 		if(insert.length()>=5){
@@ -386,7 +413,7 @@ public class CompareSequence {
 	public void setMinimumSizeWithoutLeftRight(int min){
 		this.minimumSizeWithoutLeftRight = min;
 	}
-	public void setAndDetermineCorrectRange(QualitySequence quals, double relaxedMaxError) {
+	public void setAndDetermineCorrectRange(double relaxedMaxError) {
 		double maxError = relaxedMaxError;
 		long first = -1;
 		long last = quals.getLength()-1;
@@ -396,8 +423,8 @@ public class CompareSequence {
 			}
 			//break range on the first bad base
 			if(first >= 0 && quals.get(j).getErrorProbability()>maxError){
+				//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 				if(j-first >= minimalRangeSize){
-					//System.out.println("range is "+first+"-"+last);
 					ranges.add(Range.of(first, last));
 				}
 				first = -1;
@@ -405,8 +432,8 @@ public class CompareSequence {
 			}
 			last = j;
 		}
+		//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 		if(first >= 0 && first - last >= minimalRangeSize){
-			//System.out.println("range is "+first+"-"+last);
 			ranges.add(Range.of(first, last));
 		}		
 	}
@@ -457,11 +484,31 @@ public class CompareSequence {
 			String tempDNA = "";
 			long j=0;
 			Range correct = null;
+			String largestCommon = null;
+			Range rangeContainingLargest = null;			
+			Range largestRange = null;
+			long largestRangeLength = -1;
 			for(Range r: ranges){
 				String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
+				String lcsL = Utils.longestCommonSubstring(sub, left);
+				String lcsR = Utils.longestCommonSubstring(sub, right);
+				if(largestCommon == null || (lcsL.length()+lcsR.length()) >largestCommon.length()){
+					largestCommon = lcsL+"_"+lcsR;
+					rangeContainingLargest = r;
+				}
+				if(r.getLength()>largestRangeLength){
+					largestRangeLength = r.getLength();
+					largestRange = r;
+				}
 				//take the first
-				correct = r;
-				break;
+				if(largestCommon.length()>=10){
+					correct = rangeContainingLargest;
+				}
+				else{
+					correct = largestRange;
+				}
+				//removed break
+				//break;
 			}
 			if(correct != null){
 				long begin = correct.getBegin();

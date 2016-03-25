@@ -43,9 +43,10 @@ public class TestSingleFile {
 			e1.printStackTrace();
 		}
 		Sequence seq = null;
+		Chromatogram chromo = null;
 		try {
-			File f = new File("C:/Users/rvanschendel/Documents/Project_Primase/100bp_insertion_zone/Sequencing revertants/1038966/XF1287_26_1_2516981-1038966.ab1");
-			Chromatogram chromo = ChromatogramFactory.create(f);
+			File f = new File("C:/Users/rvanschendel/Documents/Project_Primase/pRS30_insertion/1038519/XF1268_41_1_2510987-1038519.ab1");
+			chromo = ChromatogramFactory.create(f);
 			ABITrace trace = new ABITrace(f);
 			SymbolList symbols = trace.getSequence();
 			String name = f.getName();
@@ -58,7 +59,7 @@ public class TestSingleFile {
 		File hprt = new File("HPRT.fa");
 		BufferedReader is = null;
 		try {
-			is = new BufferedReader(new FileReader("C:/Users/rvanschendel/Documents/Project_Primase/100bp_insertion_zone/Sequencing revertants/XF1277.fa.txt"));
+			is = new BufferedReader(new FileReader("C:/Users/rvanschendel/Documents/Project_Primase/pRS30_insertion/XF1268.fa.txt"));
 		} catch (FileNotFoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -82,10 +83,14 @@ public class TestSingleFile {
 				e.printStackTrace();
 			}
 		}
-		CompareSequence s = new CompareSequence(hprtSeq, null, seq, "", "", null);
+		CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), "", "", null);
 		s.determineFlankPositions();
 		System.out.println(s.toStringOneLine());
-		s = new CompareSequence(hprtSeq, null, seq, "GCATGCGTCGACCCgggaggcctgatttca", "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT", null);
+		String left = "GCATGCGTCGACCCgggaggcctgatttca";
+		String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT";
+		s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null);
+		s.setAndDetermineCorrectRange(0.05);
+		s.maskSequenceToHighQualityRemove(left, right);
 		s.determineFlankPositions();
 		System.out.println(s.toStringOneLine());
 	}

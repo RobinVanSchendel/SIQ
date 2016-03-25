@@ -168,27 +168,18 @@ public class GUI implements ActionListener {
 			area.setColumns(30);
 			 
 			for(int i = 1; i<model.size();i++){
-				if(i == 1){
-					String ret = null;
-					if(mbc.tryToMatchFasta()){
-						ret = analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), true);
-					}
-					else{
-						ret = analyzeFile(model.getElementAt(i), left.getText(), right.getText(), true);
-					}
-					if(ret == null){
-						return;
-					}
-					area.append(ret+"\n");
+				String ret = null;
+				if(mbc.tryToMatchFasta()){
+					ret = analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), true);
 				}
 				else{
-					if(mbc.tryToMatchFasta()){
-						area.append(analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), false)+"\n");
-					}
-					else{
-						area.append(analyzeFile(model.getElementAt(i), left.getText(), right.getText(), false)+"\n");
-					}
+					ret = analyzeFile(model.getElementAt(i), left.getText(), right.getText(), true);
 				}
+				//at least show the name
+				if(ret == null){
+					ret = model.getElementAt(i).getName();
+				}
+				area.append(ret+"\n");
 			}
 			JScrollPane scrollPane = new JScrollPane(area);
 			scrollPane.setPreferredSize( new Dimension( 500, 500 ) );
@@ -198,6 +189,7 @@ public class GUI implements ActionListener {
 		else if(e.getActionCommand().equals("chooseSubject")){
 			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 			chooser.setMultiSelectionEnabled(false);
+			sequences = null;
 			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
 				//remove the subject if we already have one
 				if(subject != null){
@@ -364,8 +356,8 @@ public class GUI implements ActionListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		CompareSequence cs = new CompareSequence(subject, subject2, query, left, right, (String)pamChooser.getSelectedItem());
-		cs.setAndDetermineCorrectRange(quals, 0.05);
+		CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem());
+		cs.setAndDetermineCorrectRange(0.05);
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);
 		}
@@ -392,7 +384,9 @@ public class GUI implements ActionListener {
 		
 		Sequence subject = Utils.matchNameSequence(sequences,name);
 		if(subject == null){
-			System.err.println("No Match could be found");
+			System.err.println("No Match could be found "+name);
+			//JOptionPane.showMessageDialog(guiFrame,"Problem with match", "The file with name "+name+" could not be matched to a fasta file Name",JOptionPane.ERROR_MESSAGE);
+			return null;
 		}
 		if(checkLeftRight){
 			if(left.length()>0 && right.length()>0){
@@ -423,8 +417,8 @@ public class GUI implements ActionListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		CompareSequence cs = new CompareSequence(subject, null, query, left, right, (String)pamChooser.getSelectedItem());
-		cs.setAndDetermineCorrectRange(quals, 0.05);
+		CompareSequence cs = new CompareSequence(subject, null, query, quals, left, right, (String)pamChooser.getSelectedItem());
+		cs.setAndDetermineCorrectRange(0.05);
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);
 		}
@@ -445,11 +439,27 @@ public class GUI implements ActionListener {
 				if(file.getName().endsWith(".ab1")){
 					model.addElement(file);
 				}
+				else if(file.isDirectory()){
+					fillTable(file);
+				}
 			}
 		}
 		else{
 			for(File f: chooser.getSelectedFiles()){
 				model.addElement(f);
+			}
+		}
+	}
+
+	private void fillTable(File dir) {
+		if(dir.isDirectory()){
+			for(File file: dir.listFiles()){
+				if(file.getName().endsWith(".ab1")){
+					model.addElement(file);
+				}
+				else if(file.isDirectory()){
+					fillTable(file);
+				}
 			}
 		}
 	}
