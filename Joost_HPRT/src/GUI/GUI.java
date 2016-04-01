@@ -1,6 +1,7 @@
 package GUI;
 
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -18,12 +19,14 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -172,6 +175,21 @@ public class GUI implements ActionListener {
 			JTextArea area = new JTextArea(CompareSequence.getOneLineHeader()+"\n");
 			area.setColumns(30);
 			 
+			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+			final JDialog dlg = new JDialog(guiFrame, "Progress Dialog", true);
+		    JProgressBar dpb = new JProgressBar(0, model.size());
+		    dlg.add(BorderLayout.CENTER, dpb);
+		    dlg.add(BorderLayout.NORTH, new JLabel("Procress..."));
+		    dlg.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+		    dlg.setSize(300, 75);
+		    dlg.setLocationRelativeTo(guiFrame);
+			Thread t = new Thread(new Runnable() {
+			      public void run() {
+			    	  dlg.setVisible(true);
+			      }
+			    });
+			    t.start();
+			    dpb.setValue(0);
 			for(int i = 1; i<model.size();i++){
 				String ret = null;
 				if(mbc.tryToMatchFasta()){
@@ -185,7 +203,16 @@ public class GUI implements ActionListener {
 					ret = model.getElementAt(i).getName();
 				}
 				area.append(ret+"\n");
+				dpb.setValue(i);
+				dlg.update(dlg.getGraphics());
+				try {
+			        Thread.sleep(1);
+			      } catch (InterruptedException ef) {
+			        ef.printStackTrace();
+			      }
 			}
+			dlg.setVisible(false);
+			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 			JScrollPane scrollPane = new JScrollPane(area);
 			scrollPane.setPreferredSize( new Dimension( 500, 500 ) );
 			JOptionPane.showMessageDialog(
@@ -423,11 +450,12 @@ public class GUI implements ActionListener {
 			e.printStackTrace();
 		}
 		CompareSequence cs = new CompareSequence(subject, null, query, quals, left, right, (String)pamChooser.getSelectedItem());
-		cs.setAndDetermineCorrectRange(0.05);
 		if(this.maskLowQuality.isSelected()){
+			cs.setAndDetermineCorrectRange(0.05);
 			cs.maskSequenceToHighQuality(left, right);
 		}
 		if(this.maskLowQualityRemove.isSelected()){
+			cs.setAndDetermineCorrectRange(0.05);
 			cs.maskSequenceToHighQualityRemove(left, right);
 		}
 		cs.determineFlankPositions();
