@@ -46,15 +46,11 @@ public class Wouter_Koole_G4 {
 				try {
 					//System.out.println(dna);
 					Sequence s = DNATools.createDNASequence(dna, ""+index);
-					s = DNATools.createDNASequence(DNATools.reverseComplement(s).seqString(), s.getName());
-					CompareSequence cs = new CompareSequence(subject, null, s, "", "", null);
+					CompareSequence cs = new CompareSequence(subject, null, s, null, "", "", null);
 					cs.setMinimumSizeWithoutLeftRight(10);
 					cs.determineFlankPositions();
 					System.out.println(cs.toStringOneLine());
 				} catch (IllegalSymbolException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IllegalAlphabetException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

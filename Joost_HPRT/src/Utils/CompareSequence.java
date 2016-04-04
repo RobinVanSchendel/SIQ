@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.symbol.IllegalSymbolException;
-import org.biojava.bio.symbol.SymbolList;
 import org.jcvi.jillion.core.Range;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.qual.QualitySequenceBuilder;
@@ -24,6 +23,7 @@ public class CompareSequence {
 	private ArrayList<Range> ranges = new ArrayList<Range>();
 	private boolean masked = false;
 	private QualitySequence quals;
+	private InsertionSolverTwoSides is;
 	public enum Type {WT, SNV, DELETION, INDEL, INSERTION, UNKNOWN};
 	
 	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, QualitySequence quals, String left, String right, String pamSite) {
@@ -82,6 +82,10 @@ public class CompareSequence {
 		//System.out.println(subject2.seqString().toString());
 		if(left != null && left.length()>=15 && right != null && right.length()>=15){
 			leftPos = subject.seqString().indexOf(left)+left.length();
+			//misuse the pamSiteLocation to make it relative to the left position
+			if(this.pamSiteLocation == 0){
+				this.pamSiteLocation = leftPos;
+			}
 			//System.out.println(right);
 			if(subject2 != null){
 				rightPos = subject2.seqString().indexOf(right);
@@ -213,22 +217,16 @@ public class CompareSequence {
 		//System.out.println("del:"+del);
 		//System.out.println("insert:"+insert);
 		//Check if deletion and insertion are minimal
-		boolean madeMinimal = false;
-		int moved = 0;
 		if(subject2 == null){
 			while(del.length()>0 && insert.length()>0 && del.charAt(0) == insert.charAt(0)){
 				leftFlank = leftFlank +del.charAt(0);
 				del = del.substring(1);
 				insert = insert.substring(1);
-				madeMinimal = true;
-				moved++;
 			}
 			while(del.length()>0 && insert.length()>0 && del.charAt(del.length()-1) == insert.charAt(insert.length()-1)){
 				rightFlank = del.charAt(del.length()-1)+rightFlank;
 				del = del.substring(0,del.length()-1);
 				insert = insert.substring(0,insert.length()-1);
-				madeMinimal = true;
-				moved++;
 			}
 		}
 		//translocation
@@ -238,15 +236,11 @@ public class CompareSequence {
 				leftFlank = leftFlank +Character.toUpperCase(insert.charAt(0));
 				insert = insert.substring(1);
 				posWithinSubjectOne++;
-				madeMinimal = true;
-				moved++;
 			}
 			posWithinSubjectTwo = subject2.seqString().indexOf(flankTwo);
 			while(insert.length()>0 && subject2.seqString().charAt(posWithinSubjectTwo) == insert.charAt(insert.length()-1)){
 				rightFlank = Character.toUpperCase(insert.charAt(0))+ rightFlank;
 				insert = insert.substring(0,insert.length()-1);
-				madeMinimal = true;
-				moved++;
 				posWithinSubjectTwo--;
 			}
 		}
@@ -329,6 +323,11 @@ public class CompareSequence {
 		int size = 20;
 		String homology = "";
 		int homologyLength = -1;
+		//only do it when no weird things found
+		if(this.remarks.length() == 0 &&insert.length()>0){
+			//currently fixed value
+			solveInsertion(-30,30);
+		}
 		if(del.length()>0 && insert.length() == 0){
 			homology = Utils.getHomologyAtBreak(leftFlank, del, rightFlank);
 			homologyLength = homology.length();
@@ -340,6 +339,43 @@ public class CompareSequence {
 		String ret = getName()+spacer+getSubject()+spacer+query.seqString()+spacer+getLeftFlank(size)+spacer+getDel()+spacer+getRightFlank(size)+spacer+getInsertion()+spacer+this.getDelStart()+spacer+this.getDelEnd()+
 				spacer+(this.getDelStart()-this.pamSiteLocation)+spacer+(this.getDelEnd()-this.pamSiteLocation)+spacer+homology+spacer+homologyLength+spacer+delLength+spacer+this.getInsertion().length()+spacer+getType()+spacer+this.getRevCompInsertion()
 				+spacer+this.getRangesString()+spacer+masked+spacer+getRemarks();
+		if(is != null){
+			ret+= spacer+is.getLargestMatch()+spacer+is.getLargestMatchString()+spacer
+					+is.getSubS()+spacer+is.getSubS2()+spacer+is.getType();
+		}
+		return ret;
+	}
+	private void solveInsertion(int start, int end) {
+		int minSize = 3;
+		if(this.insert.length()>=minSize){
+			String left = this.getCorrectedLeftFlankRelative(start, end);
+			String right = this.getCorrectedRightFlankRelative(start, end);
+			InsertionSolverTwoSides is = new InsertionSolverTwoSides(left, right,this.insert,null);
+			is.setAdjustedPositionLeft(start);		
+			is.setAdjustedPositionRight(start);
+			is.search(true, true);
+			is.setMinimumMatch(minSize);
+			is.solveInsertion();
+			this.is = is;
+		}
+	}
+	private String getCorrectedLeftFlankRelative(int start, int end) {
+		//adjust position
+		int startTemp = -1*end;
+		end = -1*start;
+		start = startTemp;
+		int leftEnd = subject.seqString().indexOf(leftFlank.toLowerCase())+leftFlank.length();
+		start += leftEnd;
+		end += leftEnd;
+		String ret = subject.seqString().substring(start, end);
+		return ret;
+	}
+	private String getCorrectedRightFlankRelative(int start, int end) {
+		//adjust position
+		int rightStart = subject.seqString().indexOf(rightFlank.toLowerCase());
+		start += rightStart;
+		end += rightStart;
+		String ret = subject.seqString().substring(start, end);
 		return ret;
 	}
 	private Type getType() {
@@ -388,7 +424,11 @@ public class CompareSequence {
 	}
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
-		return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tType\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
+		String s = "\t";
+		String ret = "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tType\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
+		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
+					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType";
+		return ret;
 	}
 	public String getRevCompInsertion(){
 		if(insert.length()>=5){
