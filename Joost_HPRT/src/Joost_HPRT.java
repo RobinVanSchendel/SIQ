@@ -42,19 +42,6 @@ public class Joost_HPRT {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		Sequence seq = null;
-		try {
-			File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Joost\\1036107\\HPRT_RF1_2_2471688-1036107.ab1");
-			Chromatogram chromo = ChromatogramFactory.create(f);
-			ABITrace trace = new ABITrace(f);
-			SymbolList symbols = trace.getSequence();
-			String name = f.getName();
-			seq = new SimpleSequence(symbols, name, name, Annotation.EMPTY_ANNOTATION);
-			//IOTools.writeFasta(System.out, seq,null);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 		new GUI();
 		/*
 		File hprt = new File("HPRT.fa");
