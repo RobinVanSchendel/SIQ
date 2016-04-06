@@ -81,6 +81,10 @@ public class CompareSequence {
 		//System.out.println(subject.seqString().toString());
 		//System.out.println(subject2.seqString().toString());
 		if(left != null && left.length()>=15 && right != null && right.length()>=15){
+			if(subject.seqString().indexOf(left) <0){
+				System.err.println("Cannot find left, is it the correct sequence?");
+				return;
+			}
 			leftPos = subject.seqString().indexOf(left)+left.length();
 			//misuse the pamSiteLocation to make it relative to the left position
 			if(this.pamSiteLocation == 0){
@@ -92,6 +96,10 @@ public class CompareSequence {
 			}
 			else{
 				rightPos = subject.seqString().indexOf(right);
+			}
+			if(rightPos<0){
+				System.err.println("Cannot find right, is it the correct sequence?");
+				return;
 			}
 			flankOne = findLeft(subject.seqString().substring(0, leftPos), query.seqString());
 			String seqRemain = query.seqString().replace(flankOne, replacementFlank);
@@ -127,6 +135,7 @@ public class CompareSequence {
 		}
 		else{
 			//assuming it is NOT on the reverse complement strand
+			//TODO use the functions findLeft and findRight here
 			flankOne = Utils.longestCommonSubstring(subject.seqString(), query.seqString());
 			 
 			//this assumes the leftFlank is always on the left side
@@ -250,7 +259,7 @@ public class CompareSequence {
 		//}
 		String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
 		if(insertDelCommon.length()>10){
-			this.setRemarks("Probably there is a mismatch somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
+			this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
 			//System.err.println("Probably there is a mismatch somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
 		}
 	}
@@ -270,6 +279,7 @@ public class CompareSequence {
 			int secSecondSubEnd = substring.indexOf(second)+second.length();
 			int jumpDist = locFirstSub-secSecondSubEnd;
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
+				System.out.println("jumping Right");
 				return second;
 			}
 		}
@@ -280,15 +290,15 @@ public class CompareSequence {
 		String leftOver = substring.substring(substring.indexOf(first)+first.length());
 		String queryOver = query.substring(query.indexOf(first)+first.length());
 		String second = Utils.longestCommonSubstring(leftOver, queryOver);
-		if(Utils.longestCommonSubstring(leftOver, queryOver).length()>10){
+		if(second.length()>10){
 			//check if we allow the jump, previously this led to deletions not being spotted
 			int locFirstSub = substring.indexOf(first);
 			int secSecondSubEnd = substring.indexOf(second)+second.length();
 			int jumpDist = locFirstSub-secSecondSubEnd;
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
+				System.out.println("jumping Left");
 				return second;
 			}
-			return Utils.longestCommonSubstring(leftOver, queryOver);
 		}
 		return first;
 	}
