@@ -24,6 +24,8 @@ public class CompareSequence {
 	private boolean masked = false;
 	private QualitySequence quals;
 	private InsertionSolverTwoSides is;
+	private int minSizeInsertionSolver = 5;
+	public boolean searchTranslocation = false;
 	public enum Type {WT, SNV, DELETION, INDEL, INSERTION, UNKNOWN};
 	
 	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, QualitySequence quals, String left, String right, String pamSite) {
@@ -56,7 +58,8 @@ public class CompareSequence {
 		//System.out.println(this.getName());
 		//System.out.println("size: "+size+" rcSize: "+altSize);
 		//take the reverse complement of the query.
-		if(altSize>size){
+		//sometimes that is not correct, although we don't really know if that is true
+		if(size <40 && altSize>size){
 			try {
 				this.query = DNATools.createDNASequence(Utils.reverseComplement(query.seqString().toString()), this.query.getName());
 				//also turn around the quality
@@ -66,6 +69,7 @@ public class CompareSequence {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			//System.out.println("Took RC");		
 		}
 	}
 	public void determineFlankPositions(){
@@ -83,6 +87,8 @@ public class CompareSequence {
 		if(left != null && left.length()>=15 && right != null && right.length()>=15){
 			if(subject.seqString().indexOf(left) <0){
 				System.err.println("Cannot find left, is it the correct sequence?");
+				//System.err.println(left);
+				//System.err.println(subject.seqString());
 				return;
 			}
 			leftPos = subject.seqString().indexOf(left)+left.length();
@@ -106,6 +112,7 @@ public class CompareSequence {
 			// translocation
 			if(subject2!= null){
 				flankTwo = findRight(subject2.seqString().substring(rightPos), seqRemain);
+				searchTranslocation = true;
 			}
 			else{
 				flankTwo = findRight(subject.seqString().substring(rightPos), seqRemain);
@@ -166,7 +173,7 @@ public class CompareSequence {
 		int posWithinSubjectTwo = subject.seqString().indexOf(flankTwo);
 		leftFlank = flankOne;
 		rightFlank = flankTwo;
-		if(subject2 == null){
+		if(!searchTranslocation){
 			if(posWithinSubjectOne < posWithinSubjectTwo){
 				leftFlank = flankOne;
 				rightFlank = flankTwo;
@@ -178,7 +185,7 @@ public class CompareSequence {
 		}
 		//System.out.println("leftFlank:"+leftFlank);
 		//System.out.println("rightFlank:"+rightFlank);
-		if(subject2 == null){
+		if(!searchTranslocation){
 			int delPosStart = subject.seqString().indexOf(leftFlank)+leftFlank.length()+1;
 			int delPosEnd = subject.seqString().indexOf(rightFlank);
 			if(delPosEnd-delPosStart >=0){
@@ -189,7 +196,7 @@ public class CompareSequence {
 			}
 		}
 		//translocation
-		else{
+		else if(searchTranslocation){
 			leftPos = subject.seqString().indexOf(left)+left.length();
 			int leftQueryPos = posWithinSubjectOne+flankOne.length();
 			if(leftQueryPos < leftPos){
@@ -239,7 +246,7 @@ public class CompareSequence {
 			}
 		}
 		//translocation
-		else{
+		else if(searchTranslocation){
 			posWithinSubjectOne = subject.seqString().indexOf(flankOne)+flankOne.length();
 			while(insert.length()>0 && subject.seqString().charAt(posWithinSubjectOne) == insert.charAt(0)){
 				leftFlank = leftFlank +Character.toUpperCase(insert.charAt(0));
@@ -251,6 +258,16 @@ public class CompareSequence {
 				rightFlank = Character.toUpperCase(insert.charAt(0))+ rightFlank;
 				insert = insert.substring(0,insert.length()-1);
 				posWithinSubjectTwo--;
+			}
+			//maybe we made an insertion which is incorrect
+			if(del.startsWith(" - ")){
+				String tempDel = del.replace(" - ", "");
+				while(tempDel.length()>0 && insert.length()>0 && tempDel.charAt(0) == insert.charAt(0)){
+					tempDel = tempDel.substring(1);
+					insert = insert.substring(1);
+				}
+				//replace with right one
+				del = " - "+tempDel;
 			}
 		}
 		//no longer report as people might see it as an error, while it is more of a warning
@@ -356,15 +373,15 @@ public class CompareSequence {
 		return ret;
 	}
 	private void solveInsertion(int start, int end) {
-		int minSize = 3;
-		if(this.insert.length()>=minSize){
+		//disabled for translocation
+		if(!searchTranslocation && this.insert.length()>=minSizeInsertionSolver){
 			String left = this.getCorrectedLeftFlankRelative(start, end);
 			String right = this.getCorrectedRightFlankRelative(start, end);
 			InsertionSolverTwoSides is = new InsertionSolverTwoSides(left, right,this.insert,null);
 			is.setAdjustedPositionLeft(start);		
 			is.setAdjustedPositionRight(start);
 			is.search(true, true);
-			is.setMinimumMatch(minSize);
+			is.setMinimumMatch(minSizeInsertionSolver);
 			is.solveInsertion();
 			this.is = is;
 		}
@@ -382,9 +399,12 @@ public class CompareSequence {
 	}
 	private String getCorrectedRightFlankRelative(int start, int end) {
 		//adjust position
+		//System.out.println(start);
+		//System.out.println(end);
 		int rightStart = subject.seqString().indexOf(rightFlank.toLowerCase());
 		start += rightStart;
 		end += rightStart;
+		//System.out.println(rightStart);
 		String ret = subject.seqString().substring(start, end);
 		return ret;
 	}
