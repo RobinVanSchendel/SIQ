@@ -27,11 +27,13 @@ public class CompareSequence {
 	private int minSizeInsertionSolver = 5;
 	public boolean searchTranslocation = false;
 	public enum Type {WT, SNV, DELETION, INDEL, INSERTION, UNKNOWN};
+	public String dir;
 	
-	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, QualitySequence quals, String left, String right, String pamSite) {
+	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, QualitySequence quals, String left, String right, String pamSite, String dir) {
 		this.subject = subject;
 		this.subject2 = subject2;
 		this.query = query;
+		this.dir = dir;
 		if(left == null){
 			System.err.println("Specified left is null, that is not allowed");
 			System.exit(0);
@@ -135,7 +137,7 @@ public class CompareSequence {
 					//System.err.println("Cannot find the flanks of the event, please do it manually");
 				}
 				else{
-					this.setRemarks("Not exactly sure what is happening, but something is wrong");
+					this.setRemarks("Not exactly sure what is happening, but something is wrong "+flankOne.length()+" "+flankTwo.length());
 					//System.err.println("Not exactly sure what is happening, but something is wrong");
 				}
 			}
@@ -165,6 +167,8 @@ public class CompareSequence {
 					this.setRemarks("Not exactly sure what is happening, but something is wrong");
 					System.err.println("Not exactly sure what is happening, but something is wrong");
 				}
+				//TODO: fix this case
+				return;
 			}
 		}
 		
@@ -296,7 +300,7 @@ public class CompareSequence {
 			int secSecondSubEnd = substring.indexOf(second)+second.length();
 			int jumpDist = locFirstSub-secSecondSubEnd;
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				System.out.println("jumping Right");
+				System.out.println("jumping Right "+jumpDist);
 				return second;
 			}
 		}
@@ -309,11 +313,11 @@ public class CompareSequence {
 		String second = Utils.longestCommonSubstring(leftOver, queryOver);
 		if(second.length()>10){
 			//check if we allow the jump, previously this led to deletions not being spotted
-			int locFirstSub = substring.indexOf(first);
-			int secSecondSubEnd = substring.indexOf(second)+second.length();
-			int jumpDist = locFirstSub-secSecondSubEnd;
+			int locFirstSub = substring.indexOf(first)+first.length();
+			int secSecondSubEnd = substring.indexOf(second);
+			int jumpDist = secSecondSubEnd-locFirstSub;
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				System.out.println("jumping Left");
+				System.out.println("jumping Left "+jumpDist);
 				return second;
 			}
 		}
@@ -363,14 +367,24 @@ public class CompareSequence {
 		if(this.getDel().contains(" - ")){
 			delLength -= 3;
 		}
-		String ret = getName()+spacer+getSubject()+spacer+query.seqString()+spacer+getLeftFlank(size)+spacer+getDel()+spacer+getRightFlank(size)+spacer+getInsertion()+spacer+this.getDelStart()+spacer+this.getDelEnd()+
-				spacer+(this.getDelStart()-this.pamSiteLocation)+spacer+(this.getDelEnd()-this.pamSiteLocation)+spacer+homology+spacer+homologyLength+spacer+delLength+spacer+this.getInsertion().length()+spacer+getType()+spacer+this.getRevCompInsertion()
+		int mod = (this.getInsertion().length()-this.getDel().length())%3;
+		String ret = getName()+spacer+dir+spacer+getIDPart()+spacer+getSubject()+spacer+query.seqString()+spacer+getLeftFlank(size)+spacer+getDel()+spacer+getRightFlank(size)+spacer+getInsertion()+spacer+this.getDelStart()+spacer+this.getDelEnd()+
+				spacer+(this.getDelStart()-this.pamSiteLocation)+spacer+(this.getDelEnd()-this.pamSiteLocation)+spacer+homology+spacer+homologyLength+spacer+delLength+spacer+this.getInsertion().length()+spacer+mod+spacer+getType()+spacer+this.getRevCompInsertion()
 				+spacer+this.getRangesString()+spacer+masked+spacer+getRemarks();
 		if(is != null){
 			ret+= spacer+is.getLargestMatch()+spacer+is.getLargestMatchString()+spacer
 					+is.getSubS()+spacer+is.getSubS2()+spacer+is.getType();
 		}
 		return ret;
+	}
+	private String getIDPart() {
+		if(this.getName().contains("_")){
+			String[] parts = this.getName().split("_");
+			if(parts.length>2){
+				return parts[0]+"_"+parts[1];
+			}
+		}
+		return "";
 	}
 	private void solveInsertion(int start, int end) {
 		//disabled for translocation
@@ -455,7 +469,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tType\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
+		String ret = "Name\tDir\tgetIDPart\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType";
 		return ret;

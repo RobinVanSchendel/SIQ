@@ -29,15 +29,12 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-import org.biojava.bio.Annotation;
 import org.biojava.bio.BioException;
 import org.biojava.bio.program.abi.ABITrace;
 import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.seq.SequenceIterator;
-import org.biojava.bio.seq.impl.SimpleSequence;
 import org.biojava.bio.symbol.IllegalSymbolException;
-import org.biojava.bio.symbol.SymbolList;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
@@ -217,7 +214,6 @@ public class GUI implements ActionListener {
 				}
 				//get a SequenceDB of all sequences in the file
 				SequenceIterator si = IOTools.readFastaDNA(is, null);
-				boolean hasTwoSequences = false;
 				if(si.hasNext()){
 					try {
 						Sequence s = si.nextSequence();
@@ -226,7 +222,6 @@ public class GUI implements ActionListener {
 						subject = chooser.getSelectedFile();
 						model.insertElementAt(subject, 0);
 						if(si.hasNext() && !mbc.tryToMatchFasta()){
-							hasTwoSequences = true;
 							JOptionPane.showMessageDialog(guiFrame, "You selected a fasta file with two sequences\n"+s.getName()+"\n"+si.nextSequence().getName()+"\nI will search for translocations");
 						}
 					} catch (NoSuchElementException e1) {
@@ -295,7 +290,6 @@ public class GUI implements ActionListener {
 			
 		}
 		
-		ABITrace trace = null;
 		Chromatogram chromo = null;
 		try {
 			chromo = ChromatogramFactory.create(f);
@@ -362,10 +356,9 @@ public class GUI implements ActionListener {
 		try {
 			query = DNATools.createDNASequence(seq.toString(), name);
 		} catch (IllegalSymbolException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem());
+		CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
 		cs.setAndDetermineCorrectRange(0.05);
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);
@@ -400,7 +393,6 @@ public class GUI implements ActionListener {
 		if(checkLeftRight){
 			if(left.length()>0 && right.length()>0){
 				//System.out.println("hier!");
-				int leftRightPos = subject.seqString().indexOf((left+right).toLowerCase());
 				int leftPos = subject.seqString().indexOf(left.toLowerCase());
 				int rightPos = subject.seqString().indexOf(right.toLowerCase());
 				
@@ -423,10 +415,9 @@ public class GUI implements ActionListener {
 		try {
 			query = DNATools.createDNASequence(seq.toString(), name);
 		} catch (IllegalSymbolException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		CompareSequence cs = new CompareSequence(subject, null, query, quals, left, right, (String)pamChooser.getSelectedItem());
+		CompareSequence cs = new CompareSequence(subject, null, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
 		if(this.maskLowQuality.isSelected()){
 			cs.setAndDetermineCorrectRange(0.05);
 			cs.maskSequenceToHighQuality(left, right);

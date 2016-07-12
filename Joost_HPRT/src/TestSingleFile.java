@@ -45,7 +45,9 @@ public class TestSingleFile {
 		Sequence seq = null;
 		Chromatogram chromo = null;
 		try {
-			File f = new File("C:/Users/rvanschendel/Documents/Project_Primase/pRS30_insertion/1038519/XF1268_41_1_2510987-1038519.ab1");
+			//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Lig3\\Tc1_transposon_If230\\1039717\\rde_3_20_2527773-1039717.ab1");
+			File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\100bp_insertion_zone\\Sequencing revertants\\1039028\\XF1289_78_2_2518043-1039028.ab1");
+
 			chromo = ChromatogramFactory.create(f);
 			ABITrace trace = new ABITrace(f);
 			SymbolList symbols = trace.getSequence();
@@ -56,10 +58,10 @@ public class TestSingleFile {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		File hprt = new File("HPRT.fa");
 		BufferedReader is = null;
 		try {
-			is = new BufferedReader(new FileReader("C:/Users/rvanschendel/Documents/Project_Primase/pRS30_insertion/XF1268.fa.txt"));
+			is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\100bp_insertion_zone\\Sequencing revertants\\XF1289.fa.txt"));
+			
 		} catch (FileNotFoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -83,13 +85,14 @@ public class TestSingleFile {
 				e.printStackTrace();
 			}
 		}
-		CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), "", "", null);
+		CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), "", "", null, null);
 		s.determineFlankPositions();
 		System.out.println(s.toStringOneLine());
 		String left = "GCATGCGTCGACCCgggaggcctgatttca";
 		String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT";
-		s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null);
+		s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null, null);
 		s.setAndDetermineCorrectRange(0.05);
+		//s.maskSequenceToHighQuality(left, right);
 		s.maskSequenceToHighQualityRemove(left, right);
 		s.determineFlankPositions();
 		System.out.println(s.toStringOneLine());

@@ -46,7 +46,7 @@ public class Wouter_Koole_G4 {
 				try {
 					//System.out.println(dna);
 					Sequence s = DNATools.createDNASequence(dna, ""+index);
-					CompareSequence cs = new CompareSequence(subject, null, s, null, "", "", null);
+					CompareSequence cs = new CompareSequence(subject, null, s, null, "", "", null, null);
 					cs.setMinimumSizeWithoutLeftRight(10);
 					cs.determineFlankPositions();
 					System.out.println(cs.toStringOneLine());
