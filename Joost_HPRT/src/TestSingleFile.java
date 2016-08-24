@@ -1,3 +1,5 @@
+import gui.GUI;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -18,9 +20,8 @@ import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
-import Utils.CompareSequence;
-import Utils.Utils;
-import GUI.GUI;
+import utils.CompareSequence;
+import utils.Utils;
 
 public class TestSingleFile {
 

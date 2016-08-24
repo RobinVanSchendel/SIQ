@@ -1,4 +1,4 @@
-package Utils;
+package utils;
 import java.util.ArrayList;
 
 import org.biojava.bio.seq.DNATools;
@@ -7,6 +7,8 @@ import org.biojava.bio.symbol.IllegalSymbolException;
 import org.jcvi.jillion.core.Range;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.qual.QualitySequenceBuilder;
+
+import Utils.InsertionSolverTwoSides;
 
 
 public class CompareSequence {
@@ -395,7 +397,7 @@ public class CompareSequence {
 			is.setAdjustedPositionLeft(start);		
 			is.setAdjustedPositionRight(start);
 			is.search(true, true);
-			is.setMinimumMatch(minSizeInsertionSolver);
+			is.setMinimumMatch(minSizeInsertionSolver, false);
 			is.solveInsertion();
 			this.is = is;
 		}

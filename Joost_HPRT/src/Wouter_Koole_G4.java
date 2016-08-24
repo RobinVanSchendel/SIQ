@@ -1,3 +1,5 @@
+import gui.GUI;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -14,9 +16,8 @@ import org.biojava.bio.seq.io.*;
 import org.biojava.bio.symbol.*;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 
-import Utils.CompareSequence;
-import Utils.Utils;
-import GUI.GUI;
+import utils.CompareSequence;
+import utils.Utils;
 
 public class Wouter_Koole_G4 {
 
