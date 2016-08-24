@@ -1,4 +1,4 @@
-package Utils;
+package utils;
 import java.util.ArrayList;
 
 import org.apache.commons.math3.distribution.BinomialDistribution;

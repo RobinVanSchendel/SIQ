@@ -1,4 +1,4 @@
-package Utils;
+package utils;
 
 public class Utils {
 	public static String reverseComplement(String dna){

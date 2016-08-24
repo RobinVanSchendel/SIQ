@@ -1,4 +1,4 @@
-package Utils;
+package utils;
 
 public class InsertionSolver {
 	private String dna, insertion;
