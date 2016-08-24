@@ -8,7 +8,7 @@ import org.jcvi.jillion.core.Range;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.qual.QualitySequenceBuilder;
 
-import Utils.InsertionSolverTwoSides;
+import utils.InsertionSolverTwoSides;
 
 
 public class CompareSequence {
@@ -121,8 +121,13 @@ public class CompareSequence {
 			else{
 				flankTwo = findRight(subject.seqString().substring(rightPos), seqRemain);
 			}
-			//System.out.println("flankOne"+":"+flankOne.length());
-			//System.out.println("flankTwo"+":"+flankTwo.length());
+			//System.out.println("flankOne"+":"+flankOne+":"+flankOne.length());
+			//System.out.println("flankTwo"+":"+flankTwo+":"+flankTwo.length());
+			int posTest = subject.seqString().indexOf(flankOne);
+			if(subject.seqString().indexOf(flankOne, posTest+1)>0){
+				this.setRemarks("leftFlank can be found at multiple places");
+			}
+			
 			if(flankOne.length()<minimumSizeWithLeftRight || flankTwo.length()<minimumSizeWithLeftRight ){
 				//System.out.println(flankOne.length());
 				//System.out.println(flankOne);
@@ -302,7 +307,7 @@ public class CompareSequence {
 			int secSecondSubEnd = substring.indexOf(second)+second.length();
 			int jumpDist = locFirstSub-secSecondSubEnd;
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				System.out.println("jumping Right "+jumpDist);
+				//System.out.println("jumping Right "+jumpDist);
 				return second;
 			}
 		}
@@ -319,7 +324,7 @@ public class CompareSequence {
 			int secSecondSubEnd = substring.indexOf(second);
 			int jumpDist = secSecondSubEnd-locFirstSub;
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				System.out.println("jumping Left "+jumpDist);
+				//System.out.println("jumping Left "+jumpDist);
 				return second;
 			}
 		}

@@ -1,0 +1,5 @@
+Files	Subject	LeftFlank	RightFlank	Type
+Z:\Joost\Files\Manuscripts\Schimmel_etal_2016\Footprints Cas9-WT\Sequence files\CR1	Z:\Joost\Files\Manuscripts\Schimmel_etal_2016\Robin\HPRT-FASTA-CR1.txt	TTTGTTTTGTATACCTAATCATTATG	CCGAGGATTTGGAAAAAGTGTTTA	Blunt
+Z:\Joost\Files\Manuscripts\Schimmel_etal_2016\Footprints Cas9-WT\Sequence files\CR2	Z:\Joost\Files\Manuscripts\Schimmel_etal_2016\Robin\HPRT-FASTA-CR2.txt	TGAAAGACTTGCTCGAGATGTCA	TGAAGGAGATGGGAGGCCATCACATT	Blunt
+Z:\Joost\Files\Manuscripts\Schimmel_etal_2016\Footprints Cas9-D10A\Sequence-files	Z:\Joost\Files\Manuscripts\Schimmel_etal_2016\Robin\HPRT-FASTA-CR1.txt	GATTTGTTTTGTATACCTAAT	TTATGGACAGGTTAGTAAGACCTCGAT	5'overhang
+Z:\Joost\Files\Manuscripts\Schimmel_etal_2016\Footprints Cas9-N863A\Sequence files	Z:\Joost\Files\Manuscripts\Schimmel_etal_2016\Robin\HPRT-FASTA-CR1.txt	GATTTGTTTTGTATACCTAAT	TTATGGACAGGTTAGTAAGACCTCGAT	3'overhang
