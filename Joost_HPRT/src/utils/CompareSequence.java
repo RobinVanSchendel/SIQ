@@ -21,7 +21,7 @@ public class CompareSequence {
 	private final static String replacementFlank = "FLK1";
 	private String leftSite, rightSite;
 	public final static int minimalRangeSize = 40;
-	private static final int ALLLOWEDJUMPDISTANCE = 2;
+	private static final int ALLLOWEDJUMPDISTANCE = 0;
 	private ArrayList<Range> ranges = new ArrayList<Range>();
 	private boolean masked = false;
 	private QualitySequence quals;
@@ -30,6 +30,8 @@ public class CompareSequence {
 	public boolean searchTranslocation = false;
 	public enum Type {WT, SNV, DELETION, INDEL, INSERTION, UNKNOWN};
 	public String dir;
+	private String additionalSearchString = "";
+	private String cutType;
 	
 	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, QualitySequence quals, String left, String right, String pamSite, String dir) {
 		this.subject = subject;
@@ -45,8 +47,8 @@ public class CompareSequence {
 			System.exit(0);
 		}
 		this.quals = quals;
-		this.leftSite = left;
-		this.rightSite = right;
+		this.leftSite = left.toLowerCase();
+		this.rightSite = right.toLowerCase();
 		if(pamSite != null){
 			this.pamSiteLocation = Integer.parseInt(pamSite.substring(pamSite.indexOf(":")+1));
 		}
@@ -205,6 +207,7 @@ public class CompareSequence {
 			else{
 				del = "";
 			}
+			//System.out.println("del:"+del);
 		}
 		//translocation
 		else if(searchTranslocation){
@@ -318,6 +321,8 @@ public class CompareSequence {
 		String leftOver = substring.substring(substring.indexOf(first)+first.length());
 		String queryOver = query.substring(query.indexOf(first)+first.length());
 		String second = Utils.longestCommonSubstring(leftOver, queryOver);
+		//System.out.println("left:"+first);
+		//System.out.println("leftS:"+second);
 		if(second.length()>10){
 			//check if we allow the jump, previously this led to deletions not being spotted
 			int locFirstSub = substring.indexOf(first)+first.length();
@@ -357,14 +362,14 @@ public class CompareSequence {
 		return query.getName();
 	}
 	public String toStringOneLine(){
-		String spacer = "\t";
+		String s = "\t";
 		int size = 20;
 		String homology = "";
 		int homologyLength = -1;
 		//only do it when no weird things found
-		if(this.remarks.length() == 0 &&insert.length()>0){
+		if(this.remarks.length() == 0 && insert.length()>0){
 			//currently fixed value
-			solveInsertion(-30,30);
+			solveInsertion(-100,100);
 		}
 		if(del.length()>0 && insert.length() == 0){
 			homology = Utils.getHomologyAtBreak(leftFlank, del, rightFlank);
@@ -375,12 +380,12 @@ public class CompareSequence {
 			delLength -= 3;
 		}
 		int mod = (this.getInsertion().length()-this.getDel().length())%3;
-		String ret = getName()+spacer+dir+spacer+getIDPart()+spacer+getSubject()+spacer+query.seqString()+spacer+getLeftFlank(size)+spacer+getDel()+spacer+getRightFlank(size)+spacer+getInsertion()+spacer+this.getDelStart()+spacer+this.getDelEnd()+
-				spacer+(this.getDelStart()-this.pamSiteLocation)+spacer+(this.getDelEnd()-this.pamSiteLocation)+spacer+homology+spacer+homologyLength+spacer+delLength+spacer+this.getInsertion().length()+spacer+mod+spacer+getType()+spacer+this.getRevCompInsertion()
-				+spacer+this.getRangesString()+spacer+masked+spacer+getRemarks();
+		String ret = cutType+s+getName()+s+dir+s+getIDPart()+s+getSubject()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
+				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
+				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks();
 		if(is != null){
-			ret+= spacer+is.getLargestMatch()+spacer+is.getLargestMatchString()+spacer
-					+is.getSubS()+spacer+is.getSubS2()+spacer+is.getType();
+			ret+= s+is.getLargestMatch()+s+is.getLargestMatchString()+s
+					+is.getSubS()+s+is.getSubS2()+s+is.getType()+s+is.getLengthS()+s+is.getPosS()+s+is.getFirstHit()+s+is.getFirstPos();
 		}
 		return ret;
 	}
@@ -402,6 +407,9 @@ public class CompareSequence {
 			is.setAdjustedPositionLeft(start);		
 			is.setAdjustedPositionRight(start);
 			is.search(true, true);
+			if(this.additionalSearchString.length()>0){
+				is.setTDNA(additionalSearchString);
+			}
 			is.setMinimumMatch(minSizeInsertionSolver, false);
 			is.solveInsertion();
 			this.is = is;
@@ -464,7 +472,7 @@ public class CompareSequence {
 		}
 		return ret;
 	}
-	private String getRemarks() {
+	public String getRemarks() {
 		return remarks;
 	}
 	private void setRemarks(String remark) {
@@ -476,9 +484,10 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "Name\tDir\tgetIDPart\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
+		String ret = "CutType\tName\tDir\tgetIDPart\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
+				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
-					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType";
+					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos";
 		return ret;
 	}
 	public String getRevCompInsertion(){
@@ -631,4 +640,27 @@ public class CompareSequence {
 			}
 		}
 	}
+	public void setAdditionalSearchString(String s){
+		this.additionalSearchString = s;
+	}
+	public void setCutType(String type) {
+		this.cutType = type;
+	}
+	public int getLeftSideRemoved(){
+		if(cutType != null){
+			int posRight = subject.seqString().indexOf(rightSite);
+			int posLeft = subject.seqString().indexOf(leftFlank)+leftFlank.length();
+			return posRight-posLeft;
+		}
+		return -1;
+	}
+	public int getRightSideRemoved(){
+		if(cutType != null){
+			int posRight = subject.seqString().indexOf(leftSite)+leftSite.length();
+			int posLeft = subject.seqString().indexOf(rightFlank);
+			return posLeft-posRight;
+		}
+		return -1;
+	}
+	
 }
