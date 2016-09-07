@@ -1,6 +1,8 @@
 package utils;
 import java.util.ArrayList;
+import java.util.Vector;
 
+import org.biojava.bio.seq.Sequence;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 
 
@@ -29,6 +31,8 @@ public class InsertionSolverTwoSides {
 	private boolean searchNonRC;
 	private boolean firstHitIsTDNA;
 	private boolean firstHitIsTDNADirectPos;
+	private String tDNAname;
+	private Vector<Sequence> tDNAVector;
 	
 	public InsertionSolverTwoSides(String left, String right, String insertion, String id){
 		this.left = left.toLowerCase();
@@ -124,13 +128,19 @@ public class InsertionSolverTwoSides {
 		String tDNAMatch = "";
 		int posLeftTDNA = -1;
 		String tDNARCMatch = "";
+		String tDNAMatchName = "";
+		String tDNAMatchNameRC = "";
 		//speedup by only doing this if we have a long enough filer
 		if(subS.length()>=tDNAHitminium){
+			setLargestTDNAMatch(subS, false);
 			tDNAMatch = longestCommonSubstring(this.tDNA,subS);
+			tDNAMatchName = this.tDNAname;
 			posLeftTDNA = this.lastMatchPos;
 			//System.out.println("pos: "+this.lastMatchPos);
 			//System.out.println(tDNAMatch);
+			setLargestTDNAMatch(subS, true);
 			tDNARCMatch = longestCommonSubstring(this.tDNArc,subS);
+			tDNAMatchNameRC = this.tDNAname;
 		}
 		
 		//System.out.println("posrc: "+this.lastMatchPos);
@@ -157,7 +167,7 @@ public class InsertionSolverTwoSides {
 			if(Math.max(lengthtDNAMatch, lengthtDNARCMatch) > this.tDNAHitminium  && Math.max(lengthtDNAMatch, lengthtDNARCMatch) > Math.max(Math.max(lengthLCSLeft,lengthLCSRCLeft), Math.max(lengthLCSRight, lengthLCSRCRight))){
 				setFirstHitInTDNA(true);
 				if(lengthtDNAMatch >= lengthtDNARCMatch){
-					this.substituteString = "<tDNA"+currentIndex+">";
+					this.substituteString = "<"+tDNAMatchName+currentIndex+">";
 					addMatchS(tDNAMatch);
 					//System.out.println("t:"+posLeftTDNA);
 					addPosS(posLeftTDNA, null);
@@ -166,7 +176,7 @@ public class InsertionSolverTwoSides {
 					foundtDNA = true;
 				}
 				else{
-					this.substituteString = "<tDNArc"+currentIndex+">";
+					this.substituteString = "<"+tDNAMatchNameRC+"rc"+currentIndex+">";
 					addMatchS(tDNARCMatch);
 					//System.out.println("rc:"+posLeftTDNARC);
 					addPosS(posLeftTDNARC, null);
@@ -269,9 +279,13 @@ public class InsertionSolverTwoSides {
 			//System.out.println("found:"+lcsLeft);
 			//System.out.println("foundR:"+lcsRight);
 			//TDNA match
+			setLargestTDNAMatch(subS, false);
 			tDNAMatch = longestCommonSubstring(this.tDNA,subS);
+			tDNAMatchName = this.tDNAname;
 			posLeftTDNA = this.lastMatchPos;
+			setLargestTDNAMatch(subS, true);
 			tDNARCMatch = longestCommonSubstring(this.tDNArc,subS);
+			tDNAMatchNameRC = this.tDNAname;
 			if(this.tDNA != null){
 				posLeftTDNARC = tDNArc.length()-this.lastMatchPos-countLowerCase(tDNARCMatch);
 				lengthtDNAMatch = countLowerCase(tDNAMatch);
@@ -289,6 +303,31 @@ public class InsertionSolverTwoSides {
 				posRightRC = this.lastMatchPos;
 			}
 			currentIndex++;
+		}
+	}
+	private void setLargestTDNAMatch(String subS, boolean rc) {
+		if(this.tDNAVector != null && this.tDNAVector.size()>1){
+			int maxSize = 0;
+			Sequence current = null;
+			for(Sequence s: tDNAVector){
+				String lcs = null;
+				if(!rc){
+					lcs = longestCommonSubstring(s.seqString(), subS);
+				}
+				else{
+					lcs = longestCommonSubstring(Utils.reverseComplement(s.seqString()), subS);
+				}
+				if(lcs.length()>maxSize){
+					current = s;
+					maxSize = lcs.length();
+				}
+			}
+			//set it to the largest found
+			if(current != null){
+				this.tDNA = current.seqString();
+				this.tDNArc = Utils.reverseComplement(current.seqString());
+				this.tDNAname = current.getName();
+			}
 		}
 	}
 	private void setFirstHitInTDNA(boolean fromTDNA) {
@@ -562,8 +601,7 @@ public class InsertionSolverTwoSides {
 		this.adjustedPositionRight = i;
 	}
 	public void setTDNA(String tDNA){
-		this.tDNA = tDNA.toLowerCase();
-		this.tDNArc = Utils.reverseComplement(tDNA).toLowerCase();
+		this.setTDNA(tDNA, "tDNA");
 	}
 	public int countLowerCase(String s){
 		int nr = 0;
@@ -738,6 +776,14 @@ public class InsertionSolverTwoSides {
 	}
 	public boolean getFirstHitIsTDNADirectPos(){
 		return firstHitIsTDNADirectPos;
+	}
+	public void setTDNA(String seqString, String name) {
+		this.tDNA = seqString.toLowerCase();
+		this.tDNArc = Utils.reverseComplement(seqString).toLowerCase();
+		this.tDNAname = name;
+	}
+	public void setTDNA(Vector<Sequence> additionalSearchSequence) {
+		this.tDNAVector = additionalSearchSequence;
 	}
 }
 
