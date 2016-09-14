@@ -1,0 +1,7 @@
+Files	Subject	LeftFlank	RightFlank
+C:\Users\rvanschendel\Documents\Project_Primase\56_bp_A_G_zone\Revertants	C:\Users\rvanschendel\Documents\Project_Primase\56_bp_A_G_zone\Revertants\XF1321_XF1324_XF1346.fa	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+C:\Users\rvanschendel\Documents\Project_Primase\pRS30_insertion	C:\Users\rvanschendel\Documents\Project_Primase\pRS30_insertion\pRS30_rc.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+C:\Users\rvanschendel\Documents\Project_Primase\pRS30_insertion	C:\Users\rvanschendel\Documents\Project_Primase\pRS30_insertion\XF1268_XF1269_XF1270.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+C:\Users\rvanschendel\Documents\Project_Primase\G23_56bp_zone	C:\Users\rvanschendel\Documents\Project_Primase\G23_56bp_zone\XF1335.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+C:\Users\rvanschendel\Documents\Project_Primase\G23_56bp_zone	C:\Users\rvanschendel\Documents\Project_Primase\G23_56bp_zone\XF1336_XF1338.fa.txt	TCGACCCgggaggcctgatgcat	ccccccccccccccccccccccctaggcAA
+C:\Users\rvanschendel\Documents\Project_Primase\100bp_insertion_zone\Sequencing revertants	C:\Users\rvanschendel\Documents\Project_Primase\100bp_insertion_zone\Sequencing revertants\XF1287_XF1292.fa	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT

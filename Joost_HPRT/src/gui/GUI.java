@@ -35,7 +35,9 @@ import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.seq.SequenceIterator;
 import org.biojava.bio.symbol.IllegalSymbolException;
+import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
+import org.biojavax.bio.seq.RichSequenceIterator;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
@@ -59,7 +61,7 @@ public class GUI implements ActionListener {
 	JCheckBox maskLowQuality = new JCheckBox("maskLowQuality");
 	JCheckBox maskLowQualityRemove = new JCheckBox("maskLowQualityRemove");
 	private MenuBarCustom mbc;
-	private ArrayList<Sequence> sequences;
+	private ArrayList<RichSequence> sequences;
 	
 	public GUI()
     {
@@ -270,17 +272,17 @@ public class GUI implements ActionListener {
 			e1.printStackTrace();
 		}
 		//get a SequenceDB of all sequences in the file
-		SequenceIterator si = IOTools.readFastaDNA(is, null);
-		Sequence subject = null;
-		Sequence subject2 = null;
+		RichSequenceIterator si = IOTools.readFastaDNA(is, null);
+		RichSequence subject = null;
+		RichSequence subject2 = null;
 		
 		while(si.hasNext()){
 			try {
 				if(subject == null){
-					subject = si.nextSequence();
+					subject = si.nextRichSequence();
 				}
 				if(subject2 == null && si.hasNext()){
-					subject2 = si.nextSequence();
+					subject2 = si.nextRichSequence();
 				}
 			} catch (NoSuchElementException e) {
 				e.printStackTrace();
@@ -352,9 +354,9 @@ public class GUI implements ActionListener {
 		//Sequence query = new SimpleSequence(symbols, name, name, Annotation.EMPTY_ANNOTATION);
 		NucleotideSequence seq = chromo.getNucleotideSequence();
 		QualitySequence quals = chromo.getQualitySequence();
-		Sequence query = null;
+		RichSequence query = null;
 		try {
-			query = DNATools.createDNASequence(seq.toString(), name);
+			query = RichSequence.Tools.createRichSequence(name, DNATools.createDNA(seq.toString()));
 		} catch (IllegalSymbolException e) {
 			e.printStackTrace();
 		}
@@ -384,7 +386,7 @@ public class GUI implements ActionListener {
 		//SymbolList symbols = trace.getSequence();
 		String name = f.getName();
 		
-		Sequence subject = Utils.matchNameSequence(sequences,name);
+		RichSequence subject = Utils.matchNameSequence(sequences,name);
 		if(subject == null){
 			System.err.println("No Match could be found "+name);
 			//JOptionPane.showMessageDialog(guiFrame,"Problem with match", "The file with name "+name+" could not be matched to a fasta file Name",JOptionPane.ERROR_MESSAGE);
@@ -411,9 +413,9 @@ public class GUI implements ActionListener {
 		//Sequence query = new SimpleSequence(symbols, name, name, Annotation.EMPTY_ANNOTATION);
 		NucleotideSequence seq = chromo.getNucleotideSequence();
 		QualitySequence quals = chromo.getQualitySequence();
-		Sequence query = null;
+		RichSequence query = null;
 		try {
-			query = DNATools.createDNASequence(seq.toString(), name);
+			query = RichSequence.Tools.createRichSequence(name, DNATools.createDNA(seq.toString()));
 		} catch (IllegalSymbolException e) {
 			e.printStackTrace();
 		}

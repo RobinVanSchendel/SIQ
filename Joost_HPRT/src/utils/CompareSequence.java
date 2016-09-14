@@ -1,9 +1,11 @@
 package utils;
 import java.util.ArrayList;
+import java.util.Vector;
 
 import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.symbol.IllegalSymbolException;
+import org.biojavax.bio.seq.RichSequence;
 import org.jcvi.jillion.core.Range;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.qual.QualitySequenceBuilder;
@@ -13,7 +15,7 @@ import utils.InsertionSolverTwoSides;
 
 public class CompareSequence {
 
-	private Sequence subject, query, subject2;
+	private RichSequence subject, subject2, query;
 	private String leftFlank = "", rightFlank = "", del = "", insert = "", remarks = "";
 	private int minimumSizeWithoutLeftRight = 30;
 	private int minimumSizeWithLeftRight = 15;
@@ -28,12 +30,13 @@ public class CompareSequence {
 	private InsertionSolverTwoSides is;
 	private int minSizeInsertionSolver = 5;
 	public boolean searchTranslocation = false;
-	public enum Type {WT, SNV, DELETION, INDEL, INSERTION, UNKNOWN};
+	public enum Type {WT, SNV, DELETION, INDEL, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND};
 	public String dir;
-	private String additionalSearchString = "";
 	private String cutType;
+	private Vector<Sequence> additionalSearchSequence;
+	private boolean possibleDouble = false;
 	
-	public CompareSequence(Sequence subject, Sequence subject2, Sequence query, QualitySequence quals, String left, String right, String pamSite, String dir) {
+	public CompareSequence(RichSequence subject, RichSequence subject2, RichSequence query, QualitySequence quals, String left, String right, String pamSite, String dir) {
 		this.subject = subject;
 		this.subject2 = subject2;
 		this.query = query;
@@ -67,7 +70,7 @@ public class CompareSequence {
 		//sometimes that is not correct, although we don't really know if that is true
 		if(size <40 && altSize>size){
 			try {
-				this.query = DNATools.createDNASequence(Utils.reverseComplement(query.seqString().toString()), this.query.getName());
+				query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(Utils.reverseComplement(query.seqString().toString())));
 				//also turn around the quality
 				QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
 				quals = qsb.reverse().build();
@@ -336,7 +339,7 @@ public class CompareSequence {
 		return first;
 	}
 	public String getLeftFlank(int size){
-		if(leftFlank.length()<size){
+		if(size == 0 || leftFlank.length()<size){
 			return leftFlank;
 		}
 		else{
@@ -345,7 +348,7 @@ public class CompareSequence {
 		
 	}
 	public String getRightFlank(int size){
-		if(rightFlank.length()<size){
+		if(size == 0 || rightFlank.length()<size){
 			return rightFlank;
 		}
 		else{
@@ -375,26 +378,52 @@ public class CompareSequence {
 			homology = Utils.getHomologyAtBreak(leftFlank, del, rightFlank);
 			homologyLength = homology.length();
 		}
+		if(this.getType()== Type.TANDEMDUPLICATION){
+			homology = getHomologyTandemDuplication();
+			homologyLength = homology.length();
+		}
 		int delLength = this.getDel().length();
 		if(this.getDel().contains(" - ")){
 			delLength -= 3;
 		}
 		int mod = (this.getInsertion().length()-this.getDel().length())%3;
-		String ret = cutType+s+getName()+s+dir+s+getIDPart()+s+getSubject()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
-				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
-				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks();
+		if(mod<0){
+			mod+=3;
+		}
+		String ret = cutType+s+getName()+s+dir+s+getIDPart()+s+possibleDouble+s+getSubject()+s+getSubjectComments()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
+				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+getColorHomology()+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
+				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+this.getSchematic()+s+this.getUniqueClass();
 		if(is != null){
 			ret+= s+is.getLargestMatch()+s+is.getLargestMatchString()+s
 					+is.getSubS()+s+is.getSubS2()+s+is.getType()+s+is.getLengthS()+s+is.getPosS()+s+is.getFirstHit()+s+is.getFirstPos();
 		}
 		return ret;
 	}
-	private String getIDPart() {
+	private String getHomologyTandemDuplication() {
+		int pos = subject.seqString().indexOf(leftFlank)+leftFlank.length();
+		int newPos = pos - insert.length();
+		String left = subject.seqString().substring(0, pos);
+		String right = subject.seqString().substring(0, newPos);
+		String hom = "";
+		while(left.charAt(left.length()-1)==right.charAt(right.length()-1)){
+			//need the reverse
+			hom = left.charAt(left.length()-1)+hom;
+			left = left.substring(0, left.length()-1);
+			right = right.substring(0, right.length()-1);
+		}
+		return hom;
+	}
+	public String getIDPart() {
 		if(this.getName().contains("_")){
 			String[] parts = this.getName().split("_");
-			if(parts.length>2){
-				return parts[0]+"_"+parts[1];
+			String part = "";
+			for(int i = 0;i<parts.length-1;i++){
+				if(part.length()>0){
+					part += "_";
+				}
+				part += parts[i];
 			}
+			return part;
 		}
 		return "";
 	}
@@ -407,8 +436,8 @@ public class CompareSequence {
 			is.setAdjustedPositionLeft(start);		
 			is.setAdjustedPositionRight(start);
 			is.search(true, true);
-			if(this.additionalSearchString.length()>0){
-				is.setTDNA(additionalSearchString);
+			if(this.additionalSearchSequence != null){
+				is.setTDNA(additionalSearchSequence);
 			}
 			is.setMinimumMatch(minSizeInsertionSolver, false);
 			is.solveInsertion();
@@ -437,14 +466,30 @@ public class CompareSequence {
 		String ret = subject.seqString().substring(start, end);
 		return ret;
 	}
-	private Type getType() {
+	public Type getType() {
+		boolean containsTD = false;
+		if(is!= null){
+			for(String s :is.getPosS().split(";")){
+				if(s.length()>0 && Integer.parseInt(s) == 0){
+					containsTD = true;
+				}
+			}
+		}
 		if(this.getDel().length()== 0 && this.getInsertion().length() == 0){
 			return Type.WT;
 		}
 		else if(this.getDel().length()== 1 && this.getInsertion().length() == 1){
 			return Type.SNV;
 		}
-		else if(this.getDel().length()== 0 && this.getInsertion().length() > 0){
+		else if(this.getDel().length()== 0 && this.getInsertion().length() > 0 &&
+			is != null && is.getType().equals("SOLVED") && is.getPosS().equals("0") 
+					&& !is.getMatchS().contains(";") && is.getLargestMatch()>=minSizeInsertionSolver){
+				return Type.TANDEMDUPLICATION;
+		}
+		else if(this.getDel().length()== 0 && this.getInsertion().length()>0 && containsTD){
+			return Type.TANDEMDUPLICATION_COMPOUND;
+		}
+		else if(this.getDel().length()==0 && this.getInsertion().length()>0){
 			return Type.INSERTION;
 		}
 		else if(this.getDel().length()> 0 && this.getInsertion().length() == 0){
@@ -455,12 +500,18 @@ public class CompareSequence {
 		}
 		return Type.UNKNOWN;
 	}
-	private String getSubject() {
+	public String getSubject() {
 		String ret = subject.getName();
 		if(subject2 != null){
 			ret += " | "+subject2.getName();
 		}
 		return ret;
+	}
+	private String getSubjectComments() {
+		if(subject.getDescription() == null){
+			return getSubject();
+		}
+		return subject.getDescription();
 	}
 	private String getRangesString() {
 		String ret = "";
@@ -484,8 +535,8 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "CutType\tName\tDir\tgetIDPart\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
-				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks";
+		String ret = "CutType\tName\tDir\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
+				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tSchematic\tClassName";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos";
 		return ret;
@@ -564,7 +615,7 @@ public class CompareSequence {
 			//System.out.println("mod:"+tempDNA);
 			try {
 				//no assignment
-				this.query = DNATools.createDNASequence(tempDNA, this.query.getName());
+				this.query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(tempDNA));
 				masked = true;
 			} catch (IllegalSymbolException e) {
 				// TODO Auto-generated catch block
@@ -628,7 +679,7 @@ public class CompareSequence {
 				//System.out.println("mod:"+tempDNA);
 				try {
 					//no assignment
-					this.query = DNATools.createDNASequence(tempDNA, this.query.getName());
+					this.query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(tempDNA));
 					masked = true;
 				} catch (IllegalSymbolException e) {
 					// TODO Auto-generated catch block
@@ -640,8 +691,8 @@ public class CompareSequence {
 			}
 		}
 	}
-	public void setAdditionalSearchString(String s){
-		this.additionalSearchString = s;
+	public void setAdditionalSearchString(Vector<Sequence> additional){
+		this.additionalSearchSequence = additional;
 	}
 	public void setCutType(String type) {
 		this.cutType = type;
@@ -662,5 +713,55 @@ public class CompareSequence {
 		}
 		return -1;
 	}
-	
+	public String getSchematic(){
+		int start = 250;
+		int end = 350;
+		int pos = subject.seqString().indexOf(leftFlank)+leftFlank.length();
+		int delLength = del.length();
+		StringBuffer sb = new StringBuffer(1000);
+		if(pos>=start){
+			String s = subject.seqString().substring(start, subject.seqString().indexOf(leftFlank)+leftFlank.length());
+			sb.append(s);
+		}
+		else{
+			delLength = pos+delLength-start;
+		}
+		sb.append("|");
+		for(int i =0;i<delLength;i++){
+			sb.append("-");
+		}
+		if(insert.length()>0){
+			sb.append(this.insert.toUpperCase());
+		}
+		sb.append("|");
+		int posRight = subject.seqString().indexOf(rightFlank);
+		
+		if(end-posRight>=0){
+			String right = subject.seqString().substring(subject.seqString().indexOf(rightFlank),end);
+			sb.append(right);
+		}
+		return sb.toString();
+	}
+	public String getColorHomology(){
+		if(del.length()>0 && insert.length() == 0){
+			String homology = Utils.getHomologyAtBreak(leftFlank, del, rightFlank);
+			return CompareSequence.acquireColor(homology.length());
+		}
+		return "";
+	}
+	private static String acquireColor(int length) {
+		String[] colors = {"#DAE8F5","#B9D5E9","#88BDDC","#539CCB","#2A7ABA","#0E559F"};
+		if(length >= colors.length){
+			return colors[colors.length-1];
+		}
+		return colors[length];
+	}
+	public String getUniqueClass(){
+		String s = "|";
+		String ret = this.getType()+s+this.getDelStart()+s+this.getDelEnd()+s+this.getInsertion().length();
+		return ret;
+	}
+	public void flagPossibleDouble(boolean b) {
+		this.possibleDouble = b;
+	}
 }

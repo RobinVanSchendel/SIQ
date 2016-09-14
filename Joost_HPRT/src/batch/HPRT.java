@@ -1,18 +1,19 @@
-package hprt;
+package batch;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Scanner;
 
+import utils.CompareSequence;
+
 public class HPRT {
 
 	public static void main(String[] args) {
-		String dirName = "Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin";
 		String fileName = "HPRTTable.txt";
 		SequenceController sq = new SequenceController();
-		File dir = new File(dirName);
 		File file = new File(fileName);
 		
+		System.out.println("Type\t"+CompareSequence.getOneLineHeader());
 		Scanner s = null;
 		try {
 			s = new Scanner(file);
@@ -53,7 +54,7 @@ public class HPRT {
 					String leftFlank = parts[lFColumn];
 					String rightFlank = parts[rFColumn];
 					String type = parts[typeColumn];
-					sq.readFiles(files, subject, leftFlank, rightFlank, type);
+					sq.readFiles(files, subject, leftFlank, rightFlank, type, new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\px458_HPRT.txt"));
 				}
 			}
 		} catch (FileNotFoundException e) {

@@ -10,7 +10,9 @@ import java.util.NoSuchElementException;
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.seq.SequenceIterator;
+import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
+import org.biojavax.bio.seq.RichSequenceIterator;
 
 public class Utils {
 	public static String longestCommonSubstring(String S1, String S2)
@@ -168,19 +170,20 @@ public class Utils {
 		}
 		return revCom;
 	}
-	public static ArrayList<Sequence> fillArrayListSequences(File subject) {
-		ArrayList<Sequence> al = new ArrayList<Sequence>();
+	public static ArrayList<RichSequence> fillArrayListSequences(File subject) {
+		ArrayList<RichSequence> al = new ArrayList<RichSequence>();
 		BufferedReader is = null;
 		try {
 			is = new BufferedReader(new FileReader(subject));
 		} catch (FileNotFoundException e1) {
 			e1.printStackTrace();
+			System.exit(0);
 		}
 		//get a SequenceDB of all sequences in the file
-		SequenceIterator si = IOTools.readFastaDNA(is, null);
+		RichSequenceIterator si = IOTools.readFastaDNA(is, null);
 		while(si.hasNext()){
 			try {
-				al.add(si.nextSequence());
+				al.add(si.nextRichSequence());
 			} catch (NoSuchElementException e) {
 				e.printStackTrace();
 			} catch (BioException e) {
@@ -190,9 +193,9 @@ public class Utils {
 		return al;
 		
 	}
-	public static Sequence matchNameSequence(ArrayList<Sequence> sequences,
+	public static RichSequence matchNameSequence(ArrayList<RichSequence> sequences,
 			String name) {
-		for(Sequence s: sequences){
+		for(RichSequence s: sequences){
 			if(name.contains(s.getName())){
 				return s;
 			}

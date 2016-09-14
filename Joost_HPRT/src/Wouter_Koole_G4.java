@@ -14,6 +14,7 @@ import org.biojava.bio.seq.*;
 import org.biojava.bio.seq.impl.*;
 import org.biojava.bio.seq.io.*;
 import org.biojava.bio.symbol.*;
+import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 
 import utils.CompareSequence;
@@ -22,10 +23,11 @@ import utils.Utils;
 public class Wouter_Koole_G4 {
 
 	public static void main(String[] args) {
-		Sequence subject = null;
+		RichSequence subject = null;
 		try {
-			subject = DNATools.createDNASequence("gaacaagcttattaaccttggctgtacaatctgggaaagttccgacttcctgccatgttccacgagaagtatccatcttctcaacaatgtagtgaagaacatcagttcctccgttatcagttggaggcttccagttcaatgTTATTACCCTGGGCGCCGCATGCGTCGACCCgggaggcctgatttcaCCCCCCCCTCCCCCACCCCCTCCCtcgcAATTCATATGATCCCtacatccttccttatggatctcgtcaatcttgagtggtccttctggagttcctggtacatcaagaacagtaacattgcactgagcagtatcttttccatgctcattttcaacaatgattttgtaaactccagtatctccacgaacagcagagaagatgtgaattgctgaggatgttggtgtgttcgtaacatcagctcttgctcctgtatcgattgttgcatcgttggccttccatttagcaactggggctggctctccttcgaatgcgatatcgagcttgatgggtgttccagccttgatacggagatccaaaagtccggcgaggttaagttttggagccattcttcttggtttggcaacaacatttcctgttggatcagatggttttcctggcccagccttattgacagccttcacacggaactgataagtctctcctggagtcaaattatcagcagttgcctttgttgtctttccatcaacacgtgcacactcaacccagtctccaaacttgtccttcttctcaacgatgtaagcatcaattggtgcaccaccgtcgtttgctggtggcttccattcaagatcaacatgatccttatcccaat", "G4e");
-		} catch (IllegalSymbolException e) {
+				String dna = "gaacaagcttattaaccttggctgtacaatctgggaaagttccgacttcctgccatgttccacgagaagtatccatcttctcaacaatgtagtgaagaacatcagttcctccgttatcagttggaggcttccagttcaatgTTATTACCCTGGGCGCCGCATGCGTCGACCCgggaggcctgatttcaCCCCCCCCTCCCCCACCCCCTCCCtcgcAATTCATATGATCCCtacatccttccttatggatctcgtcaatcttgagtggtccttctggagttcctggtacatcaagaacagtaacattgcactgagcagtatcttttccatgctcattttcaacaatgattttgtaaactccagtatctccacgaacagcagagaagatgtgaattgctgaggatgttggtgtgttcgtaacatcagctcttgctcctgtatcgattgttgcatcgttggccttccatttagcaactggggctggctctccttcgaatgcgatatcgagcttgatgggtgttccagccttgatacggagatccaaaagtccggcgaggttaagttttggagccattcttcttggtttggcaacaacatttcctgttggatcagatggttttcctggcccagccttattgacagccttcacacggaactgataagtctctcctggagtcaaattatcagcagttgcctttgttgtctttccatcaacacgtgcacactcaacccagtctccaaacttgtccttcttctcaacgatgtaagcatcaattggtgcaccaccgtcgtttgctggtggcttccattcaagatcaacatgatccttatcccaat";
+				subject = RichSequence.Tools.createRichSequence("G4e", DNATools.createDNA(dna));
+		} catch (BioException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -46,7 +48,7 @@ public class Wouter_Koole_G4 {
 			if(!dna.contains("flank")){
 				try {
 					//System.out.println(dna);
-					Sequence s = DNATools.createDNASequence(dna, ""+index);
+					RichSequence s = RichSequence.Tools.createRichSequence(""+index, DNATools.createDNA(dna));
 					CompareSequence cs = new CompareSequence(subject, null, s, null, "", "", null, null);
 					cs.setMinimumSizeWithoutLeftRight(10);
 					cs.determineFlankPositions();

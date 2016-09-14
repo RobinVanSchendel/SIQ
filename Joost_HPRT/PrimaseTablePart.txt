@@ -1,0 +1,2 @@
+Files	Subject	LeftFlank	RightFlank
+C:\Users\rvanschendel\Documents\Project_Primase\pRS30_insertion	C:\Users\rvanschendel\Documents\Project_Primase\pRS30_insertion\XF1268_XF1269_XF1270.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT

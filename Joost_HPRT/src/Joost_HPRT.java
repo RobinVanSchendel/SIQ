@@ -44,35 +44,6 @@ public class Joost_HPRT {
 			e1.printStackTrace();
 		}
 		new GUI();
-		/*
-		File hprt = new File("HPRT.fa");
-		BufferedReader is = null;
-		try {
-			is = new BufferedReader(new FileReader("HPRT.fa"));
-		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		//get a SequenceDB of all sequences in the file
-		SequenceIterator si = IOTools.readFastaDNA(is, null);
-		Sequence hprtSeq = null;
-		while(si.hasNext()){
-			try {
-				hprtSeq = si.nextSequence();
-				//IOTools.writeFasta(System.out, hprtSeq, null);
-			} catch (NoSuchElementException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (BioException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		//CompareSequence s = new CompareSequence(hprtSeq, seq);
-		*/
 	}
 
 }
