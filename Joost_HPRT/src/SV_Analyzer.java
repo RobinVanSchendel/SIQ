@@ -23,7 +23,7 @@ import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 import utils.CompareSequence;
 import utils.Utils;
 
-public class Joost_HPRT {
+public class SV_Analyzer {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub

@@ -12,6 +12,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
+import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -179,6 +180,9 @@ public class GUI implements ActionListener {
 				if(mbc.tryToMatchFasta()){
 					ret = analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), check);
 				}
+				else if(mbc.tryAllFasta()){
+					ret = analyzeFileAll(model.getElementAt(i), left.getText(), right.getText(), check);
+				}
 				else{
 					ret = analyzeFile(model.getElementAt(i), left.getText(), right.getText(), check);
 				}
@@ -245,6 +249,116 @@ public class GUI implements ActionListener {
 				}
 			}
 		}
+	}
+
+	private String analyzeFileAll(File f, String left, String right, boolean checkLeftRight) {
+		StringBuffer sb = new StringBuffer();
+		BufferedReader is = null;
+		try {
+			is = new BufferedReader(new FileReader(subject));
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		}
+		//get a SequenceDB of all sequences in the file
+		RichSequenceIterator si = IOTools.readFastaDNA(is, null);
+		Vector<RichSequence> subjects = new Vector<RichSequence>();
+		RichSequence subject2 = null;
+		
+		while(si.hasNext()){
+			try {
+				subjects.add(si.nextRichSequence());
+			} catch (NoSuchElementException e) {
+				e.printStackTrace();
+			} catch (BioException e) {
+				e.printStackTrace();
+			}
+			
+		}
+		
+		Chromatogram chromo = null;
+		try {
+			chromo = ChromatogramFactory.create(f);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		//SymbolList symbols = trace.getSequence();
+		String name = f.getName();
+		for(RichSequence subject: subjects){
+			if(checkLeftRight){
+				if(left.length()>0 && right.length()>0){
+					//System.out.println("hier!");
+					int leftRightPos = subject.seqString().indexOf((left+right).toLowerCase());
+					int leftPos = subject.seqString().indexOf(left.toLowerCase());
+					int rightPos = subject.seqString().indexOf(right.toLowerCase());
+					
+					if(leftPos < 0 && rightPos < 0){
+						JOptionPane.showMessageDialog(guiFrame,
+							    "left and right cannot be found in the fasta file"
+							    		+ " please select the correct flanks!",
+							    "left + right problem",
+							    JOptionPane.ERROR_MESSAGE);
+						System.out.println(subject.seqString());
+						System.out.println((left+right).toLowerCase());
+						return null;
+					}
+					if(subject2 == null && leftPos > rightPos){
+						JOptionPane.showMessageDialog(guiFrame,
+							    "The left flank can be found, but past the right flank, which cannot be correct"
+							    		+ " please select the correct flanks!",
+							    "left + right problem",
+							    JOptionPane.ERROR_MESSAGE);
+						System.out.println(subject.seqString());
+						System.out.println("leftPost:"+leftPos +":rightPos"+rightPos);
+						return null;
+					}
+					if(subject2 == null && leftRightPos < 0) {
+						JOptionPane.showMessageDialog(guiFrame,
+							    "left and right flank cannot be found connected in the fasta file."
+							    + " If you are using two break sites, all is ok",
+							    "left + right found, but not connected",
+							    JOptionPane.WARNING_MESSAGE);
+					}
+				}
+				//translocation, look for right in the other file
+				if(subject2 != null){
+					int leftPos = subject.seqString().indexOf(left.toLowerCase());
+					int rightPos = subject2.seqString().indexOf(right.toLowerCase());
+					if(left.length()== 0 || right.length() == 0 || (leftPos < 0 && rightPos < 0)){
+						JOptionPane.showMessageDialog(guiFrame,
+							    "left and right cannot be found in the fasta file"
+							    		+ " please select the correct flanks!",
+							    "left + right problem",
+							    JOptionPane.ERROR_MESSAGE);
+						System.out.println(subject.seqString());
+						System.out.println((left+right).toLowerCase());
+						return null;
+					}
+				}
+			}
+			//Sequence query = new SimpleSequence(symbols, name, name, Annotation.EMPTY_ANNOTATION);
+			NucleotideSequence seq = chromo.getNucleotideSequence();
+			QualitySequence quals = chromo.getQualitySequence();
+			RichSequence query = null;
+			try {
+				query = RichSequence.Tools.createRichSequence(name, DNATools.createDNA(seq.toString()));
+			} catch (IllegalSymbolException e) {
+				e.printStackTrace();
+			}
+			CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
+			cs.setAndDetermineCorrectRange(0.05);
+			if(this.maskLowQuality.isSelected()){
+				cs.maskSequenceToHighQuality(left, right);
+			}
+			if(this.maskLowQualityRemove.isSelected()){
+				cs.maskSequenceToHighQualityRemove(left, right);
+			}
+			cs.determineFlankPositions();
+			if(sb.length()>0){
+				sb.append("\n");
+			}
+			sb.append(cs.toStringOneLine());
+		}
+		return sb.toString();
 	}
 
 	private void fillInPamSite(String string) {

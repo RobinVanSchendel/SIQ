@@ -1,2 +1,2 @@
 Files	Subject	LeftFlank	RightFlank
-C:\Users\rvanschendel\Documents\Project_Primase\pRS30_insertion	C:\Users\rvanschendel\Documents\Project_Primase\pRS30_insertion\XF1268_XF1269_XF1270.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+C:\Users\rvanschendel\Documents\Project_Primase\XF1374_XF1378_High_zones\Revertants	C:\Users\rvanschendel\Documents\Project_Primase\XF1374_XF1378_High_zones\XF1374_75_76_77_78.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT

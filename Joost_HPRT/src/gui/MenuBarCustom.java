@@ -11,7 +11,7 @@ public class MenuBarCustom {
 	private JMenuBar menuBar;
 	private JMenu menu;
 	private JMenuItem menuItem;
-	private JCheckBoxMenuItem cbMenuItem;
+	private JCheckBoxMenuItem cbMenuItem, cbMenuItem2;
 	
 	public MenuBarCustom(){
 		menuBar = new JMenuBar();
@@ -19,6 +19,8 @@ public class MenuBarCustom {
 		menuBar.add(menu);
 		cbMenuItem = new JCheckBoxMenuItem("Try to match sequence to Fasta file name");
 		menu.add(cbMenuItem);
+		cbMenuItem2 = new JCheckBoxMenuItem("Match all sequences");
+		menu.add(cbMenuItem2);
 	}
 	
 	public JMenuBar getMenuBar() {
@@ -27,5 +29,8 @@ public class MenuBarCustom {
 	
 	public boolean tryToMatchFasta(){
 		return cbMenuItem.isSelected();
+	}
+	public boolean tryAllFasta(){
+		return cbMenuItem2.isSelected();
 	}
 }

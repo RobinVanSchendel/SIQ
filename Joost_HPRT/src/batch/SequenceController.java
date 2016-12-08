@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Vector;
 
@@ -29,6 +30,9 @@ import utils.CompareSequence;
 import utils.Utils;
 
 public class SequenceController {
+	private boolean printOnlyIsParts = false;
+	private HashMap<String, String> colorMap;
+	
 	public void readFiles(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional){
 		BufferedReader is = null, is2 = null;
 		RichSequence subject = null;
@@ -51,7 +55,7 @@ public class SequenceController {
 		for(File cellType: d.listFiles()){
 			if(cellType.isDirectory()){
 				for(File seqs: cellType.listFiles()){
-					if(seqs.isFile()){
+					if(seqs.isFile()){ 
 						try {
 							Chromatogram chromo = ChromatogramFactory.create(seqs);
 							NucleotideSequence seq = chromo.getNucleotideSequence();
@@ -71,8 +75,18 @@ public class SequenceController {
 							cs.setAdditionalSearchString(additional);
 							cs.setCutType(type);
 							//only correctly found ones
-							if(cs.getRemarks().length() == 0){
-								System.out.println(type+"\t"+cs.toStringOneLine());
+							if(cs.getRemarks().length() == 0 || true){
+								if(!printOnlyIsParts){
+									System.out.println(type+"\t"+cs.toStringOneLine());
+								}
+								else{
+									String[] ret = cs.printISParts(colorMap);
+									if(ret != null){
+										for(String s: ret){
+											System.out.println(type+"\t"+seqs.getName()+"\t"+s);
+										}
+									}
+								}
 							}
 							//no masking
 							/*
@@ -90,7 +104,7 @@ public class SequenceController {
 						}
 					}
 					else{
-						System.err.println(seqs.getName()+" isDir "+seqs.isDirectory());
+						//System.err.println(seqs.getName()+" isDir "+seqs.isDirectory());
 					}
 				}
 			}
@@ -169,5 +183,11 @@ public class SequenceController {
 			}
 		}
 		return al;
+	}
+	public void setPrintOnlyISParts(){
+		this.printOnlyIsParts = true;
+	}
+	public void setColorMap(HashMap<String, String> colorMap){
+		this.colorMap = colorMap;
 	}
 }

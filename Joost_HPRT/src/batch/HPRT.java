@@ -2,6 +2,7 @@ package batch;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.HashMap;
 import java.util.Scanner;
 
 import utils.CompareSequence;
@@ -11,6 +12,17 @@ public class HPRT {
 	public static void main(String[] args) {
 		String fileName = "HPRTTable.txt";
 		SequenceController sq = new SequenceController();
+		//for IS color parts
+		HashMap<String, String> colorMap = new HashMap<String,String>();
+		colorMap.put("px458_Cas9-GFP", "brown");
+		colorMap.put("mmHPRT_sequence_Fasta", "purple");
+		colorMap.put("Flank insert", "orange");
+		colorMap.put("Flank insert rc", "red");
+		colorMap.put("Tandem duplication", "green");
+		colorMap.put("Tandem duplication2", "darkgreen");
+		
+		//sq.setPrintOnlyISParts();
+		sq.setColorMap(colorMap);
 		File file = new File(fileName);
 		
 		System.out.println("Type\t"+CompareSequence.getOneLineHeader());

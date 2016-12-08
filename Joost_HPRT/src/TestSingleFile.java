@@ -53,13 +53,17 @@ public class TestSingleFile {
 			//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Lig3\\Tc1_transposon_If230\\1039717\\rde_3_20_2527773-1039717.ab1");
 			//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\100bp_insertion_zone\\Sequencing revertants\\1039028\\XF1289_78_2_2518043-1039028.ab1");
 			//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\G23_56bp_zone\\1040510\\XF1335_53_2538975-1040510.ab1");
-			File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-N863A\\Sequence files\\Lig4\\Cas9_N863A_Lig4nest_16_2501047-1037841.ab1");
+			//File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-N863A\\Sequence files\\Lig4\\Cas9_N863A_Lig4nest_16_2501047-1037841.ab1");
+			//File f = new File("Z:/Joost/Files/Manuscripts/Schimmel_etal_2016/Footprints Cas9-WT/Sequence files/CR1/POLQ-Ku80_dko/A03__T2_CR1_2534295-1040173.ab1");
+			//File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-WT\\Sequence files\\CR2\\WT\\HPRT_CR2_121_2482959-1036715.ab1");
+			File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-N863A\\Sequence files\\Ku80\\C02_2506297-1038176.ab1");
 			
 			//search additional 'TDNA'
-			File add = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\px458_HPRT.txt");
+			//File add = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\px458_HPRT.txt");
 			BufferedReader is2 = null;
 			
-			is2 = new BufferedReader(new FileReader(add));
+			//is2 = new BufferedReader(new FileReader(add));
+			/*
 			SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
 			while(si2.hasNext()){
 				try {
@@ -69,6 +73,7 @@ public class TestSingleFile {
 					e.printStackTrace();
 				}
 			}
+			*/
 						
 			
 
@@ -86,6 +91,7 @@ public class TestSingleFile {
 		}
 		BufferedReader is = null;
 		try {
+			//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR2.txt"));
 			is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR1.txt"));
 			
 			
@@ -117,6 +123,13 @@ public class TestSingleFile {
 		s.setAdditionalSearchString(additional);
 		s.determineFlankPositions();
 		System.out.println(s.toStringOneLine());
+		//CR1
+		//String left = "TTTGTTTTGTATACCTAATCATTATG";
+		//String right = "CCGAGGATTTGGAAAAAGTGTTTA";
+		//CR2
+		//String left = "TGAAAGACTTGCTCGAGATGTCA";
+		//String right = "TGAAGGAGATGGGAGGCCATCACATT";
+		//CR1 overhang
 		String left = "GATTTGTTTTGTATACCTAAT";
 		String right = "TTATGGACAGGTTAGTAAGACCTCGAT";
 		s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null, null);

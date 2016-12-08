@@ -1,5 +1,6 @@
 package utils;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Vector;
 
 import org.biojava.bio.seq.DNATools;
@@ -23,18 +24,22 @@ public class CompareSequence {
 	private final static String replacementFlank = "FLK1";
 	private String leftSite, rightSite;
 	public final static int minimalRangeSize = 40;
-	private static final int ALLLOWEDJUMPDISTANCE = 0;
+	private static final int ALLLOWEDJUMPDISTANCE = 1;
+	//this introduces possible problems... I am aware of this 'feature' missing SNVs 30bp away from flanks
+	private static final int MINIMUMSECONDSIZE = 30;
 	private ArrayList<Range> ranges = new ArrayList<Range>();
 	private boolean masked = false;
 	private QualitySequence quals;
 	private InsertionSolverTwoSides is;
 	private int minSizeInsertionSolver = 5;
 	public boolean searchTranslocation = false;
-	public enum Type {WT, SNV, DELETION, INDEL, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND};
+	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND};
 	public String dir;
 	private String cutType;
 	private Vector<Sequence> additionalSearchSequence;
 	private boolean possibleDouble = false;
+	private int solveInsertStart = -100;
+	private int solveInsertEnd = 100;
 	
 	public CompareSequence(RichSequence subject, RichSequence subject2, RichSequence query, QualitySequence quals, String left, String right, String pamSite, String dir) {
 		this.subject = subject;
@@ -307,13 +312,19 @@ public class CompareSequence {
 		String leftOver = substring.substring(0,substring.indexOf(first));
 		String queryOver = query.substring(0,query.indexOf(first));
 		String second = Utils.longestCommonSubstring(leftOver, queryOver);
-		if(second.length()>10){
+		//System.out.println("rightS:"+second+":"+second.length());
+		if(second.length()>MINIMUMSECONDSIZE){
 			//check if we allow the jump, previously this led to deletions not being spotted
 			int locFirstSub = substring.indexOf(first);
 			int secSecondSubEnd = substring.indexOf(second)+second.length();
 			int jumpDist = locFirstSub-secSecondSubEnd;
+			//System.out.println("jumpDist right has size: "+jumpDist);
+			//System.out.println(locFirstSub);
+			//System.out.println(secSecondSubEnd);
+			//System.out.println(first);
+			//System.out.println(second);
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				//System.out.println("jumping Right "+jumpDist);
+				System.out.println("jumping Right "+jumpDist);
 				return second;
 			}
 		}
@@ -325,14 +336,15 @@ public class CompareSequence {
 		String queryOver = query.substring(query.indexOf(first)+first.length());
 		String second = Utils.longestCommonSubstring(leftOver, queryOver);
 		//System.out.println("left:"+first);
-		//System.out.println("leftS:"+second);
-		if(second.length()>10){
+		//System.out.println("leftS:"+second+":"+second.length());
+		//System.out.println(leftOver.endsWith(second));
+		if(second.length()>MINIMUMSECONDSIZE){
 			//check if we allow the jump, previously this led to deletions not being spotted
 			int locFirstSub = substring.indexOf(first)+first.length();
 			int secSecondSubEnd = substring.indexOf(second);
 			int jumpDist = secSecondSubEnd-locFirstSub;
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				//System.out.println("jumping Left "+jumpDist);
+				System.out.println("jumping Left "+jumpDist);
 				return second;
 			}
 		}
@@ -372,7 +384,7 @@ public class CompareSequence {
 		//only do it when no weird things found
 		if(this.remarks.length() == 0 && insert.length()>0){
 			//currently fixed value
-			solveInsertion(-100,100);
+			solveInsertion(solveInsertStart,solveInsertEnd);
 		}
 		if(del.length()>0 && insert.length() == 0){
 			homology = Utils.getHomologyAtBreak(leftFlank, del, rightFlank);
@@ -391,7 +403,7 @@ public class CompareSequence {
 			mod+=3;
 		}
 		String ret = cutType+s+getName()+s+dir+s+getIDPart()+s+possibleDouble+s+getSubject()+s+getSubjectComments()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
-				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+getColorHomology()+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
+				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+(this.getDelStart()-this.pamSiteLocation)+s+getRightFlankRelativePos()+s+getColorHomology()+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
 				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+this.getSchematic()+s+this.getUniqueClass();
 		if(is != null){
 			ret+= s+is.getLargestMatch()+s+is.getLargestMatchString()+s
@@ -413,6 +425,22 @@ public class CompareSequence {
 		}
 		return hom;
 	}
+	private int getRightFlankRelativePos(){
+		int right = this.getDelEnd()-this.pamSiteLocation;
+		//check if we have overlap
+		if(this.getInsertion() != null){
+			String insertTemp = this.getInsertion();
+			String leftTemp = this.getLeftFlank(0);
+			while(insertTemp.length()>0 && leftTemp.length()>0 
+					&& insertTemp.charAt(insertTemp.length()-1) == leftTemp.charAt(leftTemp.length()-1)){
+				//move right one bp, is that always correct
+				insertTemp = insertTemp.substring(0, insertTemp.length()-1);
+				leftTemp = leftTemp.substring(0, leftTemp.length()-1);
+				right--;
+			}
+		}
+		return right;
+	}
 	public String getIDPart() {
 		if(this.getName().contains("_")){
 			String[] parts = this.getName().split("_");
@@ -432,7 +460,7 @@ public class CompareSequence {
 		if(!searchTranslocation && this.insert.length()>=minSizeInsertionSolver){
 			String left = this.getCorrectedLeftFlankRelative(start, end);
 			String right = this.getCorrectedRightFlankRelative(start, end);
-			InsertionSolverTwoSides is = new InsertionSolverTwoSides(left, right,this.insert,null);
+			InsertionSolverTwoSides is = new InsertionSolverTwoSides(left, right,this.insert,getName());
 			is.setAdjustedPositionLeft(start);		
 			is.setAdjustedPositionRight(start);
 			is.search(true, true);
@@ -496,7 +524,7 @@ public class CompareSequence {
 			return Type.DELETION;
 		}
 		else if(this.getDel().length()> 0 && this.getInsertion().length() > 0){
-			return Type.INDEL;
+			return Type.DELINS;
 		}
 		return Type.UNKNOWN;
 	}
@@ -535,7 +563,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "CutType\tName\tDir\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
+		String ret = "CutType\tName\tDir\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
 				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tSchematic\tClassName";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos";
@@ -743,9 +771,16 @@ public class CompareSequence {
 		return sb.toString();
 	}
 	public String getColorHomology(){
+		if(this.getType() == Type.TANDEMDUPLICATION){
+			String homology = this.getHomologyTandemDuplication();
+			return CompareSequence.acquireColor(homology.length()); 
+		}
 		if(del.length()>0 && insert.length() == 0){
 			String homology = Utils.getHomologyAtBreak(leftFlank, del, rightFlank);
 			return CompareSequence.acquireColor(homology.length());
+		}
+		else if(insert.length()>0){
+			return "grey";
 		}
 		return "";
 	}
@@ -763,5 +798,19 @@ public class CompareSequence {
 	}
 	public void flagPossibleDouble(boolean b) {
 		this.possibleDouble = b;
+	}
+	public String[] printISParts(HashMap<String, String> colorMap) {
+		if(this.insert.length()>0){
+			solveInsertion(solveInsertStart,solveInsertEnd);
+			if(this.is != null){
+				return this.is.printISParts(colorMap);
+			}
+			//to small probably
+			else{
+				String[] ret = {0+"\t"+getInsertion().length()+"\tblack"};
+				return ret;
+			}
+		}
+		return null;
 	}
 }
