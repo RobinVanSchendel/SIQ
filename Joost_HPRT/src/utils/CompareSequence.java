@@ -266,6 +266,12 @@ public class CompareSequence {
 				del = del.substring(0,del.length()-1);
 				insert = insert.substring(0,insert.length()-1);
 			}
+			//first check if the homology is at the right position, as it could be wrong
+			while(del.length()>0 && del.charAt(0) == rightFlank.charAt(0)){
+				leftFlank = leftFlank +del.charAt(0);
+				del = del.substring(1)+rightFlank.charAt(0);
+				rightFlank = rightFlank.substring(1);
+			}
 		}
 		//translocation
 		else if(searchTranslocation){
@@ -291,6 +297,15 @@ public class CompareSequence {
 				//replace with right one
 				del = " - "+tempDel;
 			}
+			//TODO also make the homology at the right side (copy & paste from above)
+			/*
+			//first check if the homology is at the right position, as it could be wrong
+			while(del.length()>0 && del.charAt(0) == rightFlank.charAt(0)){
+				leftFlank = leftFlank +del.charAt(0);
+				del = del.substring(1)+rightFlank.charAt(0);
+				rightFlank = rightFlank.substring(1);
+			}
+			*/
 		}
 		//no longer report as people might see it as an error, while it is more of a warning
 		//if(madeMinimal){
@@ -809,6 +824,57 @@ public class CompareSequence {
 			else{
 				String[] ret = {0+"\t"+getInsertion().length()+"\tblack"};
 				return ret;
+			}
+		}
+		return null;
+	}
+	public String toStringCompare(int size) {
+		String header = "";
+		String seq = "";
+		String comp = "";
+		int nrNucleotides = 0;
+		if(this.leftFlank.length()>0 ){
+			int indexSubject = subject.seqString().indexOf(leftFlank);
+			int indexQuery = query.seqString().indexOf(leftFlank);
+			String tempSubject = subject.seqString().substring(indexSubject);
+			String tempQuery = query.seqString().substring(indexQuery);
+			while(tempSubject.length()>0 && tempQuery.length()>0){
+				char c = '*';
+				if(tempSubject.charAt(0) == tempQuery.charAt(0) || tempQuery.charAt(0) == 'n' ){
+					c = ' ';
+				}
+				header += tempSubject.charAt(0);
+				seq += tempQuery.charAt(0);
+				comp += c;
+				tempSubject = tempSubject.substring(1);
+				tempQuery = tempQuery.substring(1);
+				nrNucleotides++;
+			}
+			
+			String headerH = this.subject.getName();
+			String seqH = this.getName();
+			String compH = "compare";
+			if(nrNucleotides>0){
+				StringBuffer ret = new StringBuffer();
+				while(comp.length()>0){
+					if(comp.length()<size){
+						ret.append(headerH+"\t"+indexSubject+"\t"+header+"\n");
+						ret.append(seqH+"\t"+indexQuery+"\t"+seq+"\n");
+						ret.append(compH+"\t"+indexSubject+"\t"+comp+"\n");
+						break;
+					}
+					else{
+						ret.append(headerH+"\t"+indexSubject+"\t"+header.substring(0,size)+"\n");
+						ret.append(seqH+"\t"+indexQuery+"\t"+seq.substring(0,size)+"\n");
+						ret.append(compH+"\t"+indexSubject+"\t"+comp.substring(0, size)+"\n");
+					}
+					header = header.substring(size);
+					seq = seq.substring(size);
+					comp = comp.substring(size);
+					indexSubject+=size;
+					indexQuery+=size;
+				}
+				return ret.toString()+"\n";
 			}
 		}
 		return null;
