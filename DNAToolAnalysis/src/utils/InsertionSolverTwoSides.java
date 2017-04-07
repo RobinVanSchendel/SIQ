@@ -1,5 +1,6 @@
 package utils;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Vector;
 
 import org.biojava.bio.seq.Sequence;
@@ -33,6 +34,7 @@ public class InsertionSolverTwoSides {
 	private boolean firstHitIsTDNADirectPos;
 	private String tDNAname;
 	private Vector<Sequence> tDNAVector;
+	private Vector<String> isParts;
 	
 	public InsertionSolverTwoSides(String left, String right, String insertion, String id){
 		this.left = left.toLowerCase();
@@ -46,6 +48,7 @@ public class InsertionSolverTwoSides {
 		//System.out.println("received DNA and insertion");
 		//System.out.println("DNA "+dna);
 		//System.out.println("insertion "+insertion);
+		isParts = new Vector<String>();
 	}
 	private void checkDNA() {
 		if(!left.matches("[atgc]*")){
@@ -382,6 +385,15 @@ public class InsertionSolverTwoSides {
 		String lastTarget = getLastEvent();
 		this.addStringS(lastTarget);
 		strings.add(createSpacedString(spaces,lcs,spacesAfter,lastTarget));
+		//save some more information for Joost
+		///////
+		//spaces contains the correct position
+		int start = spaces;
+		int end = start+lcsWithoutUp.length();
+		String[] parts = this.matchS.split(";");
+		String pos = this.posS.split(";")[parts.length-1];
+		isParts.add(start+"\t"+end+"\t"+substituteString.replaceAll("[0-9]", "")+"|"+pos);
+		/////
 		return subS.replaceFirst(lcs, lcs.toUpperCase());
 	}
 	private String getLastEvent() {
@@ -784,6 +796,17 @@ public class InsertionSolverTwoSides {
 	}
 	public void setTDNA(Vector<Sequence> additionalSearchSequence) {
 		this.tDNAVector = additionalSearchSequence;
+	}
+	public String[] printISParts(HashMap<String, String> colorMap) {
+		String[] ret = new String[isParts.size()+1];
+		int index = 0;
+		ret[index] = 0+"\t"+insertion.length()+"\tgrey";
+		index++;
+		for(String block: isParts){
+			ret[index] = block;
+			index++;
+		}
+		return ret;
 	}
 }
 

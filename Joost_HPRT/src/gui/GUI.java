@@ -105,6 +105,14 @@ public class GUI implements ActionListener {
         analyzeFiles.setActionCommand("Start");
         analyzeFiles.addActionListener(this);
         
+        final JPanel buttonPanel = new JPanel();
+        buttonPanel.add(analyzeFiles);
+        
+        analyzeFiles = new JButton( "Start analysis Print Comparison");
+        analyzeFiles.setActionCommand("Start Comparison");
+        analyzeFiles.addActionListener(this);
+        buttonPanel.add(analyzeFiles);
+        
         JButton dirChooser = new JButton("Dir with .ab1 files");
         dirChooser.setActionCommand("dirChooser");
         dirChooser.addActionListener(this);
@@ -130,7 +138,7 @@ public class GUI implements ActionListener {
         //Put the two JPanels and JButton in different areas.
         guiFrame.add(comboPanel, BorderLayout.NORTH);
         //guiFrame.add(listPanel, BorderLayout.CENTER);
-        guiFrame.add(analyzeFiles,BorderLayout.SOUTH);
+        guiFrame.add(buttonPanel,BorderLayout.SOUTH);
         
         guiFrame.add(new JScrollPane(jFiles), BorderLayout.CENTER);
         mbc = new MenuBarCustom();
@@ -178,13 +186,13 @@ public class GUI implements ActionListener {
 			for(int i = 1; i<model.size();i++){
 				String ret = null;
 				if(mbc.tryToMatchFasta()){
-					ret = analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), check);
+					ret = analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), check, false);
 				}
 				else if(mbc.tryAllFasta()){
-					ret = analyzeFileAll(model.getElementAt(i), left.getText(), right.getText(), check);
+					ret = analyzeFileAll(model.getElementAt(i), left.getText(), right.getText(), check, false);
 				}
 				else{
-					ret = analyzeFile(model.getElementAt(i), left.getText(), right.getText(), check);
+					ret = analyzeFile(model.getElementAt(i), left.getText(), right.getText(), check, false);
 				}
 				check = false;
 				//at least show the name
@@ -192,6 +200,46 @@ public class GUI implements ActionListener {
 					ret = model.getElementAt(i).getName();
 				}
 				area.append(ret+"\n");
+			}
+			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+			JScrollPane scrollPane = new JScrollPane(area);
+			scrollPane.setPreferredSize( new Dimension( 500, 500 ) );
+			JOptionPane.showMessageDialog(
+					   null, scrollPane, "Result", JOptionPane.PLAIN_MESSAGE);
+		}
+		else if(e.getActionCommand().equals("Start Comparison")){
+			if(subject == null){
+				JOptionPane.showMessageDialog(guiFrame,
+					    "Please select a subject Fasta file for reference first",
+					    "No Fasta subject file selected",
+					    JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			JTextArea area = new JTextArea(CompareSequence.getOneLineHeader()+"\n");
+			area.setColumns(30);
+			 
+			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+			boolean check = true;
+			for(int i = 1; i<model.size();i++){
+				String ret = null;
+				if(mbc.tryToMatchFasta()){
+					ret = analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), check, true);
+				}
+				else if(mbc.tryAllFasta()){
+					ret = analyzeFileAll(model.getElementAt(i), left.getText(), right.getText(), check, true);
+				}
+				else{
+					ret = analyzeFile(model.getElementAt(i), left.getText(), right.getText(), check, true);
+				}
+				check = false;
+				//at least show the name
+				if(ret == null){
+					ret = model.getElementAt(i).getName();
+				}
+				area.append(ret);
+				if(ret != null && ret.length()>0){
+					area.append("\n");
+				}
 			}
 			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 			JScrollPane scrollPane = new JScrollPane(area);
@@ -251,7 +299,7 @@ public class GUI implements ActionListener {
 		}
 	}
 
-	private String analyzeFileAll(File f, String left, String right, boolean checkLeftRight) {
+	private String analyzeFileAll(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		StringBuffer sb = new StringBuffer();
 		BufferedReader is = null;
 		try {
@@ -345,6 +393,7 @@ public class GUI implements ActionListener {
 				e.printStackTrace();
 			}
 			CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
+			//cs.setAndDetermineCorrectRange(0.01);
 			cs.setAndDetermineCorrectRange(0.05);
 			if(this.maskLowQuality.isSelected()){
 				cs.maskSequenceToHighQuality(left, right);
@@ -353,10 +402,21 @@ public class GUI implements ActionListener {
 				cs.maskSequenceToHighQualityRemove(left, right);
 			}
 			cs.determineFlankPositions();
-			if(sb.length()>0){
-				sb.append("\n");
+			if(printCompare){
+				String s = cs.toStringCompare(100); 
+				if(s != null){
+					if(sb.length()>0){
+						sb.append("\n");
+					}
+					sb.append(s);
+				}
 			}
-			sb.append(cs.toStringOneLine());
+			else{
+				if(sb.length()>0){
+					sb.append("\n");
+				}
+				sb.append(cs.toStringOneLine());
+			}
 		}
 		return sb.toString();
 	}
@@ -378,7 +438,7 @@ public class GUI implements ActionListener {
 		
 	}
 
-	private String analyzeFile(File f, String left, String right, boolean checkLeftRight) {
+	private String analyzeFile(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		BufferedReader is = null;
 		try {
 			is = new BufferedReader(new FileReader(subject));
@@ -483,9 +543,12 @@ public class GUI implements ActionListener {
 			cs.maskSequenceToHighQualityRemove(left, right);
 		}
 		cs.determineFlankPositions();
+		if(printCompare){
+			return cs.toStringCompare(100);
+		}
 		return cs.toStringOneLine();
 	}
-	private String analyzeFileTryToMatch(File f, String left, String right, boolean checkLeftRight) {
+	private String analyzeFileTryToMatch(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		
 		if(mbc.tryToMatchFasta() && sequences == null ){
 			sequences = Utils.fillArrayListSequences(subject);
@@ -543,6 +606,9 @@ public class GUI implements ActionListener {
 			cs.maskSequenceToHighQualityRemove(left, right);
 		}
 		cs.determineFlankPositions();
+		if(printCompare){
+			return cs.toStringCompare(100);
+		}
 		return cs.toStringOneLine();
 	}
 

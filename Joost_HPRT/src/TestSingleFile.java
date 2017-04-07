@@ -56,7 +56,10 @@ public class TestSingleFile {
 			//File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-N863A\\Sequence files\\Lig4\\Cas9_N863A_Lig4nest_16_2501047-1037841.ab1");
 			//File f = new File("Z:/Joost/Files/Manuscripts/Schimmel_etal_2016/Footprints Cas9-WT/Sequence files/CR1/POLQ-Ku80_dko/A03__T2_CR1_2534295-1040173.ab1");
 			//File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-WT\\Sequence files\\CR2\\WT\\HPRT_CR2_121_2482959-1036715.ab1");
-			File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-N863A\\Sequence files\\Ku80\\C02_2506297-1038176.ab1");
+			//File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-N863A\\Sequence files\\Ku80\\C02_2506297-1038176.ab1");
+			File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\mrt-1 mrt-2\\mrt-2 dog-1 XF1399 (100bp_insert)\\XF1399_12_2566156-1042317.ab1");
+			
+
 			
 			//search additional 'TDNA'
 			//File add = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\px458_HPRT.txt");
@@ -92,7 +95,8 @@ public class TestSingleFile {
 		BufferedReader is = null;
 		try {
 			//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR2.txt"));
-			is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR1.txt"));
+			//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR1.txt"));
+			is = new BufferedReader(new FileReader("Z:\\Evelyne\\JavaSoftware\\XF1290.fa.txt"));
 			
 			
 		} catch (FileNotFoundException e1) {
@@ -130,8 +134,12 @@ public class TestSingleFile {
 		//String left = "TGAAAGACTTGCTCGAGATGTCA";
 		//String right = "TGAAGGAGATGGGAGGCCATCACATT";
 		//CR1 overhang
-		String left = "GATTTGTTTTGTATACCTAAT";
-		String right = "TTATGGACAGGTTAGTAAGACCTCGAT";
+		//String left = "GATTTGTTTTGTATACCTAAT";
+		//String right = "TTATGGACAGGTTAGTAAGACCTCGAT";
+		
+		//Primase low
+		String left = "GCATGCGTCGACCCgggaggcctgatttca";
+		String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT";
 		s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null, null);
 		s.setAndDetermineCorrectRange(0.05);
 		s.setAdditionalSearchString(additional);

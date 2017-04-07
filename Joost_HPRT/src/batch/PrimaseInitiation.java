@@ -11,11 +11,10 @@ import utils.CompareSequence;
 public class PrimaseInitiation {
 
 	public static void main(String[] args) {
-		//String fileName = "PrimaseTable.txt";
-		String fileName = "PrimaseTablePart.txt";
+		String fileName = "PrimaseTable.txt";
+		//String fileName = "PrimaseTablePart.txt";
 		SequenceController sq = new SequenceController();
 		File file = new File(fileName);
-		
 		ArrayList<CompareSequence> al = new ArrayList<CompareSequence>();
 		Scanner s = null;
 		try {
@@ -61,6 +60,7 @@ public class PrimaseInitiation {
 						if(typeColumn>=0 && parts.length>typeColumn){
 							type = parts[typeColumn];
 						}
+						System.out.println(files);
 						al.addAll(sq.readFilesTryToMatch(files, subject, leftFlank, rightFlank, type, null));
 						System.out.println("We have now "+al.size()+" correct sequences");
 					}
@@ -104,7 +104,8 @@ public class PrimaseInitiation {
 					if(parts.length > 2){
 						String part = "";
 						//again dubious, but required
-						if(parts[1].matches("[0-9]*") && Integer.parseInt(parts[1])<90){
+						System.out.println(parts[1]);
+						if(!parts[1].equals("") && parts[1].matches("[0-9]*") && Integer.parseInt(parts[1])<90){
 							for(int i = 0;i<parts.length-1;i++){
 								if(part.length()>0){
 									part += "_";
