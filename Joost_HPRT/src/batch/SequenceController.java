@@ -130,59 +130,67 @@ public class SequenceController {
 		}
 		
 		File d = new File(dir);
-		for(File cellType: d.listFiles()){
-			if(cellType.isDirectory()){
-				for(File seqs: cellType.listFiles()){
-					if(seqs.isFile() && seqs.getName().endsWith(".ab1")){
-						RichSequence subject = Utils.matchNameSequence(sequences, seqs.getName());
-						try {
-							//System.out.println("accessing "+seqs.getName());
-							Chromatogram chromo = ChromatogramFactory.create(seqs);
-							NucleotideSequence seq = chromo.getNucleotideSequence();
-							QualitySequence quals = chromo.getQualitySequence();
-							RichSequence query = null;
-							try {
-								query = RichSequence.Tools.createRichSequence(seqs.getName(), DNATools.createDNA(seq.toString()));
-							} catch (IllegalSymbolException e) {
-								e.printStackTrace();
-							}
-							//mask
-							if(subject == null){
-								//System.out.println(seqs.getName()+" no subject found");
-								continue;
-							}
-							CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, cellType.getName());
-							cs.setAndDetermineCorrectRange(0.05);
-							cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
-							cs.determineFlankPositions();
-							cs.setAdditionalSearchString(additional);
-							cs.setCutType(type);
-							//only correctly found ones
-							//and filter for events that are the same in ID and class
-							if(cs.getRemarks().length() == 0 && cs.getType() != CompareSequence.Type.WT){
-								//String id = cs.getIDPart()+"|"+cs.getUniqueClass();
-								al.add(cs);
-							}
-							//no masking
-							/*
-							cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, cellType.getName());
-							cs.determineFlankPositions();
-							cs.setAdditionalSearchString(additional.seqString());
-							//only correctly found ones
-							if(cs.getRemarks().length() == 0){
-								System.out.println(type+"\t"+cs.toStringOneLine());
-							}
-							*/
-							
-						} catch (IOException e1) {
-							System.err.println(seqs.getName()+" has a problem");
-							e1.printStackTrace();
-						}
-					}
+		Vector<File> ab1s = getAB1Files(d);
+		System.out.println("Found "+ab1s.size()+" ab1 files");
+		for(File seqs: ab1s){
+			RichSequence subject = Utils.matchNameSequence(sequences, seqs.getName());
+			try {
+				//System.out.println("accessing "+seqs.getName());
+				Chromatogram chromo = ChromatogramFactory.create(seqs);
+				NucleotideSequence seq = chromo.getNucleotideSequence();
+				QualitySequence quals = chromo.getQualitySequence();
+				RichSequence query = null;
+				try {
+					query = RichSequence.Tools.createRichSequence(seqs.getName(), DNATools.createDNA(seq.toString()));
+				} catch (IllegalSymbolException e) {
+					e.printStackTrace();
 				}
+				//mask
+				if(subject == null){
+					//System.out.println(seqs.getName()+" no subject found");
+					continue;
+				}
+				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent());
+				cs.setAndDetermineCorrectRange(0.05);
+				cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
+				cs.determineFlankPositions();
+				cs.setAdditionalSearchString(additional);
+				cs.setCutType(type);
+				//only correctly found ones
+				//and filter for events that are the same in ID and class
+				if(cs.getRemarks().length() == 0 && cs.getType() != CompareSequence.Type.WT){
+					//String id = cs.getIDPart()+"|"+cs.getUniqueClass();
+					al.add(cs);
+				}
+				//no masking
+				/*
+				cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, cellType.getName());
+				cs.determineFlankPositions();
+				cs.setAdditionalSearchString(additional.seqString());
+				//only correctly found ones
+				if(cs.getRemarks().length() == 0){
+					System.out.println(type+"\t"+cs.toStringOneLine());
+				}
+				*/
+				
+			} catch (IOException e1) {
+				System.err.println(seqs.getName()+" has a problem");
+				e1.printStackTrace();
 			}
 		}
 		return al;
+	}
+	private Vector<File> getAB1Files(File d) {
+		Vector<File> files = new Vector<File>();
+		for(File f: d.listFiles()){
+			if(f.isDirectory()){
+				files.addAll(getAB1Files(f));
+			}
+			else if(f.isFile() && f.getName().endsWith(".ab1")){
+				files.add(f);
+			}
+		}
+		return files;
 	}
 	public void setPrintOnlyISParts(){
 		this.printOnlyIsParts = true;
