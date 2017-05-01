@@ -2,6 +2,8 @@ package utils;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
@@ -391,6 +393,34 @@ public class CompareSequence {
 	public String getName(){
 		return query.getName();
 	}
+	public boolean inZone(){
+		//Pattern zone = Pattern.compile("[ag]{10,}");
+		//quite complex already
+		Pattern zone = Pattern.compile("[ct]{10,}[ag]{0,10}[ct]{10,}");
+		Matcher m = zone.matcher(subject.seqString().toString());
+		boolean found = false;
+		while(m.find()){
+			if(m.group().length()>30){
+				found = true;
+				if(this.getDelEnd()>m.start() && this.getDelEnd()<m.end()){
+					return true;
+				}
+			}
+		}
+		if(!found){
+			//check the high zones
+			zone = Pattern.compile("[ga]{10,}[ct]{0,10}[ga]{10,}");
+			m = zone.matcher(subject.seqString().toString());
+			while(m.find()){
+				if(m.group().length()>30){
+					if(this.getDelEnd()>m.start() && this.getDelEnd()<m.end()){
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
 	public String toStringOneLine(){
 		String s = "\t";
 		int size = 20;
@@ -419,7 +449,7 @@ public class CompareSequence {
 		}
 		String ret = cutType+s+getName()+s+dir+s+getIDPart()+s+possibleDouble+s+getSubject()+s+getSubjectComments()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
 				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+(this.getDelStart()-this.pamSiteLocation)+s+getRightFlankRelativePos()+s+getColorHomology()+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
-				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+this.getSchematic()+s+this.getUniqueClass();
+				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+this.getSchematic()+s+this.getUniqueClass()+s+this.inZone();
 		if(is != null){
 			ret+= s+is.getLargestMatch()+s+is.getLargestMatchString()+s
 					+is.getSubS()+s+is.getSubS2()+s+is.getType()+s+is.getLengthS()+s+is.getPosS()+s+is.getFirstHit()+s+is.getFirstPos();
@@ -579,7 +609,7 @@ public class CompareSequence {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
 		String ret = "CutType\tName\tDir\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
-				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tSchematic\tClassName";
+				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tSchematic\tClassName"+s+"InZone";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos";
 		return ret;
