@@ -51,7 +51,7 @@ public class PrimaseInitiation {
 					first = false;
 				}
 				else{
-					if(parts.length>0){
+					if(parts.length>rFColumn){
 						String files = parts[fileColumn];
 						String subject = parts[subjectColumn];
 						String leftFlank = parts[lFColumn];
