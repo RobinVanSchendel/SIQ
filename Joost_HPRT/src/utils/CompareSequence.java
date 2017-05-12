@@ -137,7 +137,7 @@ public class CompareSequence {
 			//System.out.println("flankTwo"+":"+flankTwo+":"+flankTwo.length());
 			int posTest = subject.seqString().indexOf(flankOne);
 			if(subject.seqString().indexOf(flankOne, posTest+1)>0){
-				this.setRemarks("leftFlank can be found at multiple places");
+				this.setRemarks("leftFlank can be found at multiple places ["+flankOne+"]"+posTest+":"+subject.seqString().indexOf(flankOne, posTest+1));
 			}
 			
 			if(flankOne.length()<minimumSizeWithLeftRight || flankTwo.length()<minimumSizeWithLeftRight ){
@@ -649,6 +649,7 @@ public class CompareSequence {
 			if(first >= 0 && quals.get(j).getErrorProbability()>maxError){
 				//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 				if(j-first >= minimalRangeSize){
+					//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 					ranges.add(Range.of(first, last));
 				}
 				first = -1;
@@ -658,6 +659,7 @@ public class CompareSequence {
 		}
 		//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 		if(first >= 0 && first - last >= minimalRangeSize){
+			//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 			ranges.add(Range.of(first, last));
 		}		
 	}
