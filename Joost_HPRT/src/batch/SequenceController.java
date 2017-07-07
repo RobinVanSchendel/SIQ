@@ -3,12 +3,17 @@ package batch;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Scanner;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
@@ -21,17 +26,30 @@ import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
+import org.jcvi.jillion.core.datastore.DataStoreException;
+import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
+import org.jcvi.jillion.core.qual.PhredQuality;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
+import org.jcvi.jillion.core.util.iter.StreamingIterator;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
+import org.jcvi.jillion.trace.fastq.FastqDataStore;
+import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
+import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
+import org.jcvi.jillion.trace.fastq.FastqRecord;
 
 import utils.CompareSequence;
+import utils.SequenceFileThread;
 import utils.Utils;
 
 public class SequenceController {
 	private boolean printOnlyIsParts = false;
 	private HashMap<String, String> colorMap;
+	private File outputFile;
+	private HashMap<String, Integer> countEvents = new HashMap<String, Integer>();
+	private HashMap<String, String> actualEvents = new HashMap<String, String>();
+	private boolean collapseEvents = false;
 	
 	public void readFiles(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional){
 		BufferedReader is = null, is2 = null;
@@ -52,10 +70,9 @@ public class SequenceController {
 		}
 		
 		File d = new File(dir);
-		for(File cellType: d.listFiles()){
-			if(cellType.isDirectory()){
-				for(File seqs: cellType.listFiles()){
-					if(seqs.isFile()){ 
+		Vector<File> ab1s = getAB1Files(d);
+		System.out.println("Found "+ab1s.size()+" ab1 files");
+		for(File seqs: ab1s){
 						try {
 							Chromatogram chromo = ChromatogramFactory.create(seqs);
 							NucleotideSequence seq = chromo.getNucleotideSequence();
@@ -68,14 +85,14 @@ public class SequenceController {
 								e.printStackTrace();
 							}
 							//mask
-							CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, cellType.getName());
+							CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 							cs.setAndDetermineCorrectRange(0.05);
 							cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
 							cs.determineFlankPositions();
 							cs.setAdditionalSearchString(additional);
 							cs.setCutType(type);
 							//only correctly found ones
-							if(cs.getRemarks().length() == 0 || true){
+							if(cs.getRemarks().length() == 0){
 								if(!printOnlyIsParts){
 									System.out.println(type+"\t"+cs.toStringOneLine());
 								}
@@ -102,12 +119,6 @@ public class SequenceController {
 						} catch (IOException e1) {
 							e1.printStackTrace();
 						}
-					}
-					else{
-						//System.err.println(seqs.getName()+" isDir "+seqs.isDirectory());
-					}
-				}
-			}
 		}
 	}
 	public ArrayList<CompareSequence> readFilesTryToMatch(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional) {
@@ -180,6 +191,245 @@ public class SequenceController {
 		}
 		return al;
 	}
+	public void readFilesFASTQ(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput){
+		BufferedReader is = null, is2 = null;
+		RichSequence subject = null;
+		Vector<Sequence> additional = new Vector<Sequence>();
+		try {
+			is = new BufferedReader(new FileReader(subjectFile));
+			is2 = new BufferedReader(new FileReader(searchAdditional));
+			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
+			SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
+			subject = si.nextRichSequence();
+			
+			while(si2.hasNext()){
+				additional.add(si2.nextSequence());
+			}
+		} catch (FileNotFoundException | NoSuchElementException | BioException e1) {
+			e1.printStackTrace();
+		}
+		
+		File d = new File(dir);
+		Vector<File> ab1s = getFASTQFiles(d);
+		System.out.println("Found "+ab1s.size()+" FASTQ files");
+		PrintWriter writer = null;
+		if(writeToOutput){
+			try {
+				writer = new PrintWriter(new FileOutputStream(outputFile,true));
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} 
+		}
+		int fileNr = 1;
+		for(File seqs: ab1s){
+			System.out.println(fileNr+"/"+ab1s.size()+":"+seqs.getName());
+						try {
+							FastqDataStore datastore = new FastqFileDataStoreBuilder(seqs)
+							   .qualityCodec(FastqQualityCodec.SANGER)				   
+							   .hint(DataStoreProviderHint.ITERATION_ONLY).build();
+							//FastqDataStore datastore = new FastqFileDataStoreBuilder(seqs)
+							   //.qualityCodec(FastqQualityCodec.ILLUMINA)				   
+							   //.hint(DataStoreProviderHint.ITERATION_ONLY);//.build();
+							if(writeToOutput){
+								System.out.println("num records = " + datastore.getNumberOfRecords());
+							}
+							//Chromatogram chromo = ChromatogramFactory.create(seqs);
+							//NucleotideSequence seq = chromo.getNucleotideSequence();
+							//QualitySequence quals = chromo.getQualitySequence();
+							StreamingIterator<FastqRecord> iter = null;
+							try {
+								iter = datastore.iterator();
+							} catch (DataStoreException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							int counter = 0;
+							while(iter.hasNext()){
+								FastqRecord fastqRecord = iter.next();
+								QualitySequence quals = fastqRecord.getQualitySequence();
+								RichSequence query = null;
+								try {
+									query = RichSequence.Tools.createRichSequence(fastqRecord.getId(),DNATools.createDNA(fastqRecord.getNucleotideSequence().toString()));
+								} catch (IllegalSymbolException e1) {
+									// TODO Auto-generated catch block
+									e1.printStackTrace();
+								}
+								//mask
+								
+								//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
+								CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
+								cs.setAndDetermineCorrectRange(0.05);
+								cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
+								cs.determineFlankPositions();
+								//cs.setAdditionalSearchString(additional);
+								cs.setCutType(type);
+								cs.setCurrentFile(seqs.getName());
+								//only correctly found ones
+								if(cs.getRemarks().length() == 0){
+									if(!printOnlyIsParts){
+										if(collapseEvents){
+											String key = cs.getKey();
+											if(countEvents.containsKey(key)){
+												countEvents.put(key, countEvents.get(key)+1);
+											}
+											else{
+												countEvents.put(key, 1);
+												actualEvents.put(key, cs.toStringOneLine());
+											}
+										}
+										else{
+											if(writer != null){
+												writer.println(type+"\t"+cs.toStringOneLine());
+											}
+											else{
+												System.out.println(type+"\t"+cs.toStringOneLine());
+											}
+										}
+									}
+									else{
+										String[] ret = cs.printISParts(colorMap);
+										if(ret != null){
+											for(String s: ret){
+												System.out.println(type+"\t"+seqs.getName()+"\t"+s);
+											}
+										}
+									}
+								}
+								//no masking
+								/*
+								cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, cellType.getName());
+								cs.determineFlankPositions();
+								cs.setAdditionalSearchString(additional.seqString());
+								//only correctly found ones
+								if(cs.getRemarks().length() == 0){
+									System.out.println(type+"\t"+cs.toStringOneLine());
+								}
+								*/
+								counter++;
+								if(writer != null && counter%10000==0){
+									System.out.println("Already processed "+counter+" reads");
+									//iter.close();
+									//break;
+								}
+							}
+							
+						} catch (IOException | DataStoreException e1) {
+							e1.printStackTrace();
+						}
+			if(writer != null){
+				if(collapseEvents){
+					System.out.println("Writing events "+actualEvents.size());
+					for(String key: actualEvents.keySet()){
+						writer.println(countEvents.get(key)+"\t"+actualEvents.get(key));
+					}
+					actualEvents.clear();
+					countEvents.clear();
+				}
+			}
+			fileNr++;
+		}
+		writer.close();
+	}
+	public void readFilesFASTQMultiThreaded(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput){
+		BufferedReader is = null, is2 = null;
+		RichSequence subject = null;
+		Vector<Sequence> additional = new Vector<Sequence>();
+		try {
+			is = new BufferedReader(new FileReader(subjectFile));
+			is2 = new BufferedReader(new FileReader(searchAdditional));
+			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
+			SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
+			subject = si.nextRichSequence();
+			
+			while(si2.hasNext()){
+				additional.add(si2.nextSequence());
+			}
+		} catch (FileNotFoundException | NoSuchElementException | BioException e1) {
+			e1.printStackTrace();
+		}
+		
+		File d = new File(dir);
+		Vector<File> ab1s = getFASTQFiles(d);
+		System.out.println("Found "+ab1s.size()+" FASTQ files");
+		int fileNr = 1;
+		Vector<Thread> v = new Vector<Thread>();
+		Vector<Thread> running = new Vector<Thread>();
+		Vector<Integer> toBeRemoved = new Vector<Integer>();
+		Vector<File> files = new Vector<File>();
+		String postfix = "_multithreadout.txt";
+		for(File seqs: ab1s){
+			System.out.println(fileNr+"/"+ab1s.size()+":"+seqs.getName());
+			File output = new File(seqs.getAbsolutePath()+postfix);
+			files.add(output);
+			SequenceFileThread sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, collapseEvents);
+			Thread newThread = new Thread(sft);
+			v.add(newThread);
+			//newThread.start();
+			fileNr++;
+		}
+		int max = 4;
+		//let's see if this works
+		while(v.size()>0 || running.size()>0){
+			for(int nr = running.size()-1;nr>=0;nr--){
+				if(!running.get(nr).isAlive()){
+					toBeRemoved.add(nr);
+				}
+			}
+			for(int i: toBeRemoved){
+				running.remove(i);
+			}
+			toBeRemoved.clear();
+			if(running.size()<max && v.size()>0){
+				Thread t = v.remove(0);
+				running.add(t);
+				t.start();
+			}
+			try {
+				Thread.currentThread().sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		writeAllFilesToOutput(files);
+	}
+	private void writeAllFilesToOutput(Vector<File> files) {
+		//create outputstream for output
+		if(getOutputFile() != null){
+			try {
+				PrintWriter writer = new PrintWriter(getOutputFile(), "UTF-8");
+				for(File f: files){
+					Scanner s = new Scanner(f);
+					while(s.hasNextLine()){
+						writer.println(s.nextLine());
+					}
+					s.close();
+				}
+				writer.close();
+			}
+			catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	private Vector<File> getFASTQFiles(File d) {
+		Vector<File> files = new Vector<File>();
+		for(File f: d.listFiles()){
+			if(f.isDirectory()){
+				files.addAll(getAB1Files(f));
+			}
+			//for some reason .gz does not work yet
+			else if(f.isFile() && f.getName().endsWith(".fastq") || f.getName().endsWith(".fastq.gz")){
+				files.add(f);
+			}
+		}
+		return files;
+	}
 	private Vector<File> getAB1Files(File d) {
 		Vector<File> files = new Vector<File>();
 		for(File f: d.listFiles()){
@@ -197,5 +447,30 @@ public class SequenceController {
 	}
 	public void setColorMap(HashMap<String, String> colorMap){
 		this.colorMap = colorMap;
+	}
+	public void setOutputFile(File f){
+		this.outputFile = f;
+	}
+	public File getOutputFile(){
+		return this.outputFile;
+	}
+	public void writeln(String string) {
+		if(getOutputFile() != null){
+			try {
+				PrintWriter writer = new PrintWriter(this.outputFile, "UTF-8");
+				writer.println(string);
+				writer.close();
+				
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	public void setCollapseEvents(boolean collapse){
+		this.collapseEvents = collapse;
 	}
 }
