@@ -42,6 +42,8 @@ public class CompareSequence {
 	private boolean possibleDouble = false;
 	private int solveInsertStart = -100;
 	private int solveInsertEnd = 100;
+	private String fileName;
+	private boolean reversed = false;
 	
 	public CompareSequence(RichSequence subject, RichSequence subject2, RichSequence query, QualitySequence quals, String left, String right, String pamSite, String dir) {
 		this.subject = subject;
@@ -79,8 +81,11 @@ public class CompareSequence {
 			try {
 				query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(Utils.reverseComplement(query.seqString().toString())));
 				//also turn around the quality
-				QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
-				quals = qsb.reverse().build();
+				if(quals!= null){
+					QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
+					quals = qsb.reverse().build();
+				}
+				this.reversed  = true;
 			} catch (IllegalSymbolException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -125,6 +130,15 @@ public class CompareSequence {
 			}
 			flankOne = findLeft(subject.seqString().substring(0, leftPos), query.seqString());
 			String seqRemain = query.seqString().replace(flankOne, replacementFlank);
+			//some error checking on the length of the rightFlank
+			int indexRemain = seqRemain.indexOf(replacementFlank);
+			if(indexRemain>0){
+				String queryRemain = seqRemain.substring(indexRemain+replacementFlank.length());
+				//System.out.println("here:"+queryRemain);
+				if(queryRemain.length() == 0 || queryRemain.startsWith("n")){
+					this.setRemarks("We have nothing to search for on the rightFlank");
+				}
+			}
 			// translocation
 			if(subject2!= null){
 				flankTwo = findRight(subject2.seqString().substring(rightPos), seqRemain);
@@ -169,6 +183,7 @@ public class CompareSequence {
 			//this assumes the leftFlank is always on the left side
 			String seqRemain = query.seqString().replace(flankOne, replacementFlank);
 			String seqRemainSubject = subject.seqString().replace(flankOne, replacementFlank);
+			//System.out.println(seqRemain);
 			flankTwo = Utils.longestCommonSubstring(seqRemainSubject, seqRemain);
 			if(flankOne.length()<minimumSizeWithoutLeftRight || flankTwo.length()<minimumSizeWithoutLeftRight ){
 				//System.out.println(flankOne.length());
@@ -329,7 +344,6 @@ public class CompareSequence {
 		String leftOver = substring.substring(0,substring.indexOf(first));
 		String queryOver = query.substring(0,query.indexOf(first));
 		String second = Utils.longestCommonSubstring(leftOver, queryOver);
-		//System.out.println("rightS:"+second+":"+second.length());
 		if(second.length()>MINIMUMSECONDSIZE){
 			//check if we allow the jump, previously this led to deletions not being spotted
 			int locFirstSub = substring.indexOf(first);
@@ -341,7 +355,9 @@ public class CompareSequence {
 			//System.out.println(first);
 			//System.out.println(second);
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				System.out.println("jumping Right "+jumpDist);
+				//System.out.println("jumping Right "+jumpDist);
+				//System.out.println("jumping Right "+second);
+				//System.out.println(first);
 				return second;
 			}
 		}
@@ -361,7 +377,7 @@ public class CompareSequence {
 			int secSecondSubEnd = substring.indexOf(second);
 			int jumpDist = secSecondSubEnd-locFirstSub;
 			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				System.out.println("jumping Left "+jumpDist);
+				//System.out.println("jumping Left "+jumpDist);
 				return second;
 			}
 		}
@@ -447,9 +463,9 @@ public class CompareSequence {
 		if(mod<0){
 			mod+=3;
 		}
-		String ret = cutType+s+getName()+s+dir+s+getIDPart()+s+possibleDouble+s+getSubject()+s+getSubjectComments()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
+		String ret = cutType+s+getName()+s+dir+s+this.fileName+s+getIDPart()+s+possibleDouble+s+getSubject()+s+getSubjectComments()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
 				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+(this.getDelStart()-this.pamSiteLocation)+s+getRightFlankRelativePos()+s+getColorHomology()+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
-				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+this.getSchematic()+s+this.getUniqueClass()+s+this.inZone();
+				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+reversed+s+this.getSchematic()+s+this.getUniqueClass()+s+this.inZone();
 		if(is != null){
 			ret+= s+is.getLargestMatch()+s+is.getLargestMatchString()+s
 					+is.getSubS()+s+is.getSubS2()+s+is.getType()+s+is.getLengthS()+s+is.getPosS()+s+is.getFirstHit()+s+is.getFirstPos();
@@ -525,6 +541,12 @@ public class CompareSequence {
 		int leftEnd = subject.seqString().indexOf(leftFlank.toLowerCase())+leftFlank.length();
 		start += leftEnd;
 		end += leftEnd;
+		if(start<0){
+			start = 0;
+		}
+		if(end>subject.seqString().length()){
+			end = subject.seqString().length();
+		}
 		String ret = subject.seqString().substring(start, end);
 		return ret;
 	}
@@ -536,6 +558,13 @@ public class CompareSequence {
 		start += rightStart;
 		end += rightStart;
 		//System.out.println(rightStart);
+		//safety
+		if(start<0){
+			start = 0;
+		}
+		if(end>subject.seqString().length()){
+			end = subject.seqString().length();
+		}
 		String ret = subject.seqString().substring(start, end);
 		return ret;
 	}
@@ -608,8 +637,8 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "CutType\tName\tDir\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
-				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tSchematic\tClassName"+s+"InZone";
+		String ret = "CutType\tName\tDir\tFile\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
+				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tReversed\tSchematic\tClassName"+s+"InZone";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos";
 		return ret;
@@ -910,5 +939,13 @@ public class CompareSequence {
 			}
 		}
 		return null;
+	}
+	public void setCurrentFile(String name) {
+		this.fileName = name;
+	}
+	public String getKey() {
+		//left, right, del, insert
+		String key = this.fileName+"_"+this.getDelStart()+"_"+this.getDelEnd()+"_"+this.del+"_"+this.insert;
+		return key;
 	}
 }
