@@ -1,2 +1,2 @@
 Files	Subject	LeftFlank	RightFlank
-C:\Users\rvanschendel\Documents\Project_Primase\56T_56_5bp\Revertants	C:\Users\rvanschendel\Documents\Project_Primase\56T_56_5bp\Revertants\xf1359_xf1360.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+Z:\Evelyne\DNA\Revertants sequencing\XF1453	Z:\Evelyne\DNA\Revertants sequencing\XF1453_extended.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT

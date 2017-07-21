@@ -6,13 +6,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
 import org.jcvi.jillion.core.datastore.DataStoreException;
 import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
+import org.jcvi.jillion.core.qual.PhredQuality;
 import org.jcvi.jillion.core.qual.QualitySequence;
+import org.jcvi.jillion.core.residue.nt.Nucleotide;
 import org.jcvi.jillion.core.util.iter.StreamingIterator;
 import org.jcvi.jillion.trace.fastq.FastqDataStore;
 import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
@@ -29,8 +32,9 @@ public class SequenceFileThread implements Runnable {
 	private HashMap<String, String> actualEvents = new HashMap<String, String>();
 	private HashMap<String, String> colorMap;
 	private boolean collapse;
+	private double maxError;
 	
-	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse){
+	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError){
 		this.f = f;
 		this.writeToOutput = writeToOutput;
 		this.subject = subject;
@@ -38,6 +42,7 @@ public class SequenceFileThread implements Runnable {
 		this.rightFlank = rightFlank;
 		this.output = output;
 		this.collapse = collapse;
+		this.maxError = maxError;
 	}
 	
 	@Override
@@ -78,6 +83,21 @@ public class SequenceFileThread implements Runnable {
 			while(iter.hasNext()){
 				FastqRecord fastqRecord = iter.next();
 				QualitySequence quals = fastqRecord.getQualitySequence();
+				/*
+				if(!fastqRecord.getId().contains("M01495:68:000000000-B4DGY:1:2117:19644:8652")){
+					continue;
+				}
+				System.out.println(fastqRecord.getId());
+				System.out.println(quals);
+				Iterator<PhredQuality> pqs = quals.iterator();
+				System.out.println(fastqRecord.getNucleotideSequence().toString());
+				for(int index = 0;index<quals.getLength();index++){
+					//System.out.println(pqs.next().getErrorProbability());
+					PhredQuality pq = quals.get(index);
+					Nucleotide n = fastqRecord.getNucleotideSequence().get(index);
+					System.out.println(index+":"+n.toString()+":"+pq.getErrorProbability());
+				}
+				*/
 				RichSequence query = null;
 				try {
 					query = RichSequence.Tools.createRichSequence(fastqRecord.getId(),DNATools.createDNA(fastqRecord.getNucleotideSequence().toString()));
@@ -89,13 +109,14 @@ public class SequenceFileThread implements Runnable {
 				
 				//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, f.getParentFile().getName());
-				cs.setAndDetermineCorrectRange(0.05);
+				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
 				cs.determineFlankPositions();
 				//cs.setAdditionalSearchString(additional);
 				//cs.setCutType(type);
 				cs.setCurrentFile(f.getName());
 				//only correctly found ones
+				//System.out.println(cs.toStringOneLine());
 				if(cs.getRemarks().length() == 0){
 					if(!printOnlyIsParts){
 						if(collapseEvents){
@@ -111,6 +132,7 @@ public class SequenceFileThread implements Runnable {
 						else{
 							if(writer != null){
 								writer.println(type+"\t"+cs.toStringOneLine());
+								//System.out.println(type+"\t"+cs.toStringOneLine());
 							}
 							else{
 								System.out.println(type+"\t"+cs.toStringOneLine());
@@ -126,6 +148,7 @@ public class SequenceFileThread implements Runnable {
 						}
 					}
 				}
+				//System.out.println(cs.toStringOneLine());
 				//no masking
 				/*
 				cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, cellType.getName());
@@ -137,7 +160,7 @@ public class SequenceFileThread implements Runnable {
 				}
 				*/
 				counter++;
-				if(writer != null && counter%1000==0){
+				if(writer != null && counter%5000==0){
 					System.out.println("Already processed "+counter+" reads");
 					//iter.close();
 					//break;

@@ -1,5 +1,3 @@
-import gui.GUI;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -12,11 +10,8 @@ import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
 import org.biojava.bio.*;
-import org.biojava.bio.program.abi.*;
 import org.biojava.bio.seq.*;
-import org.biojava.bio.seq.impl.*;
-import org.biojava.bio.seq.io.*;
-import org.biojava.bio.symbol.*;
+import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
@@ -24,7 +19,6 @@ import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
 import utils.CompareSequence;
-import utils.Utils;
 
 public class TestSingleFile {
 
@@ -57,7 +51,10 @@ public class TestSingleFile {
 			//File f = new File("Z:/Joost/Files/Manuscripts/Schimmel_etal_2016/Footprints Cas9-WT/Sequence files/CR1/POLQ-Ku80_dko/A03__T2_CR1_2534295-1040173.ab1");
 			//File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-WT\\Sequence files\\CR2\\WT\\HPRT_CR2_121_2482959-1036715.ab1");
 			//File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-N863A\\Sequence files\\Ku80\\C02_2506297-1038176.ab1");
-			File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\mrt-1 mrt-2\\mrt-2 dog-1 XF1399 (100bp_insert)\\XF1399_12_2566156-1042317.ab1");
+			//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\mrt-1 mrt-2\\mrt-2 dog-1 XF1399 (100bp_insert)\\XF1399_12_2566156-1042317.ab1");
+			//File f = new File("Z:\\Evelyne\\DNA\\Revertants sequencing\\XF1423\\1-5 test\\6_2579328-1043179.ab1");
+			File f = new File("Z:\\Tim\\G23 insertion\\XF1426\\XF1426_7.ab1");
+			
 			
 
 			
@@ -80,12 +77,14 @@ public class TestSingleFile {
 						
 			
 
-
 			chromo = ChromatogramFactory.create(f);
-			ABITrace trace = new ABITrace(f);
-			SymbolList symbols = trace.getSequence();
+			try {
+				seq = RichSequence.Tools.createRichSequence(f.getName(), DNATools.createDNA(seq.toString()));
+			} catch (IllegalSymbolException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			String name = f.getName();
-			seq = RichSequence.Tools.createRichSequence(name, symbols);
 			//seq = new SimpleSequence(symbols, name, name, Annotation.EMPTY_ANNOTATION);
 			//IOTools.writeFasta(System.out, seq,null);
 		} catch (IOException e) {
@@ -96,7 +95,9 @@ public class TestSingleFile {
 		try {
 			//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR2.txt"));
 			//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR1.txt"));
-			is = new BufferedReader(new FileReader("Z:\\Evelyne\\JavaSoftware\\XF1290.fa.txt"));
+			//is = new BufferedReader(new FileReader("Z:\\Evelyne\\JavaSoftware\\XF1290.fa.txt"));
+			//is = new BufferedReader(new FileReader("Z:\\Evelyne\\DNA\\Revertants sequencing\\XF1423_extended.fa.txt"));
+			is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
 			
 			
 		} catch (FileNotFoundException e1) {
@@ -123,10 +124,6 @@ public class TestSingleFile {
 			}
 		}
 		System.out.println(CompareSequence.getOneLineHeader());
-		CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), "", "", null, null);
-		s.setAdditionalSearchString(additional);
-		s.determineFlankPositions();
-		System.out.println(s.toStringOneLine());
 		//CR1
 		//String left = "TTTGTTTTGTATACCTAATCATTATG";
 		//String right = "CCGAGGATTTGGAAAAAGTGTTTA";
@@ -138,8 +135,17 @@ public class TestSingleFile {
 		//String right = "TTATGGACAGGTTAGTAAGACCTCGAT";
 		
 		//Primase low
-		String left = "GCATGCGTCGACCCgggaggcctgatttca";
-		String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT";
+		//String left = "GCATGCGTCGACCCgggaggcctgatttca";
+		//String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT";
+		//G4XF1426
+		String left = "ctaagagcatccaaattcttggctcgtgtgaatggctagcctgg";
+		String right = "CCCCCCCCCCCCCCCCCCCCCCCGACTGCTTGCGGA";
+		
+		CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left, right, null, null);
+		s.setAdditionalSearchString(additional);
+		s.determineFlankPositions();
+		System.out.println(s.toStringOneLine());
+		
 		s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null, null);
 		s.setAndDetermineCorrectRange(0.05);
 		s.setAdditionalSearchString(additional);

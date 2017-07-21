@@ -1,24 +1,12 @@
-import gui.GUI;
-
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 import org.biojava.bio.*;
-import org.biojava.bio.program.abi.*;
 import org.biojava.bio.seq.*;
-import org.biojava.bio.seq.impl.*;
-import org.biojava.bio.seq.io.*;
 import org.biojava.bio.symbol.*;
 import org.biojavax.bio.seq.RichSequence;
-import org.biojavax.bio.seq.RichSequence.IOTools;
-
 import utils.CompareSequence;
-import utils.Utils;
 
 public class Wouter_Koole_G4 {
 

@@ -19,7 +19,8 @@ import utils.InsertionSolverTwoSides;
 public class CompareSequence {
 
 	private RichSequence subject, subject2, query;
-	private String leftFlank = "", rightFlank = "", del = "", insert = "", remarks = "";
+	private String rightFlank = "", del = "", insert = "", remarks = "";
+	private Left leftFlank;
 	private int minimumSizeWithoutLeftRight = 30;
 	private int minimumSizeWithLeftRight = 15;
 	private int pamSiteLocation;
@@ -99,7 +100,7 @@ public class CompareSequence {
 	private void determineFlanksPositions(String left, String right) {
 		int leftPos = -2;
 		int rightPos = -2;
-		String flankOne = "";
+		Left flankOne = null;
 		String flankTwo = "";
 		//System.out.println(left+":"+left.length());
 		//System.out.println(right+":"+right.length());
@@ -129,7 +130,7 @@ public class CompareSequence {
 				return;
 			}
 			flankOne = findLeft(subject.seqString().substring(0, leftPos), query.seqString());
-			String seqRemain = query.seqString().replace(flankOne, replacementFlank);
+			String seqRemain = query.seqString().replace(flankOne.getString(), replacementFlank);
 			//some error checking on the length of the rightFlank
 			int indexRemain = seqRemain.indexOf(replacementFlank);
 			if(indexRemain>0){
@@ -149,9 +150,9 @@ public class CompareSequence {
 			}
 			//System.out.println("flankOne"+":"+flankOne+":"+flankOne.length());
 			//System.out.println("flankTwo"+":"+flankTwo+":"+flankTwo.length());
-			int posTest = subject.seqString().indexOf(flankOne);
-			if(subject.seqString().indexOf(flankOne, posTest+1)>0){
-				this.setRemarks("leftFlank can be found at multiple places ["+flankOne+"]"+posTest+":"+subject.seqString().indexOf(flankOne, posTest+1));
+			int posTest = flankOne.getSubjectEnd();
+			if(subject.seqString().indexOf(flankOne.getString(), posTest+1)>0){
+				this.setRemarks("leftFlank can be found at multiple places ["+flankOne+"]"+posTest);
 			}
 			
 			if(flankOne.length()<minimumSizeWithLeftRight || flankTwo.length()<minimumSizeWithLeftRight ){
@@ -178,11 +179,11 @@ public class CompareSequence {
 		else{
 			//assuming it is NOT on the reverse complement strand
 			//TODO use the functions findLeft and findRight here
-			flankOne = Utils.longestCommonSubstring(subject.seqString(), query.seqString());
+			flankOne = Left.getLeft(subject.seqString(), query.seqString());
 			 
 			//this assumes the leftFlank is always on the left side
-			String seqRemain = query.seqString().replace(flankOne, replacementFlank);
-			String seqRemainSubject = subject.seqString().replace(flankOne, replacementFlank);
+			String seqRemain = query.seqString().replace(flankOne.getString(), replacementFlank);
+			String seqRemainSubject = subject.seqString().replace(flankOne.getString(), replacementFlank);
 			//System.out.println(seqRemain);
 			flankTwo = Utils.longestCommonSubstring(seqRemainSubject, seqRemain);
 			if(flankOne.length()<minimumSizeWithoutLeftRight || flankTwo.length()<minimumSizeWithoutLeftRight ){
@@ -207,7 +208,7 @@ public class CompareSequence {
 		}
 		
 		//which one is left
-		int posWithinSubjectOne = subject.seqString().indexOf(flankOne);
+		int posWithinSubjectOne = flankOne.getSubjectStart();
 		int posWithinSubjectTwo = subject.seqString().indexOf(flankTwo);
 		leftFlank = flankOne;
 		rightFlank = flankTwo;
@@ -217,17 +218,17 @@ public class CompareSequence {
 				rightFlank = flankTwo;
 			}
 			else{
-				leftFlank = flankTwo;
-				rightFlank = flankOne;
+				//leftFlank = flankTwo;
+				//rightFlank = flankOne;
 			}
 		}
 		//System.out.println("leftFlank:"+leftFlank);
 		//System.out.println("rightFlank:"+rightFlank);
 		if(!searchTranslocation){
-			int delPosStart = subject.seqString().indexOf(leftFlank)+leftFlank.length()+1;
+			int delPosStart = leftFlank.getSubjectEnd()+1;
 			int delPosEnd = subject.seqString().indexOf(rightFlank);
 			if(delPosEnd-delPosStart >=0){
-				del = subject.seqString().substring(subject.seqString().indexOf(leftFlank)+leftFlank.length(), subject.seqString().indexOf(rightFlank));
+				del = subject.seqString().substring(leftFlank.getSubjectEnd(), subject.seqString().indexOf(rightFlank));
 			}
 			else{
 				del = "";
@@ -251,10 +252,15 @@ public class CompareSequence {
 		//get the insertion
 		//System.out.println("l:"+leftFlank);
 		//System.out.println("r:"+rightFlank);
-		int begin = Math.min(query.seqString().indexOf(leftFlank), query.seqString().indexOf(rightFlank)); 
-		int end = Math.max(query.seqString().indexOf(leftFlank)+leftFlank.length(), query.seqString().indexOf(rightFlank)+rightFlank.length());
+		int begin = leftFlank.getQueryStart();
+		int end = query.seqString().indexOf(rightFlank,begin+leftFlank.length())+rightFlank.length();
+		//System.out.println("begin:"+begin);
+		//System.out.println("end:"+end);
+		//System.out.println("q:"+query.seqString());
 		String insertContainingPart = query.seqString().substring(begin, end);
-		insert = insertContainingPart.replace(leftFlank, "").replace(rightFlank, "");
+		insert = query.seqString().substring(leftFlank.getQueryEnd(), end-rightFlank.length());
+		//insert = insertContainingPart.replace(leftFlank.getString(), "").replace(rightFlank, "");
+		//insertContainingPart.substring(begin+leftFlank.length(), end-r)
 		
 		int size = 40;
 		if(leftFlank.length()<size){
@@ -272,29 +278,41 @@ public class CompareSequence {
 		//System.out.println("del:"+del);
 		//System.out.println("insert:"+insert);
 		//Check if deletion and insertion are minimal
+		//checkCall();
 		if(subject2 == null){
 			while(del.length()>0 && insert.length()>0 && del.charAt(0) == insert.charAt(0)){
-				leftFlank = leftFlank +del.charAt(0);
+				//System.out.println("1!");
+				//System.out.println(getName());
+				leftFlank.addCharEnd(del.charAt(0));
 				del = del.substring(1);
 				insert = insert.substring(1);
 			}
 			while(del.length()>0 && insert.length()>0 && del.charAt(del.length()-1) == insert.charAt(insert.length()-1)){
+				//System.out.println("2!");
+				//System.out.println(getName());
+				//System.out.println("r:"+rightFlank);
+				//System.out.println("d:"+del);
+				//System.out.println("i:"+insert);
+				//System.out.println("l:"+leftFlank);
 				rightFlank = del.charAt(del.length()-1)+rightFlank;
 				del = del.substring(0,del.length()-1);
 				insert = insert.substring(0,insert.length()-1);
 			}
 			//first check if the homology is at the right position, as it could be wrong
-			while(del.length()>0 && del.charAt(0) == rightFlank.charAt(0)){
-				leftFlank = leftFlank +del.charAt(0);
+			//bug, this is only correct if there is no INSERT present anymore!
+			while(del.length()>0 && del.charAt(0) == rightFlank.charAt(0) && insert.length()==0){
+				//System.out.println("3!");
+				//System.out.println(getName());
+				leftFlank.addCharEnd(del.charAt(0));
 				del = del.substring(1)+rightFlank.charAt(0);
 				rightFlank = rightFlank.substring(1);
 			}
 		}
 		//translocation
 		else if(searchTranslocation){
-			posWithinSubjectOne = subject.seqString().indexOf(flankOne)+flankOne.length();
+			posWithinSubjectOne = flankOne.getSubjectEnd();
 			while(insert.length()>0 && subject.seqString().charAt(posWithinSubjectOne) == insert.charAt(0)){
-				leftFlank = leftFlank +Character.toUpperCase(insert.charAt(0));
+				leftFlank.addCharEnd(Character.toUpperCase(insert.charAt(0)));
 				insert = insert.substring(1);
 				posWithinSubjectOne++;
 			}
@@ -328,6 +346,8 @@ public class CompareSequence {
 		//if(madeMinimal){
 			//this.setRemarks("Made deletion and insertion minimal, probably that means the cut was at a different location, moved by "+moved+" positions");
 		//}
+		//System.out.println("left :"+this.leftFlank);
+		checkCall();
 		String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
 		if(insertDelCommon.length()>10){
 			this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
@@ -363,32 +383,15 @@ public class CompareSequence {
 		}
 		return first;
 	}
-	private String findLeft(String substring, String query) {
-		String first = Utils.longestCommonSubstring(substring, query);
-		String leftOver = substring.substring(substring.indexOf(first)+first.length());
-		String queryOver = query.substring(query.indexOf(first)+first.length());
-		String second = Utils.longestCommonSubstring(leftOver, queryOver);
-		//System.out.println("left:"+first);
-		//System.out.println("leftS:"+second+":"+second.length());
-		//System.out.println(leftOver.endsWith(second));
-		if(second.length()>MINIMUMSECONDSIZE){
-			//check if we allow the jump, previously this led to deletions not being spotted
-			int locFirstSub = substring.indexOf(first)+first.length();
-			int secSecondSubEnd = substring.indexOf(second);
-			int jumpDist = secSecondSubEnd-locFirstSub;
-			if(jumpDist<=ALLLOWEDJUMPDISTANCE){
-				//System.out.println("jumping Left "+jumpDist);
-				return second;
-			}
-		}
-		return first;
+	private Left findLeft(String substring, String query) {
+		return Left.getLeft(substring, query);
 	}
 	public String getLeftFlank(int size){
 		if(size == 0 || leftFlank.length()<size){
-			return leftFlank;
+			return leftFlank.getString();
 		}
 		else{
-			return leftFlank.substring(leftFlank.length()-size);
+			return leftFlank.getString().substring(leftFlank.length()-size);
 		}
 		
 	}
@@ -442,13 +445,14 @@ public class CompareSequence {
 		int size = 20;
 		String homology = "";
 		int homologyLength = -1;
+		checkCall();
 		//only do it when no weird things found
 		if(this.remarks.length() == 0 && insert.length()>0){
 			//currently fixed value
 			solveInsertion(solveInsertStart,solveInsertEnd);
 		}
 		if(del.length()>0 && insert.length() == 0){
-			homology = Utils.getHomologyAtBreak(leftFlank, del, rightFlank);
+			homology = Utils.getHomologyAtBreak(leftFlank.getString(), del, rightFlank);
 			homologyLength = homology.length();
 		}
 		if(this.getType()== Type.TANDEMDUPLICATION){
@@ -465,15 +469,48 @@ public class CompareSequence {
 		}
 		String ret = cutType+s+getName()+s+dir+s+this.fileName+s+getIDPart()+s+possibleDouble+s+getSubject()+s+getSubjectComments()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
 				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+(this.getDelStart()-this.pamSiteLocation)+s+getRightFlankRelativePos()+s+getColorHomology()+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
-				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+reversed+s+this.getSchematic()+s+this.getUniqueClass()+s+this.inZone();
+				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+reversed+s+this.getSchematic()+s+this.getUniqueClass()+s+this.inZone()+s+this.leftFlank.length()+s+this.rightFlank.length();
 		if(is != null){
 			ret+= s+is.getLargestMatch()+s+is.getLargestMatchString()+s
 					+is.getSubS()+s+is.getSubS2()+s+is.getType()+s+is.getLengthS()+s+is.getPosS()+s+is.getFirstHit()+s+is.getFirstPos();
 		}
 		return ret;
 	}
+	private void checkCall() {
+		//only if remarks are not set this call is valid
+		if(this.remarks.length()==0){
+			String totalquery = this.getLeftFlank(0)+this.getInsertion()+this.getRightFlank(0);
+			if(!query.seqString().contains(totalquery)){
+				System.out.println("QUERY IS COMPLETELY BROKEN!!");
+				System.out.println("l:"+getLeftFlank(0));
+				System.out.println("i:"+getInsertion());
+				System.out.println("r:"+getRightFlank(0));
+				System.out.println("del:"+this.getDel());
+				System.out.println("raw:"+query.seqString());
+				System.out.println(getName());
+				System.out.println(this.getRemarks());
+				System.exit(0);
+				
+			}
+			String totalSubject = this.getLeftFlank(0)+this.getDel()+this.getRightFlank(0);
+			if(!subject.seqString().contains(totalSubject)){
+				System.out.println("SUBJECT IS COMPLETELY BROKEN!!");
+				System.out.println("l:"+getLeftFlank(0));
+				System.out.println("i:"+getInsertion());
+				System.out.println("r:"+getRightFlank(0));
+				System.out.println("del:"+this.getDel());
+				System.out.println("raw:"+query.seqString());
+				System.out.println(getName());
+				System.out.println(this.getRemarks());
+				System.exit(0);
+			}
+			else{
+				//System.out.println("SOMETHING IS COMPLETELY OK!!");
+			}
+		}
+	}
 	private String getHomologyTandemDuplication() {
-		int pos = subject.seqString().indexOf(leftFlank)+leftFlank.length();
+		int pos = leftFlank.getSubjectEnd();
 		int newPos = pos - insert.length();
 		String left = subject.seqString().substring(0, pos);
 		String right = subject.seqString().substring(0, newPos);
@@ -538,7 +575,7 @@ public class CompareSequence {
 		int startTemp = -1*end;
 		end = -1*start;
 		start = startTemp;
-		int leftEnd = subject.seqString().indexOf(leftFlank.toLowerCase())+leftFlank.length();
+		int leftEnd = leftFlank.getSubjectEnd();
 		start += leftEnd;
 		end += leftEnd;
 		if(start<0){
@@ -638,7 +675,7 @@ public class CompareSequence {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
 		String ret = "CutType\tName\tDir\tFile\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
-				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tReversed\tSchematic\tClassName"+s+"InZone";
+				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tReversed\tSchematic\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos";
 		return ret;
@@ -655,7 +692,7 @@ public class CompareSequence {
 	public int getDelStart(){
 		//System.out.println(this.getName());
 		//System.out.println(leftFlank);
-		return subject.seqString().indexOf(leftFlank.toLowerCase())+leftFlank.length();
+		return leftFlank.getSubjectEnd();
 	}
 	public int getDelEnd(){
 		if(subject2==null){
@@ -804,7 +841,7 @@ public class CompareSequence {
 	public int getLeftSideRemoved(){
 		if(cutType != null){
 			int posRight = subject.seqString().indexOf(rightSite);
-			int posLeft = subject.seqString().indexOf(leftFlank)+leftFlank.length();
+			int posLeft = leftFlank.getSubjectEnd();
 			return posRight-posLeft;
 		}
 		return -1;
@@ -820,11 +857,11 @@ public class CompareSequence {
 	public String getSchematic(){
 		int start = 250;
 		int end = 350;
-		int pos = subject.seqString().indexOf(leftFlank)+leftFlank.length();
+		int pos = leftFlank.getSubjectEnd();
 		int delLength = del.length();
 		StringBuffer sb = new StringBuffer(1000);
 		if(pos>=start){
-			String s = subject.seqString().substring(start, subject.seqString().indexOf(leftFlank)+leftFlank.length());
+			String s = subject.seqString().substring(start, leftFlank.getSubjectEnd());
 			sb.append(s);
 		}
 		else{
@@ -852,7 +889,7 @@ public class CompareSequence {
 			return CompareSequence.acquireColor(homology.length()); 
 		}
 		if(del.length()>0 && insert.length() == 0){
-			String homology = Utils.getHomologyAtBreak(leftFlank, del, rightFlank);
+			String homology = Utils.getHomologyAtBreak(leftFlank.getString(), del, rightFlank);
 			return CompareSequence.acquireColor(homology.length());
 		}
 		else if(insert.length()>0){
@@ -895,8 +932,8 @@ public class CompareSequence {
 		String comp = "";
 		int nrNucleotides = 0;
 		if(this.leftFlank.length()>0 ){
-			int indexSubject = subject.seqString().indexOf(leftFlank);
-			int indexQuery = query.seqString().indexOf(leftFlank);
+			int indexSubject = leftFlank.getSubjectStart();
+			int indexQuery = leftFlank.getQueryStart();
 			String tempSubject = subject.seqString().substring(indexSubject);
 			String tempQuery = query.seqString().substring(indexQuery);
 			while(tempSubject.length()>0 && tempQuery.length()>0){

@@ -21,8 +21,11 @@ public class HPRTFastQ {
 		colorMap.put("Flank insert rc", "red");
 		colorMap.put("Tandem duplication", "green");
 		colorMap.put("Tandem duplication2", "darkgreen");
-		boolean collapse = false;
+		boolean collapse = true;
 		String name = "HPRT_FASTQ_output";
+		double maxError = 0.05;
+		
+		
 		if(collapse){
 			name +="_collapse";
 		}
@@ -83,7 +86,7 @@ public class HPRTFastQ {
 					String leftFlank = parts[lFColumn];
 					String rightFlank = parts[rFColumn];
 					String type = parts[typeColumn];
-					sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2017\\Robin\\px458_HPRT.txt"), true);
+					sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2017\\Robin\\px458_HPRT.txt"), true, maxError);
 				}
 			}
 			s.close();

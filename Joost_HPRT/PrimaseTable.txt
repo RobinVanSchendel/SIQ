@@ -13,3 +13,4 @@ Z:\Evelyne\DNA\Revertants sequencing\XF1399	C:\Users\rvanschendel\Documents\Proj
 Z:\Evelyne\DNA\Revertants sequencing\XF1415	Z:\Evelyne\DNA\Revertants sequencing\XF1415_extended.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
 Z:\Evelyne\DNA\Revertants sequencing\XF1423	Z:\Evelyne\DNA\Revertants sequencing\XF1423_extended.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
 Z:\Evelyne\DNA\Revertants sequencing\XF1400	Z:\Evelyne\DNA\Revertants sequencing\XF1400_extended.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+Z:\Evelyne\DNA\Revertants sequencing\XF1401	Z:\Evelyne\DNA\Revertants sequencing\XF1401_extended.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT

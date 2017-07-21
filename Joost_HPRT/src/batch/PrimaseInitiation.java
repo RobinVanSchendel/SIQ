@@ -104,7 +104,7 @@ public class PrimaseInitiation {
 					if(parts.length > 2){
 						String part = "";
 						//again dubious, but required
-						System.out.println(parts[1]);
+						//System.out.println(parts[1]);
 						if(!parts[1].equals("") && parts[1].matches("[0-9]*") && Integer.parseInt(parts[1])<90){
 							for(int i = 0;i<parts.length-1;i++){
 								if(part.length()>0){

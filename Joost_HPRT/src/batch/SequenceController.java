@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.Vector;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JOptionPane;
 
@@ -51,7 +52,7 @@ public class SequenceController {
 	private HashMap<String, String> actualEvents = new HashMap<String, String>();
 	private boolean collapseEvents = false;
 	
-	public void readFiles(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional){
+	public void readFiles(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, PrintWriter writer){
 		BufferedReader is = null, is2 = null;
 		RichSequence subject = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
@@ -71,7 +72,10 @@ public class SequenceController {
 		
 		File d = new File(dir);
 		Vector<File> ab1s = getAB1Files(d);
-		System.out.println("Found "+ab1s.size()+" ab1 files");
+		System.out.println("Analyzing "+ab1s.size()+" ab1 files in "+d.getAbsolutePath());
+		int i =0;
+		int total = 0;
+		//long start = System.nanoTime();
 		for(File seqs: ab1s){
 						try {
 							Chromatogram chromo = ChromatogramFactory.create(seqs);
@@ -93,14 +97,15 @@ public class SequenceController {
 							cs.setCutType(type);
 							//only correctly found ones
 							if(cs.getRemarks().length() == 0){
+								i++;
 								if(!printOnlyIsParts){
-									System.out.println(type+"\t"+cs.toStringOneLine());
+									writer.println(type+"\t"+cs.toStringOneLine());
 								}
 								else{
 									String[] ret = cs.printISParts(colorMap);
 									if(ret != null){
 										for(String s: ret){
-											System.out.println(type+"\t"+seqs.getName()+"\t"+s);
+											writer.println(type+"\t"+seqs.getName()+"\t"+s);
 										}
 									}
 								}
@@ -119,7 +124,14 @@ public class SequenceController {
 						} catch (IOException e1) {
 							e1.printStackTrace();
 						}
+						total++;
+						if(total%25 == 0){
+							System.out.println("Already analyzed "+total+" files");
+							//long end = System.nanoTime();
+							//System.out.println("that took " +TimeUnit.MILLISECONDS.convert(end-start, TimeUnit.NANOSECONDS)+" milliseconds");
+						}
 		}
+		System.out.println("Printed "+i+" files to output");
 	}
 	public ArrayList<CompareSequence> readFilesTryToMatch(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional) {
 		ArrayList<CompareSequence> al = new ArrayList<CompareSequence>();
@@ -331,7 +343,7 @@ public class SequenceController {
 		}
 		writer.close();
 	}
-	public void readFilesFASTQMultiThreaded(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput){
+	public void readFilesFASTQMultiThreaded(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, double maxError){
 		BufferedReader is = null, is2 = null;
 		RichSequence subject = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
@@ -362,7 +374,7 @@ public class SequenceController {
 			System.out.println(fileNr+"/"+ab1s.size()+":"+seqs.getName());
 			File output = new File(seqs.getAbsolutePath()+postfix);
 			files.add(output);
-			SequenceFileThread sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, collapseEvents);
+			SequenceFileThread sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, collapseEvents, maxError);
 			Thread newThread = new Thread(sft);
 			v.add(newThread);
 			//newThread.start();
@@ -399,6 +411,13 @@ public class SequenceController {
 		if(getOutputFile() != null){
 			try {
 				PrintWriter writer = new PrintWriter(getOutputFile(), "UTF-8");
+				//add header, always
+				if(this.collapseEvents){
+					writer.print("#Counts\t"+CompareSequence.getOneLineHeader());
+				}
+				else{
+					writer.print("Empty\t"+CompareSequence.getOneLineHeader());
+				}
 				for(File f: files){
 					Scanner s = new Scanner(f);
 					while(s.hasNextLine()){
