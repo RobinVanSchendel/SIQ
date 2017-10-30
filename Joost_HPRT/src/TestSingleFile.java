@@ -53,7 +53,8 @@ public class TestSingleFile {
 			//File f = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Footprints Cas9-N863A\\Sequence files\\Ku80\\C02_2506297-1038176.ab1");
 			//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\mrt-1 mrt-2\\mrt-2 dog-1 XF1399 (100bp_insert)\\XF1399_12_2566156-1042317.ab1");
 			//File f = new File("Z:\\Evelyne\\DNA\\Revertants sequencing\\XF1423\\1-5 test\\6_2579328-1043179.ab1");
-			File f = new File("Z:\\Tim\\G23 insertion\\XF1426\\XF1426_7.ab1");
+			//File f = new File("Z:\\Tim\\G23 insertion\\XF1426\\XF1426_7.ab1");
+			File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\Revertants\\1044472\\XF1474_91_A4_1_2597736-1044472.ab1");
 			
 			
 
@@ -79,7 +80,7 @@ public class TestSingleFile {
 
 			chromo = ChromatogramFactory.create(f);
 			try {
-				seq = RichSequence.Tools.createRichSequence(f.getName(), DNATools.createDNA(seq.toString()));
+				seq = RichSequence.Tools.createRichSequence(f.getName(), DNATools.createDNA(chromo.getNucleotideSequence().toString()));
 			} catch (IllegalSymbolException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -97,7 +98,9 @@ public class TestSingleFile {
 			//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR1.txt"));
 			//is = new BufferedReader(new FileReader("Z:\\Evelyne\\JavaSoftware\\XF1290.fa.txt"));
 			//is = new BufferedReader(new FileReader("Z:\\Evelyne\\DNA\\Revertants sequencing\\XF1423_extended.fa.txt"));
-			is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
+			//is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
+			is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\XF1280_whole_unc-22_100bp_zone_for_polq.fa"));
+			
 			
 			
 		} catch (FileNotFoundException e1) {
@@ -135,11 +138,11 @@ public class TestSingleFile {
 		//String right = "TTATGGACAGGTTAGTAAGACCTCGAT";
 		
 		//Primase low
-		//String left = "GCATGCGTCGACCCgggaggcctgatttca";
-		//String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT";
+		String left = "GCATGCGTCGACCCgggaggcctgatttca";
+		String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT";
 		//G4XF1426
-		String left = "ctaagagcatccaaattcttggctcgtgtgaatggctagcctgg";
-		String right = "CCCCCCCCCCCCCCCCCCCCCCCGACTGCTTGCGGA";
+		//String left = "ctaagagcatccaaattcttggctcgtgtgaatggctagcctgg";
+		//String right = "CCCCCCCCCCCCCCCCCCCCCCCGACTGCTTGCGGA";
 		
 		CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left, right, null, null);
 		s.setAdditionalSearchString(additional);

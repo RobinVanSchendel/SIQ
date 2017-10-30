@@ -107,9 +107,9 @@ public class GUI implements ActionListener {
         final JPanel buttonPanel = new JPanel();
         buttonPanel.add(analyzeFiles);
         
-        analyzeFiles = new JButton( "Start analysis Print Comparison");
-        analyzeFiles.setActionCommand("Start Comparison");
-        analyzeFiles.addActionListener(this);
+        //analyzeFiles = new JButton( "Start analysis Print Comparison");
+        //analyzeFiles.setActionCommand("Start Comparison");
+        //analyzeFiles.addActionListener(this);
         buttonPanel.add(analyzeFiles);
         
         JButton dirChooser = new JButton("Dir with .ab1 files");
@@ -206,6 +206,8 @@ public class GUI implements ActionListener {
 			JOptionPane.showMessageDialog(
 					   null, scrollPane, "Result", JOptionPane.PLAIN_MESSAGE);
 		}
+		//disabled
+		/*
 		else if(e.getActionCommand().equals("Start Comparison")){
 			if(subject == null){
 				JOptionPane.showMessageDialog(guiFrame,
@@ -246,6 +248,7 @@ public class GUI implements ActionListener {
 			JOptionPane.showMessageDialog(
 					   null, scrollPane, "Result", JOptionPane.PLAIN_MESSAGE);
 		}
+		*/
 		else if(e.getActionCommand().equals("chooseSubject")){
 			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 			chooser.setMultiSelectionEnabled(false);
@@ -338,32 +341,35 @@ public class GUI implements ActionListener {
 					int leftPos = subject.seqString().indexOf(left.toLowerCase());
 					int rightPos = subject.seqString().indexOf(right.toLowerCase());
 					
-					if(leftPos < 0 && rightPos < 0){
-						JOptionPane.showMessageDialog(guiFrame,
-							    "left and right cannot be found in the fasta file"
+					if(leftPos < 0 || rightPos < 0){
+						JOptionPane.showConfirmDialog(guiFrame,
+							    "left or right cannot be found in the fasta file"
 							    		+ " please select the correct flanks!",
 							    "left + right problem",
-							    JOptionPane.ERROR_MESSAGE);
+							    JOptionPane.WARNING_MESSAGE,
+							    JOptionPane.OK_CANCEL_OPTION);
 						System.out.println(subject.seqString());
 						System.out.println((left+right).toLowerCase());
 						return null;
 					}
 					if(subject2 == null && leftPos > rightPos){
-						JOptionPane.showMessageDialog(guiFrame,
+						JOptionPane.showConfirmDialog(guiFrame,
 							    "The left flank can be found, but past the right flank, which cannot be correct"
 							    		+ " please select the correct flanks!",
 							    "left + right problem",
-							    JOptionPane.ERROR_MESSAGE);
+							    JOptionPane.WARNING_MESSAGE,
+							    JOptionPane.OK_CANCEL_OPTION);
 						System.out.println(subject.seqString());
 						System.out.println("leftPost:"+leftPos +":rightPos"+rightPos);
 						return null;
 					}
 					if(subject2 == null && leftRightPos < 0) {
-						JOptionPane.showMessageDialog(guiFrame,
+						JOptionPane.showConfirmDialog(guiFrame,
 							    "left and right flank cannot be found connected in the fasta file."
 							    + " If you are using two break sites, all is ok",
 							    "left + right found, but not connected",
-							    JOptionPane.WARNING_MESSAGE);
+							    JOptionPane.WARNING_MESSAGE,
+							    JOptionPane.OK_CANCEL_OPTION);
 					}
 				}
 				//translocation, look for right in the other file
@@ -371,11 +377,12 @@ public class GUI implements ActionListener {
 					int leftPos = subject.seqString().indexOf(left.toLowerCase());
 					int rightPos = subject2.seqString().indexOf(right.toLowerCase());
 					if(left.length()== 0 || right.length() == 0 || (leftPos < 0 && rightPos < 0)){
-						JOptionPane.showMessageDialog(guiFrame,
+						JOptionPane.showConfirmDialog(guiFrame,
 							    "left and right cannot be found in the fasta file"
 							    		+ " please select the correct flanks!",
 							    "left + right problem",
-							    JOptionPane.ERROR_MESSAGE);
+							    JOptionPane.ERROR_MESSAGE,
+							    JOptionPane.OK_CANCEL_OPTION);
 						System.out.println(subject.seqString());
 						System.out.println((left+right).toLowerCase());
 						return null;
@@ -569,17 +576,18 @@ public class GUI implements ActionListener {
 			return null;
 		}
 		if(checkLeftRight){
+			System.out.println("hier!");
 			if(left.length()>0 && right.length()>0){
-				//System.out.println("hier!");
+				System.out.println("hier!");
 				int leftPos = subject.seqString().indexOf(left.toLowerCase());
 				int rightPos = subject.seqString().indexOf(right.toLowerCase());
 				
-				if(leftPos < 0 && rightPos < 0){
-					JOptionPane.showMessageDialog(guiFrame,
+				if(leftPos < 0 || rightPos < 0){
+					JOptionPane.showConfirmDialog(guiFrame,
 						    "left and right cannot be found in the fasta file"
 						    		+ " please select the correct flanks!",
 						    "left + right problem",
-						    JOptionPane.ERROR_MESSAGE);
+						    JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
 					System.out.println(subject.seqString());
 					System.out.println((left+right).toLowerCase());
 					return null;

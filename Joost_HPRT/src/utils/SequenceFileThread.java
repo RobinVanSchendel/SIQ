@@ -7,8 +7,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Vector;
 
 import org.biojava.bio.seq.DNATools;
+import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
 import org.jcvi.jillion.core.datastore.DataStoreException;
@@ -33,8 +35,9 @@ public class SequenceFileThread implements Runnable {
 	private HashMap<String, String> colorMap;
 	private boolean collapse;
 	private double maxError;
+	private Vector<Sequence> additional;
 	
-	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError){
+	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, Vector<Sequence> additional){
 		this.f = f;
 		this.writeToOutput = writeToOutput;
 		this.subject = subject;
@@ -43,6 +46,7 @@ public class SequenceFileThread implements Runnable {
 		this.output = output;
 		this.collapse = collapse;
 		this.maxError = maxError;
+		this.additional = additional;
 	}
 	
 	@Override
@@ -112,7 +116,7 @@ public class SequenceFileThread implements Runnable {
 				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
 				cs.determineFlankPositions();
-				//cs.setAdditionalSearchString(additional);
+				cs.setAdditionalSearchString(additional);
 				//cs.setCutType(type);
 				cs.setCurrentFile(f.getName());
 				//only correctly found ones
@@ -161,7 +165,7 @@ public class SequenceFileThread implements Runnable {
 				*/
 				counter++;
 				if(writer != null && counter%5000==0){
-					System.out.println("Already processed "+counter+" reads");
+					System.out.println(Thread.currentThread().getName()+" already processed "+counter+" reads");
 					//iter.close();
 					//break;
 				}

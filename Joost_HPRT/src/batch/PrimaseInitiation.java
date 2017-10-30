@@ -11,8 +11,8 @@ import utils.CompareSequence;
 public class PrimaseInitiation {
 
 	public static void main(String[] args) {
-		String fileName = "PrimaseTable.txt";
-		//String fileName = "PrimaseTablePart.txt";
+		//String fileName = "PrimaseTable.txt";
+		String fileName = "PrimaseTablePart.txt";
 		SequenceController sq = new SequenceController();
 		File file = new File(fileName);
 		ArrayList<CompareSequence> al = new ArrayList<CompareSequence>();

@@ -25,7 +25,6 @@ public class HPRTFastQ {
 		String name = "HPRT_FASTQ_output";
 		double maxError = 0.05;
 		
-		
 		if(collapse){
 			name +="_collapse";
 		}
@@ -55,6 +54,7 @@ public class HPRTFastQ {
 			int lFColumn = -1;
 			int rFColumn = -1;
 			int typeColumn = -1;
+			int addSearchColumn = -1;
 			while(s.hasNextLine()){
 				String line = s.nextLine();
 				String[] parts = line.split("\t");
@@ -76,6 +76,9 @@ public class HPRTFastQ {
 						if(str.equals("Type")){
 							typeColumn = i;
 						}
+						if(str.equals("AdditionalSearch")){
+							addSearchColumn = i;
+						}
 						i++;
 					}
 					first = false;
@@ -86,7 +89,11 @@ public class HPRTFastQ {
 					String leftFlank = parts[lFColumn];
 					String rightFlank = parts[rFColumn];
 					String type = parts[typeColumn];
-					sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2017\\Robin\\px458_HPRT.txt"), true, maxError);
+					File search = null;
+					if(addSearchColumn>-1){
+						search = new File(parts[addSearchColumn]);
+					}
+					sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, maxError);
 				}
 			}
 			s.close();

@@ -10,10 +10,13 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.TimeUnit;
 
@@ -51,6 +54,8 @@ public class SequenceController {
 	private HashMap<String, Integer> countEvents = new HashMap<String, Integer>();
 	private HashMap<String, String> actualEvents = new HashMap<String, String>();
 	private boolean collapseEvents = false;
+	private ArrayList<CompareSequence> sequences;
+	private HashMap<String, ArrayList<CompareSequence>> hash = new HashMap<String, ArrayList<CompareSequence>>();
 	
 	public void readFiles(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, PrintWriter writer){
 		BufferedReader is = null, is2 = null;
@@ -349,14 +354,18 @@ public class SequenceController {
 		Vector<Sequence> additional = new Vector<Sequence>();
 		try {
 			is = new BufferedReader(new FileReader(subjectFile));
-			is2 = new BufferedReader(new FileReader(searchAdditional));
+			if(searchAdditional!= null){
+				is2 = new BufferedReader(new FileReader(searchAdditional));
+				SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
+				while(si2.hasNext()){
+					additional.add(si2.nextSequence());
+				}
+			}
 			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
-			SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
+			
 			subject = si.nextRichSequence();
 			
-			while(si2.hasNext()){
-				additional.add(si2.nextSequence());
-			}
+			
 		} catch (FileNotFoundException | NoSuchElementException | BioException e1) {
 			e1.printStackTrace();
 		}
@@ -369,12 +378,16 @@ public class SequenceController {
 		Vector<Thread> running = new Vector<Thread>();
 		Vector<Integer> toBeRemoved = new Vector<Integer>();
 		Vector<File> files = new Vector<File>();
+		String prepostfix ="";
+		if(collapseEvents){
+			prepostfix = "_collapse";
+		}
 		String postfix = "_multithreadout.txt";
 		for(File seqs: ab1s){
 			System.out.println(fileNr+"/"+ab1s.size()+":"+seqs.getName());
-			File output = new File(seqs.getAbsolutePath()+postfix);
+			File output = new File(seqs.getAbsolutePath()+prepostfix+postfix);
 			files.add(output);
-			SequenceFileThread sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, collapseEvents, maxError);
+			SequenceFileThread sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, collapseEvents, maxError, additional);
 			Thread newThread = new Thread(sft);
 			v.add(newThread);
 			//newThread.start();
@@ -449,7 +462,7 @@ public class SequenceController {
 		}
 		return files;
 	}
-	private Vector<File> getAB1Files(File d) {
+	public static Vector<File> getAB1Files(File d) {
 		Vector<File> files = new Vector<File>();
 		for(File f: d.listFiles()){
 			if(f.isDirectory()){
@@ -492,4 +505,116 @@ public class SequenceController {
 	public void setCollapseEvents(boolean collapse){
 		this.collapseEvents = collapse;
 	}
+	public ArrayList<CompareSequence> readFilesTryToMatch(
+			File dir, RichSequence currentSequence, String leftFlank,
+			String rightFlank, String type, String searchAdditional, boolean printNonCorrect) {
+		
+		Vector<Sequence> additional = new Vector<Sequence>();
+		try {
+			if(searchAdditional != null){
+				BufferedReader is2 = new BufferedReader(new FileReader(searchAdditional));
+				RichSequenceIterator si2 = RichSequence.IOTools.readFastaDNA(is2, null);
+				while(si2.hasNext()){
+					additional.add(si2.nextRichSequence());
+				}
+			}
+		} catch (FileNotFoundException | NoSuchElementException | BioException e1) {
+			e1.printStackTrace();
+		}
+		
+		ArrayList<CompareSequence> al = new ArrayList<CompareSequence>();
+		Vector<File> ab1s = getAB1Files(dir);
+		//System.out.println("Found "+ab1s.size()+" ab1 files");
+		for(File seqs: ab1s){
+			RichSequence subject = currentSequence;
+			try {
+				//System.out.println("accessing "+seqs.getName());
+				Chromatogram chromo = ChromatogramFactory.create(seqs);
+				NucleotideSequence seq = chromo.getNucleotideSequence();
+				QualitySequence quals = chromo.getQualitySequence();
+				RichSequence query = null;
+				try {
+					query = RichSequence.Tools.createRichSequence(seqs.getName(), DNATools.createDNA(seq.toString()));
+				} catch (IllegalSymbolException e) {
+					e.printStackTrace();
+				}
+				//mask
+				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent());
+				cs.setAndDetermineCorrectRange(0.05);
+				cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
+				cs.determineFlankPositions();
+				cs.setAdditionalSearchString(additional);
+				cs.setCutType(type);
+				//only correctly found ones
+				//and filter for events that are the same in ID and class
+				if(printNonCorrect || (cs.getRemarks().length() == 0 && cs.getType() != CompareSequence.Type.WT)){
+					al.add(cs);
+				}
+				
+			} catch (IOException e1) {
+				System.err.println(seqs.getName()+" has a problem");
+				e1.printStackTrace();
+			}
+		}
+		return al;
+	}
+	public void setSequences(ArrayList<CompareSequence> al) {
+		this.sequences = al;
+	}
+	public void printXY() {
+		putInHash();
+		//iterate hash
+		List<String> keys = new ArrayList<String>(hash.keySet());
+		Collections.sort(keys);
+		for(String key: keys){
+			ArrayList<CompareSequence> temp = hash.get(key);
+			ArrayList<Double> tempXs = getXs(temp.size());
+			temp.sort((o1,o2) -> o1.getDelEnd()-o2.getDelEnd());
+			StringBuffer sb = new StringBuffer();
+			sb.append("X\tX");
+			for(Double d: tempXs){
+				sb.append('\t');
+				sb.append(d);
+			}
+			System.out.println(sb);
+			sb = new StringBuffer();
+			sb.append(key+"\t"+temp.get(0).getSubjectComments());
+			for(CompareSequence cs: temp){
+				sb.append("\t");
+				sb.append(cs.getRelativeDelEnd());
+			}
+			System.out.println(sb);
+		}
+	}
+	private ArrayList<Double> getXs(int size){
+		ArrayList<Double> list = new ArrayList<Double>();
+		for(int i = 0;i<size;i++){
+			list.add(i/(double)(size-1));
+		}
+		return list;
+	}
+	
+	private void putInHash() {
+		if(hash == null){
+			hash = new HashMap<String, ArrayList<CompareSequence>>();
+		}
+		for(CompareSequence cs: this.sequences){
+			String subject = cs.getSubject();
+			ArrayList<CompareSequence> temp = hash.get(subject);
+			if(temp != null){
+				temp.add(cs);
+			}
+			else{
+				temp = new ArrayList<CompareSequence>();
+				temp.add(cs);
+				hash.put(subject, temp);
+			}
+		}
+	}
+	public class CustomComparator {
+	    public int compareTo(CompareSequence object1, CompareSequence object2) {
+	        return object1.getDelStart() - object2.getDelStart();
+	    }
+	}
+	
 }

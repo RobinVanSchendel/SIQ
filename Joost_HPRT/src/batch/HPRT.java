@@ -2,20 +2,42 @@ package batch;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Scanner;
 
+import javax.swing.JFrame;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.WindowConstants;
+
 import utils.CompareSequence;
+import utils.CustomOutputStream;
 
 public class HPRT {
 
 	public static void main(String[] args) {
 		String fileName = "HPRTTable.txt";
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyymmdd-kkmmss");
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd-kkmmss");
 		Date date = new Date();
+		
+		JTextArea textArea = new JTextArea();
+		PrintStream printStream = new PrintStream(new CustomOutputStream(textArea));
+		System.setOut(printStream);
+		System.setErr(printStream);
+		textArea.setVisible(true);
+		JFrame jf = new JFrame("Batch Output");
+		jf.setSize(300, 300);
+		JScrollPane scroll = new JScrollPane(textArea);
+	    //scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+		jf.add(scroll);
+		jf.setVisible(true);
+		jf.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+		
 
 	      // display time and date using toString()
 	    String output = sdf.format(date)+"_output.txt";

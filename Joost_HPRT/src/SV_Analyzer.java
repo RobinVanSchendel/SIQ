@@ -25,5 +25,4 @@ public class SV_Analyzer {
 		}
 		new GUI();
 	}
-
 }

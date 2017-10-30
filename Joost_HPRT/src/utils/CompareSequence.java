@@ -36,7 +36,7 @@ public class CompareSequence {
 	private InsertionSolverTwoSides is;
 	private int minSizeInsertionSolver = 5;
 	public boolean searchTranslocation = false;
-	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND};
+	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI};
 	public String dir;
 	private String cutType;
 	private Vector<Sequence> additionalSearchSequence;
@@ -83,6 +83,7 @@ public class CompareSequence {
 				query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(Utils.reverseComplement(query.seqString().toString())));
 				//also turn around the quality
 				if(quals!= null){
+					//System.out.println("Reversing the qual!");
 					QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
 					quals = qsb.reverse().build();
 				}
@@ -257,7 +258,10 @@ public class CompareSequence {
 		//System.out.println("begin:"+begin);
 		//System.out.println("end:"+end);
 		//System.out.println("q:"+query.seqString());
-		String insertContainingPart = query.seqString().substring(begin, end);
+		//System.out.println("queryEnd "+leftFlank.getQueryEnd());
+		//System.out.println(rightFlank.length());
+		//System.out.println("reversed:"+this.reversed);
+		//String insertContainingPart = query.seqString().substring(begin, end);
 		insert = query.seqString().substring(leftFlank.getQueryEnd(), end-rightFlank.length());
 		//insert = insertContainingPart.replace(leftFlank.getString(), "").replace(rightFlank, "");
 		//insertContainingPart.substring(begin+leftFlank.length(), end-r)
@@ -350,8 +354,9 @@ public class CompareSequence {
 		checkCall();
 		String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
 		if(insertDelCommon.length()>10){
-			this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
-			//System.err.println("Probably there is a mismatch somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon);
+			//if we masked, then probably this check is not correct
+			//after testing it turns out that most often this is correct
+			this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused problems. Please inspect this file manually:"+insertDelCommon+" delpos: "+del.indexOf(insertDelCommon));
 		}
 	}
 	private String findRight(String substring, String query) {
@@ -468,7 +473,7 @@ public class CompareSequence {
 			mod+=3;
 		}
 		String ret = cutType+s+getName()+s+dir+s+this.fileName+s+getIDPart()+s+possibleDouble+s+getSubject()+s+getSubjectComments()+s+query.seqString()+s+getLeftFlank(size)+s+getDel()+s+getRightFlank(size)+s+getInsertion()+s+this.getDelStart()+s+this.getDelEnd()+
-				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+(this.getDelStart()-this.pamSiteLocation)+s+getRightFlankRelativePos()+s+getColorHomology()+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+this.getRevCompInsertion()
+				s+(this.getDelStart()-this.pamSiteLocation)+s+(this.getDelEnd()-this.pamSiteLocation)+s+(this.getDelStart()-this.pamSiteLocation)+s+getRightFlankRelativePos()+s+getColorHomology()+s+homology+s+homologyLength+s+delLength+s+this.getInsertion().length()+s+mod+s+getType()+s+getSecondaryType()+s+this.getRevCompInsertion()
 				+s+this.getRangesString()+s+masked+s+getLeftSideRemoved()+s+getRightSideRemoved()+s+getRemarks()+s+reversed+s+this.getSchematic()+s+this.getUniqueClass()+s+this.inZone()+s+this.leftFlank.length()+s+this.rightFlank.length();
 		if(is != null){
 			ret+= s+is.getLargestMatch()+s+is.getLargestMatchString()+s
@@ -639,6 +644,51 @@ public class CompareSequence {
 		}
 		return Type.UNKNOWN;
 	}
+	public String getSecondaryType() {
+		if(this.getType() == Type.TANDEMDUPLICATION_COMPOUND){
+			//how long is the remaining part
+			String[] poss = is.getPosS().split(";");
+			String[] lengths = is.getLengthS().split(";");
+			boolean multi = true;
+			//mulitple tandemduplication?
+			//this can only be true if it is completely solved
+			if(is.getType().equals("SOLVED")){
+				for(int i = 0;i<poss.length;i++){
+					String s = poss[i];
+					if(s.length()>0 && Integer.parseInt(s) != 0){
+						multi = false;
+					}
+				}
+				if(multi){
+					return ""+Type.TANDEMDUPLICATION_MULTI;
+				}
+			}
+			//length left
+			int lengthTD = 0;
+			int lenghtOther = 0;
+			for(int i = 0;i<poss.length;i++){
+				String s = poss[i];
+				if(s.length()>0 && Integer.parseInt(s) == 0){
+					lengthTD+=Integer.parseInt(lengths[i]);
+				}
+				else{
+					lenghtOther+=Integer.parseInt(lengths[i]);
+				}
+			}
+			int insLengthRem = this.getInsertion().length()-lengthTD-lenghtOther;
+			if(lengthTD>0 && lenghtOther == 0 && insLengthRem < minSizeInsertionSolver){
+				return "TANDEMDUPLICATION_AND_REMAINING_TOO_SMALL";
+			}
+			else if(lenghtOther>0 && insLengthRem==0){
+				return "TANDEMDUPLICATION_AND_OTHER_EVENT_FOUND";
+			}
+			else{
+				return "TANDEMDUPLICATION_AND_OTHER_EVENT_FOUND_AND_REMAINING_"+lenghtOther;
+			}
+			//add other if you can find them
+		}
+		return "";
+	}
 	public String getSubject() {
 		String ret = subject.getName();
 		if(subject2 != null){
@@ -646,7 +696,7 @@ public class CompareSequence {
 		}
 		return ret;
 	}
-	private String getSubjectComments() {
+	public String getSubjectComments() {
 		if(subject.getDescription() == null){
 			return getSubject();
 		}
@@ -674,7 +724,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "CutType\tName\tDir\tFile\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tLongestRevCompInsert\tRanges\tMasked\t"
+		String ret = "CutType\tName\tDir\tFile\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tType\tSecondaryType\tLongestRevCompInsert\tRanges\tMasked\t"
 				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tReversed\tSchematic\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos";
@@ -722,6 +772,7 @@ public class CompareSequence {
 				last = quals.getLength()-1;
 			}
 			last = j;
+			//System.out.println((j+1)+" "+this.query.seqString().charAt((int)j)+" "+quals.get(j).getErrorProbability());
 		}
 		//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 		if(first >= 0 && first - last >= minimalRangeSize){
@@ -802,6 +853,7 @@ public class CompareSequence {
 				//removed break
 				//break;
 			}
+			//System.out.println("Correct is "+correct);
 			if(correct != null){
 				long begin = correct.getBegin();
 				for(;j<begin;j++){
@@ -898,7 +950,8 @@ public class CompareSequence {
 		return "";
 	}
 	private static String acquireColor(int length) {
-		String[] colors = {"#DAE8F5","#B9D5E9","#88BDDC","#539CCB","#2A7ABA","#0E559F"};
+		//String[] colors = {"#DAE8F5","#B9D5E9","#88BDDC","#539CCB","#2A7ABA","#0E559F"};
+		String[] colors = {"#C9DDF2","#6899D0","#0D99B2","#054E61"};
 		if(length >= colors.length){
 			return colors[colors.length-1];
 		}
@@ -906,7 +959,12 @@ public class CompareSequence {
 	}
 	public String getUniqueClass(){
 		String s = "|";
-		String ret = this.getType()+s+this.getDelStart()+s+this.getDelEnd()+s+this.getInsertion().length();
+		String insert = ""+this.getInsertion().length();
+		//insertions of one nucleotide can be different, so add the actual insert
+		if(this.getInsertion().length()==1){
+			insert = this.getInsertion();
+		}
+		String ret = this.getType()+s+this.getDelStart()+s+this.getDelEnd()+s+insert;
 		return ret;
 	}
 	public void flagPossibleDouble(boolean b) {
@@ -984,5 +1042,8 @@ public class CompareSequence {
 		//left, right, del, insert
 		String key = this.fileName+"_"+this.getDelStart()+"_"+this.getDelEnd()+"_"+this.del+"_"+this.insert;
 		return key;
+	}
+	public int getRelativeDelEnd(){
+		return this.getDelEnd()-this.pamSiteLocation;
 	}
 }
