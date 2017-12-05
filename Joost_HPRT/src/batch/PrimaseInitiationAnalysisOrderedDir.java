@@ -19,6 +19,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//String fileName = "PrimaseTable.txt";
 		String workDir = "Z:/Robin/Project_Primase/unc-22_reversion_assay";
 		String leftRightFlank = "Z:/Robin/Project_Primase/unc-22_reversion_assay/flanks.txt";
+		double quality = 0.05; //0.05
 		
 		//some reads are blacklisted as they are sequenced multiple times or something
 		//else is going on
@@ -27,7 +28,8 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		
 		//extra parameters
 		String analyseDirName = null; //"XF1494";
-		//analyseDirName = "XF1432"; //"XF1494";
+		//analyseDirName = "XF1488"; //"XF1494";
+		//analyseDirName = "XF1414";
 		boolean printNonCorrect = false; //false
 		boolean printXY = true;
 		
@@ -55,7 +57,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 			}
 			//get Left and RightFlanks
 			String[] flanks = obtainLeftRightFlank(leftRightFlankFile, tempDir.getName());
-			al.addAll(sq.readFilesTryToMatch(tempDir, currentSequence, flanks[0], flanks[1], null, null, printNonCorrect));
+			al.addAll(sq.readFilesTryToMatch(tempDir, currentSequence, flanks[0], flanks[1], null, null, printNonCorrect,quality));
 			System.out.println("We now have "+al.size()+" sequences");
 		}
 		//do something

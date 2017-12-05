@@ -1,2 +1,3 @@
 Files	Subject	LeftFlank	RightFlank
-Z:\Evelyne\DNA\Revertants sequencing\XF1453	Z:\Evelyne\DNA\Revertants sequencing\XF1453_extended.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+Z:\Rosy\hus-1\Revertants	Z:\Rosy\hus-1\Revertants\XF1453_extended.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT
+Z:\Rosy\hus-1\Revertants	Z:\Rosy\hus-1\Revertants\XF1455_extended.fa.txt	GCATGCGTCGACCCgggaggcctgatttca	CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT

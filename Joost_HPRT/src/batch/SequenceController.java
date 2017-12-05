@@ -331,7 +331,7 @@ public class SequenceController {
 								}
 							}
 							
-						} catch (IOException | DataStoreException e1) {
+						} catch (IOException e1) {
 							e1.printStackTrace();
 						}
 			if(writer != null){
@@ -507,7 +507,7 @@ public class SequenceController {
 	}
 	public ArrayList<CompareSequence> readFilesTryToMatch(
 			File dir, RichSequence currentSequence, String leftFlank,
-			String rightFlank, String type, String searchAdditional, boolean printNonCorrect) {
+			String rightFlank, String type, String searchAdditional, boolean printNonCorrect, double quality) {
 		
 		Vector<Sequence> additional = new Vector<Sequence>();
 		try {
@@ -540,7 +540,7 @@ public class SequenceController {
 				}
 				//mask
 				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent());
-				cs.setAndDetermineCorrectRange(0.05);
+				cs.setAndDetermineCorrectRange(quality);
 				cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
 				cs.determineFlankPositions();
 				cs.setAdditionalSearchString(additional);

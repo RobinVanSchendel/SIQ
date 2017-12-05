@@ -147,7 +147,8 @@ public class GUI implements ActionListener {
         guiFrame.setVisible(true);
         guiFrame.setExtendedState(guiFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         
-        File tempFile = new File("C:/Users/rvanschendel/Documents/Project_Primase");
+        //File tempFile = new File("C:/Users/rvanschendel/Documents/Project_Primase");
+        File tempFile = new File("Z:/Robin/Project_Primase/UV_TMP_hus-1-vs-N2/unc-22_sequencing");
         if(tempFile.exists() && tempFile.isDirectory()){
         	this.chooser.setCurrentDirectory(tempFile);
         }
@@ -475,7 +476,8 @@ public class GUI implements ActionListener {
 		Chromatogram chromo = null;
 		try {
 			chromo = ChromatogramFactory.create(f);
-		} catch (IOException e1) {
+		} catch (Exception e1) {
+			System.out.println(f.getName()+" gives exception");
 			e1.printStackTrace();
 		}
 		//SymbolList symbols = trace.getSequence();

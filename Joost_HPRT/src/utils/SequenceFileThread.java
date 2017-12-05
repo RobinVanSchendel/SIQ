@@ -171,7 +171,7 @@ public class SequenceFileThread implements Runnable {
 				}
 			}
 			
-		} catch (IOException | DataStoreException e1) {
+		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
 		if(writer != null){
