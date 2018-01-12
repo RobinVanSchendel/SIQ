@@ -432,14 +432,19 @@ public class GUI implements ActionListener {
 		pamChooser.removeAll();
 		//find all pamSites
 		Pattern p = Pattern.compile("[acgt]{21}gg");  // insert your pattern here
+		//string = string.toLowerCase();
 		Matcher m = p.matcher(string);
-		while (m.find()) {
-			pamChooser.addItem(m.group()+":"+(m.start()-3));
+		int lastIndex = 0;
+		while (m.find(lastIndex)) {
+			pamChooser.addItem(m.group()+":"+(m.start()));
+			lastIndex = m.start()+1;
 		}
 		p = Pattern.compile("cc[acgt]{21}");  // insert your pattern here
 		m = p.matcher(string);
-		while (m.find()) {
-			pamChooser.addItem(m.group()+":"+(m.end()+3));
+		lastIndex = 0;
+		while (m.find(lastIndex)) {
+			pamChooser.addItem(m.group()+":"+(m.end()));
+			lastIndex = m.start()+1;
 		}
 		pamChooser.setSelectedItem(null);
 		
