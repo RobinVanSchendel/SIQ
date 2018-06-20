@@ -29,7 +29,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//extra parameters
 		String analyseDirName = null; //"XF1494";
 		//analyseDirName = "XF1488"; //"XF1494";
-		//analyseDirName = "XF1414";
+		//analyseDirName = "XF1573";
 		boolean printNonCorrect = false; //false
 		boolean printXY = true;
 		
@@ -43,6 +43,10 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//for(File dirFile: ab1FileDirs){
 			//System.out.println(dirFile.getName());
 		//}
+		//check if they are ok!
+		for(File tempDir: ab1FileDirs){
+			String[] flanks = obtainLeftRightFlank(leftRightFlankFile, tempDir.getName());
+		}
 		//Good to go!
 		for(File tempDir: ab1FileDirs){
 			if(analyseDirName!= null && !tempDir.getName().equals(analyseDirName)){

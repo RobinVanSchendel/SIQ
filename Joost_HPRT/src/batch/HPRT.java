@@ -22,7 +22,7 @@ public class HPRT {
 
 	public static void main(String[] args) {
 		String fileName = "HPRTTable.txt";
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd-kkmmss");
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd-hhmmss");
 		Date date = new Date();
 		
 		JTextArea textArea = new JTextArea();

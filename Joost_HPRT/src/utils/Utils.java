@@ -15,13 +15,36 @@ import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
 
 public class Utils {
+	public static String getMutation(String ref, String alt){
+		ref = ref.toUpperCase();
+		alt = alt.toUpperCase();
+		if((ref.equals("A") && alt.equals("G")) || (ref.equals("T") && alt.equals("C"))){
+			return "AT->GC";
+		}
+		else if((ref.equals("G") && alt.equals("A")) || (ref.equals("C") && alt.equals("T"))){
+			return "GC->AT";
+		}
+		else if((ref.equals("A") && alt.equals("C")) || (ref.equals("T") && alt.equals("G"))){
+			return "AT->CG";
+		}
+		else if((ref.equals("G") && alt.equals("T")) || (ref.equals("C") && alt.equals("A"))){
+			return "GC->TA";
+		}
+		else if((ref.equals("A") && alt.equals("T")) || (ref.equals("T") && alt.equals("A"))){
+			return "AT->TA";
+		}
+		else if((ref.equals("G") && alt.equals("C")) || (ref.equals("C") && alt.equals("G"))){
+			return "GC->CG";
+		}
+		return ref+"->"+alt;
+	}
 	public static String longestCommonSubstring(String S1, String S2)
 	{
 	    if(S1 == null || S2 == null){
 	    	return "";
 	    }
-		S1 = S1.toLowerCase();
-	    S2 = S2.toLowerCase();
+		//S1 = S1.toLowerCase();
+	    //S2 = S2.toLowerCase();
 		int Start = 0;
 	    int Max = 0;
 	    for (int i = 0; i < S1.length(); i++)
@@ -48,9 +71,9 @@ public class Utils {
 			return "";
 		}
 		//make them the same case:
-		left = left.toLowerCase();
-		del = del.toLowerCase();
-		right = right.toLowerCase();
+		left = left;//.toLowerCase();
+		del = del;//.toLowerCase();
+		right = right;//.toLowerCase();
 		//check the left part
 		left = new StringBuffer(left).reverse().toString();
 		del = new StringBuffer(del).reverse().toString();
@@ -86,8 +109,8 @@ public class Utils {
 	    if(subject == null || query == null){
 	    	return null;
 	    }
-		subject = subject.toLowerCase();
-	    query = query.toLowerCase();
+		subject = subject;//.toLowerCase();
+	    query = query;//.toLowerCase();
 		int StartS1 = 0;
 		int StartS2 = 0;
 	    int Max = 0;
@@ -131,44 +154,44 @@ public class Utils {
 	}
 	public static String reverseComplement(String dna){
 		StringBuffer dnaRev = new StringBuffer(dna).reverse();
-		String revCom = "";
+		StringBuffer revCom = new StringBuffer(dnaRev.length());
 		for(char c: dnaRev.toString().toCharArray()){
 			switch(c){
 				case 'a':
-					revCom += 't';
+					revCom.append('t');
 					break;
 				case 'A':
-					revCom += 'T';
+					revCom.append('T');
 					break;
 				case 't':
-					revCom += 'a';
+					revCom.append('a');
 					break;
 				case 'T':
-					revCom += 'A';
+					revCom.append('A');
 					break;
 				case 'c':
-					revCom += 'g';
+					revCom.append('g');
 					break;
 				case 'C':
-					revCom += 'G';
+					revCom.append('G');
 					break;
 				case 'g':
-					revCom += 'c';
+					revCom.append('c');
 					break;
 				case 'G':
-					revCom += 'C';
+					revCom.append('C');
 					break;
 				case 'N':
-					revCom += 'N';
+					revCom.append('N');
 					break;
 				case 'n':
-					revCom += 'n';
+					revCom.append('n');
 					break;
 				default:
 					System.err.println("Can't complement "+c);
 			}
 		}
-		return revCom;
+		return revCom.toString();
 	}
 	public static ArrayList<RichSequence> fillArrayListSequences(File subject) {
 		ArrayList<RichSequence> al = new ArrayList<RichSequence>();

@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
+import java.util.concurrent.TimeUnit;
 
 import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
@@ -32,12 +33,17 @@ public class SequenceFileThread implements Runnable {
 	private String leftFlank, rightFlank;
 	private HashMap<String, Integer> countEvents = new HashMap<String, Integer>();
 	private HashMap<String, String> actualEvents = new HashMap<String, String>();
+	private HashMap<String, CompareSequence> csEvents = new HashMap<String, CompareSequence>();
 	private HashMap<String, String> colorMap;
 	private boolean collapse;
 	private double maxError;
-	private Vector<Sequence> additional;
+	private HashMap<String, String> hmAdditional;
+	private int[] startPositions;
+	private int[] endPositions;
+	private long minimalCount;
+	private boolean includeStartEnd;
 	
-	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, Vector<Sequence> additional){
+	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, HashMap<String, String> additional){
 		this.f = f;
 		this.writeToOutput = writeToOutput;
 		this.subject = subject;
@@ -46,11 +52,12 @@ public class SequenceFileThread implements Runnable {
 		this.output = output;
 		this.collapse = collapse;
 		this.maxError = maxError;
-		this.additional = additional;
+		this.hmAdditional = additional;
 	}
 	
 	@Override
 	public void run() {
+		Thread.currentThread().setName(f.getName());
 		boolean printOnlyIsParts = false;
 		boolean collapseEvents = collapse;
 		PrintWriter writer = null;
@@ -71,7 +78,8 @@ public class SequenceFileThread implements Runnable {
 			   //.qualityCodec(FastqQualityCodec.ILLUMINA)				   
 			   //.hint(DataStoreProviderHint.ITERATION_ONLY);//.build();
 			if(writeToOutput){
-				System.out.println(f.getName()+"\tnum records = \t" + datastore.getNumberOfRecords());
+				//Very expensive call!!
+				//System.out.println(f.getName()+"\tnum records = \t" + datastore.getNumberOfRecords());
 			}
 			//Chromatogram chromo = ChromatogramFactory.create(seqs);
 			//NucleotideSequence seq = chromo.getNucleotideSequence();
@@ -84,6 +92,9 @@ public class SequenceFileThread implements Runnable {
 				e.printStackTrace();
 			}
 			int counter = 0;
+			int wrong = 0;
+			int correct = 0;
+			long start = System.nanoTime();
 			while(iter.hasNext()){
 				FastqRecord fastqRecord = iter.next();
 				QualitySequence quals = fastqRecord.getQualitySequence();
@@ -114,23 +125,30 @@ public class SequenceFileThread implements Runnable {
 				//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, f.getParentFile().getName());
 				cs.setAndDetermineCorrectRange(maxError);
-				cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
+				cs.maskSequenceToHighQualityRemove();
 				cs.determineFlankPositions();
-				cs.setAdditionalSearchString(additional);
+				cs.setAdditionalSearchString(hmAdditional);
 				//cs.setCutType(type);
 				cs.setCurrentFile(f.getName());
 				//only correctly found ones
 				//System.out.println(cs.toStringOneLine());
 				if(cs.getRemarks().length() == 0){
+					correct++;
+					//maybe discard
+					if(!startEndPositionIsOK(cs)) {
+						continue;
+					}
 					if(!printOnlyIsParts){
 						if(collapseEvents){
-							String key = cs.getKey();
+							String key = cs.getKey(includeStartEnd);
 							if(countEvents.containsKey(key)){
 								countEvents.put(key, countEvents.get(key)+1);
 							}
 							else{
 								countEvents.put(key, 1);
-								actualEvents.put(key, cs.toStringOneLine());
+								//save the object instead
+								csEvents.put(key, cs);
+								//actualEvents.put(key, cs.toStringOneLine());
 							}
 						}
 						else{
@@ -152,6 +170,9 @@ public class SequenceFileThread implements Runnable {
 						}
 					}
 				}
+				else {
+					wrong++;
+				}
 				//System.out.println(cs.toStringOneLine());
 				//no masking
 				/*
@@ -164,10 +185,14 @@ public class SequenceFileThread implements Runnable {
 				}
 				*/
 				counter++;
-				if(writer != null && counter%5000==0){
-					System.out.println(Thread.currentThread().getName()+" already processed "+counter+" reads");
+				if(writer != null && counter%1000==0){
+					long end = System.nanoTime();
+					long duration = TimeUnit.MILLISECONDS.convert((end-start), TimeUnit.NANOSECONDS);
+					//System.out.println("So far took :"+duration+" milliseconds");
+					start = end;
+					System.out.println(Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" correct fraction: "+(correct/(double)(correct+wrong)));
 					//iter.close();
-					//break;
+					break;
 				}
 			}
 			
@@ -176,10 +201,18 @@ public class SequenceFileThread implements Runnable {
 		}
 		if(writer != null){
 			if(collapseEvents){
-				System.out.println("Writing events "+actualEvents.size());
-				for(String key: actualEvents.keySet()){
-					writer.println(countEvents.get(key)+"\t"+actualEvents.get(key));
+				//System.out.println("Writing events "+csEvents.size()+" to: "+output.getAbsolutePath());
+				//NO NOT HERE
+				//writer.println("countEvents\t"+CompareSequence.getOneLineHeader());
+				int count = 0;
+				for(String key: csEvents.keySet()){
+					//only output if we saw it minimalCount times
+					if(countEvents.get(key)>=minimalCount) {
+						writer.println(countEvents.get(key)+"\t"+csEvents.get(key).toStringOneLine());
+						count++;
+					}
 				}
+				System.out.println("Written "+count+" events to: "+output.getAbsolutePath());
 				actualEvents.clear();
 				countEvents.clear();
 			}
@@ -187,4 +220,42 @@ public class SequenceFileThread implements Runnable {
 		}
 	}
 
+	private boolean startEndPositionIsOK(CompareSequence cs) {
+		if(startPositions == null || endPositions == null) {
+			return true;
+		}
+		boolean startIsOk  = startPositionIsOk(cs.getMatchStart());
+		boolean endIsOk  = endPositionIsOk(cs.getMatchEnd());
+		return startIsOk && endIsOk;
+	}
+
+	private boolean endPositionIsOk(int matchEnd) {
+		for(Integer i: endPositions) {
+			if(i == matchEnd) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean startPositionIsOk(int matchStart) {
+		for(Integer i: startPositions) {
+			if(i == matchStart) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public void setStartEndPositions(int[] startPositions, int[] endPositions) {
+		this.startPositions = startPositions;
+		this.endPositions = endPositions;
+		
+	}
+	public void setMinimalCount(long minimalCount) {
+		this.minimalCount = minimalCount;
+	}
+	public void setCollapseStartEnd(boolean includeStartEnd) {
+		this.includeStartEnd = includeStartEnd;
+	}
 }

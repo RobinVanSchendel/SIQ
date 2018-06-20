@@ -26,6 +26,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -54,14 +55,17 @@ public class GUI implements ActionListener {
 	JList<File> jFiles = new JList<File>(model);
 	File subject;
 	//JTextField left = new JTextField("ttaggcacatgacccgtgtttcctcac");
-	JTextField left = new JTextField("GCATGCGTCGACCCgggaggcctgatttca");
+	//JTextField left = new JTextField("GCATGCGTCGACCCgggaggcctgatttca");
+	JTextField left = new JTextField("");
 	//JTextField right = new JTextField("cagtggtgtaaatgctggtccatggct");
-	JTextField right = new JTextField("CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT");
+	//JTextField right = new JTextField("CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT");
+	JTextField right = new JTextField("");
 	JComboBox<String> pamChooser;
 	JCheckBox maskLowQuality = new JCheckBox("maskLowQuality");
 	JCheckBox maskLowQualityRemove = new JCheckBox("maskLowQualityRemove");
 	private MenuBarCustom mbc;
 	private ArrayList<RichSequence> sequences;
+	JProgressBar progressBar;
 	
 	public GUI()
     {
@@ -105,12 +109,19 @@ public class GUI implements ActionListener {
         analyzeFiles.addActionListener(this);
         
         final JPanel buttonPanel = new JPanel();
+        buttonPanel.setSize(guiFrame.getWidth(), 400);
+        buttonPanel.setLayout(new BorderLayout());
         buttonPanel.add(analyzeFiles);
+        progressBar = new JProgressBar(0, 50);
+        progressBar.setValue(0);
+        progressBar.setStringPainted(true);
+        buttonPanel.add(progressBar, BorderLayout.CENTER);
         
         //analyzeFiles = new JButton( "Start analysis Print Comparison");
         //analyzeFiles.setActionCommand("Start Comparison");
         //analyzeFiles.addActionListener(this);
-        buttonPanel.add(analyzeFiles);
+        buttonPanel.add(analyzeFiles, BorderLayout.NORTH);
+        
         
         JButton dirChooser = new JButton("Dir with .ab1 files");
         dirChooser.setActionCommand("dirChooser");
@@ -123,14 +134,15 @@ public class GUI implements ActionListener {
         fileChooser.addActionListener(this);
         comboPanel.add(fileChooser);
         
+        //turn off the PAM chooser for now
         pamChooser = new JComboBox<String>();
-        comboPanel.add(new JLabel("select PAM site:"));
-        comboPanel.add(pamChooser);
+        //comboPanel.add(new JLabel("select PAM site:"));
+        //comboPanel.add(pamChooser);
         
         maskLowQuality.setSelected(false); 
         comboPanel.add(maskLowQuality);
         
-        maskLowQualityRemove.setSelected(false); 
+        maskLowQualityRemove.setSelected(true); 
         comboPanel.add(maskLowQualityRemove);
         
         //The JFrame uses the BorderLayout layout manager.
@@ -158,10 +170,11 @@ public class GUI implements ActionListener {
 	public void actionPerformed(ActionEvent e) {
 		if(e.getActionCommand().equals("dirChooser")){
 			chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-			chooser.setMultiSelectionEnabled(false);
+			chooser.setMultiSelectionEnabled(true);
 			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
 				fillTable();
 			}
+			chooser.setMultiSelectionEnabled(false);
 		}
 		else if(e.getActionCommand().equals("fileChooser")){
 			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -183,6 +196,8 @@ public class GUI implements ActionListener {
 			 
 			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			boolean check = true;
+			progressBar.setMaximum(model.size()-1);
+			progressBar.setValue(0);
 			for(int i = 1; i<model.size();i++){
 				String ret = null;
 				if(mbc.tryToMatchFasta()){
@@ -200,6 +215,9 @@ public class GUI implements ActionListener {
 					ret = model.getElementAt(i).getName();
 				}
 				area.append(ret+"\n");
+				progressBar.setValue(i);
+				progressBar.update(progressBar.getGraphics());
+				guiFrame.update(guiFrame.getGraphics());
 			}
 			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 			JScrollPane scrollPane = new JScrollPane(area);
@@ -406,7 +424,7 @@ public class GUI implements ActionListener {
 				cs.maskSequenceToHighQuality(left, right);
 			}
 			if(this.maskLowQualityRemove.isSelected()){
-				cs.maskSequenceToHighQualityRemove(left, right);
+				cs.maskSequenceToHighQualityRemove();
 			}
 			cs.determineFlankPositions();
 			if(printCompare){
@@ -429,25 +447,26 @@ public class GUI implements ActionListener {
 	}
 
 	private void fillInPamSite(String string) {
-		pamChooser.removeAll();
-		//find all pamSites
-		Pattern p = Pattern.compile("[acgt]{21}gg");  // insert your pattern here
-		//string = string.toLowerCase();
-		Matcher m = p.matcher(string);
-		int lastIndex = 0;
-		while (m.find(lastIndex)) {
-			pamChooser.addItem(m.group()+":"+(m.start()));
-			lastIndex = m.start()+1;
+		if(pamChooser != null) {
+			pamChooser.removeAll();
+			//find all pamSites
+			Pattern p = Pattern.compile("[acgt]{21}gg");  // insert your pattern here
+			//string = string.toLowerCase();
+			Matcher m = p.matcher(string);
+			int lastIndex = 0;
+			while (m.find(lastIndex)) {
+				pamChooser.addItem(m.group()+":"+(m.start()));
+				lastIndex = m.start()+1;
+			}
+			p = Pattern.compile("cc[acgt]{21}");  // insert your pattern here
+			m = p.matcher(string);
+			lastIndex = 0;
+			while (m.find(lastIndex)) {
+				pamChooser.addItem(m.group()+":"+(m.end()));
+				lastIndex = m.start()+1;
+			}
+			pamChooser.setSelectedItem(null);
 		}
-		p = Pattern.compile("cc[acgt]{21}");  // insert your pattern here
-		m = p.matcher(string);
-		lastIndex = 0;
-		while (m.find(lastIndex)) {
-			pamChooser.addItem(m.group()+":"+(m.end()));
-			lastIndex = m.start()+1;
-		}
-		pamChooser.setSelectedItem(null);
-		
 	}
 
 	private String analyzeFile(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
@@ -553,7 +572,7 @@ public class GUI implements ActionListener {
 			cs.maskSequenceToHighQuality(left, right);
 		}
 		if(this.maskLowQualityRemove.isSelected()){
-			cs.maskSequenceToHighQualityRemove(left, right);
+			cs.maskSequenceToHighQualityRemove();
 		}
 		cs.determineFlankPositions();
 		if(printCompare){
@@ -617,7 +636,7 @@ public class GUI implements ActionListener {
 		}
 		if(this.maskLowQualityRemove.isSelected()){
 			cs.setAndDetermineCorrectRange(0.05);
-			cs.maskSequenceToHighQualityRemove(left, right);
+			cs.maskSequenceToHighQualityRemove();
 		}
 		cs.determineFlankPositions();
 		if(printCompare){
@@ -632,12 +651,14 @@ public class GUI implements ActionListener {
 			model.addElement(subject);
 		}
 		if(chooser.getSelectedFile().isDirectory()){
-			for(File file: chooser.getSelectedFile().listFiles()){
-				if(file.getName().endsWith(".ab1")){
-					model.addElement(file);
-				}
-				else if(file.isDirectory()){
-					fillTable(file);
+			for(File chosenFile: chooser.getSelectedFiles()) {
+				for(File file: chosenFile.listFiles()){
+					if(file.getName().endsWith(".ab1")){
+						model.addElement(file);
+					}
+					else if(file.isDirectory()){
+						fillTable(file);
+					}
 				}
 			}
 		}

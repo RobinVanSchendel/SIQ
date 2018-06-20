@@ -44,6 +44,7 @@ import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
 import utils.CompareSequence;
+import utils.MyOptions;
 import utils.SequenceFileThread;
 import utils.Utils;
 
@@ -56,11 +57,17 @@ public class SequenceController {
 	private boolean collapseEvents = false;
 	private ArrayList<CompareSequence> sequences;
 	private HashMap<String, ArrayList<CompareSequence>> hash = new HashMap<String, ArrayList<CompareSequence>>();
+	private int[] startPositions;
+	private int[] endPositions;
+	private long minimalCount;
+	private int nrCPUs = Runtime.getRuntime().availableProcessors();
+	private boolean includeStartEnd = true;
 	
 	public void readFiles(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, PrintWriter writer){
 		BufferedReader is = null, is2 = null;
 		RichSequence subject = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
+		HashMap<String, String> hmAdditional = new HashMap<String, String>();
 		try {
 			is = new BufferedReader(new FileReader(subjectFile));
 			is2 = new BufferedReader(new FileReader(searchAdditional));
@@ -71,9 +78,13 @@ public class SequenceController {
 			while(si2.hasNext()){
 				additional.add(si2.nextSequence());
 			}
+			for(Sequence s: additional) {
+				hmAdditional.put(s.getName(), s.seqString().toString());
+			}
 		} catch (FileNotFoundException | NoSuchElementException | BioException e1) {
 			e1.printStackTrace();
 		}
+		
 		
 		File d = new File(dir);
 		Vector<File> ab1s = getAB1Files(d);
@@ -96,9 +107,9 @@ public class SequenceController {
 							//mask
 							CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 							cs.setAndDetermineCorrectRange(0.05);
-							cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
+							cs.maskSequenceToHighQualityRemove();
 							cs.determineFlankPositions();
-							cs.setAdditionalSearchString(additional);
+							cs.setAdditionalSearchString(hmAdditional);
 							cs.setCutType(type);
 							//only correctly found ones
 							if(cs.getRemarks().length() == 0){
@@ -145,12 +156,16 @@ public class SequenceController {
 		
 		BufferedReader is = null, is2 = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
+		HashMap<String, String> hmAdditional = new HashMap<String, String>();
 		try {
 			if(searchAdditional != null){
 				is2 = new BufferedReader(new FileReader(searchAdditional));
 				RichSequenceIterator si2 = RichSequence.IOTools.readFastaDNA(is2, null);
 				while(si2.hasNext()){
 					additional.add(si2.nextRichSequence());
+				}
+				for(Sequence s: additional) {
+					hmAdditional.put(s.getName(), s.seqString().toString());
 				}
 			}
 		} catch (FileNotFoundException | NoSuchElementException | BioException e1) {
@@ -180,9 +195,9 @@ public class SequenceController {
 				}
 				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent());
 				cs.setAndDetermineCorrectRange(0.05);
-				cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
+				cs.maskSequenceToHighQualityRemove();
 				cs.determineFlankPositions();
-				cs.setAdditionalSearchString(additional);
+				cs.setAdditionalSearchString(hmAdditional);
 				cs.setCutType(type);
 				//only correctly found ones
 				//and filter for events that are the same in ID and class
@@ -227,7 +242,7 @@ public class SequenceController {
 		}
 		
 		File d = new File(dir);
-		Vector<File> ab1s = getFASTQFiles(d);
+		Vector<File> ab1s = getFASTQFiles(d, null);
 		System.out.println("Found "+ab1s.size()+" FASTQ files");
 		PrintWriter writer = null;
 		if(writeToOutput){
@@ -277,7 +292,7 @@ public class SequenceController {
 								//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 								CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 								cs.setAndDetermineCorrectRange(0.05);
-								cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
+								cs.maskSequenceToHighQualityRemove();
 								cs.determineFlankPositions();
 								//cs.setAdditionalSearchString(additional);
 								cs.setCutType(type);
@@ -286,7 +301,7 @@ public class SequenceController {
 								if(cs.getRemarks().length() == 0){
 									if(!printOnlyIsParts){
 										if(collapseEvents){
-											String key = cs.getKey();
+											String key = cs.getKey(includeStartEnd);
 											if(countEvents.containsKey(key)){
 												countEvents.put(key, countEvents.get(key)+1);
 											}
@@ -348,10 +363,11 @@ public class SequenceController {
 		}
 		writer.close();
 	}
-	public void readFilesFASTQMultiThreaded(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, double maxError){
+	public void readFilesFASTQMultiThreaded(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, String containsString, MyOptions options){
 		BufferedReader is = null, is2 = null;
 		RichSequence subject = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
+		HashMap<String, String> hmAdditional = new HashMap<String, String>();
 		try {
 			is = new BufferedReader(new FileReader(subjectFile));
 			if(searchAdditional!= null){
@@ -360,9 +376,11 @@ public class SequenceController {
 				while(si2.hasNext()){
 					additional.add(si2.nextSequence());
 				}
+				for(Sequence s: additional) {
+					hmAdditional.put(s.getName(), s.seqString().toString());
+				}
 			}
 			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
-			
 			subject = si.nextRichSequence();
 			
 			
@@ -371,7 +389,7 @@ public class SequenceController {
 		}
 		
 		File d = new File(dir);
-		Vector<File> ab1s = getFASTQFiles(d);
+		Vector<File> ab1s = getFASTQFiles(d, containsString);
 		System.out.println("Found "+ab1s.size()+" FASTQ files");
 		int fileNr = 1;
 		Vector<Thread> v = new Vector<Thread>();
@@ -379,21 +397,29 @@ public class SequenceController {
 		Vector<Integer> toBeRemoved = new Vector<Integer>();
 		Vector<File> files = new Vector<File>();
 		String prepostfix ="";
-		if(collapseEvents){
-			prepostfix = "_collapse";
+		if(options.collapseEvents()){
+			prepostfix = "_collapse_";
 		}
-		String postfix = "_multithreadout.txt";
+		String postfix = options.getOutputPostfix();
 		for(File seqs: ab1s){
 			System.out.println(fileNr+"/"+ab1s.size()+":"+seqs.getName());
 			File output = new File(seqs.getAbsolutePath()+prepostfix+postfix);
 			files.add(output);
-			SequenceFileThread sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, collapseEvents, maxError, additional);
+			SequenceFileThread sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, options.collapseEvents(), options.getMaxError(), hmAdditional);
+			if(startPositions != null && endPositions!= null) {
+				sft.setStartEndPositions(startPositions, endPositions);
+			}
+			sft.setMinimalCount(options.getMinNumber());
+			sft.setCollapseStartEnd(includeStartEnd);
 			Thread newThread = new Thread(sft);
 			v.add(newThread);
 			//newThread.start();
 			fileNr++;
 		}
-		int max = 4;
+		//int max = Runtime.getRuntime().availableProcessors();
+		long max = options.getThreads();
+		int maxFiles = ab1s.size();
+		System.out.println("Gonna start "+Math.min(max, maxFiles)+" cpus");
 		//let's see if this works
 		while(v.size()>0 || running.size()>0){
 			for(int nr = running.size()-1;nr>=0;nr--){
@@ -411,7 +437,8 @@ public class SequenceController {
 				t.start();
 			}
 			try {
-				Thread.currentThread().sleep(1000);
+				//1 second of sleep... ZzZ...
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -426,10 +453,10 @@ public class SequenceController {
 				PrintWriter writer = new PrintWriter(getOutputFile(), "UTF-8");
 				//add header, always
 				if(this.collapseEvents){
-					writer.print("#Counts\t"+CompareSequence.getOneLineHeader());
+					writer.println("#Counts\t"+CompareSequence.getOneLineHeader());
 				}
 				else{
-					writer.print("Empty\t"+CompareSequence.getOneLineHeader());
+					writer.println("Empty\t"+CompareSequence.getOneLineHeader());
 				}
 				for(File f: files){
 					Scanner s = new Scanner(f);
@@ -449,7 +476,7 @@ public class SequenceController {
 			}
 		}
 	}
-	private Vector<File> getFASTQFiles(File d) {
+	private Vector<File> getFASTQFiles(File d, String containsString) {
 		Vector<File> files = new Vector<File>();
 		for(File f: d.listFiles()){
 			if(f.isDirectory()){
@@ -457,7 +484,14 @@ public class SequenceController {
 			}
 			//for some reason .gz does not work yet
 			else if(f.isFile() && f.getName().endsWith(".fastq") || f.getName().endsWith(".fastq.gz")){
-				files.add(f);
+				if(containsString != null) {
+					if(f.getName().contains(containsString)) {
+						files.add(f);
+					}
+				}
+				else {
+					files.add(f);
+				}
 			}
 		}
 		return files;
@@ -510,12 +544,16 @@ public class SequenceController {
 			String rightFlank, String type, String searchAdditional, boolean printNonCorrect, double quality) {
 		
 		Vector<Sequence> additional = new Vector<Sequence>();
+		HashMap<String, String> hmAdditional = new HashMap<String, String>();
 		try {
 			if(searchAdditional != null){
 				BufferedReader is2 = new BufferedReader(new FileReader(searchAdditional));
 				RichSequenceIterator si2 = RichSequence.IOTools.readFastaDNA(is2, null);
 				while(si2.hasNext()){
 					additional.add(si2.nextRichSequence());
+				}
+				for(Sequence s: additional) {
+					hmAdditional.put(s.getName(), s.seqString().toString());
 				}
 			}
 		} catch (FileNotFoundException | NoSuchElementException | BioException e1) {
@@ -541,9 +579,9 @@ public class SequenceController {
 				//mask
 				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent());
 				cs.setAndDetermineCorrectRange(quality);
-				cs.maskSequenceToHighQualityRemove(leftFlank, rightFlank);
+				cs.maskSequenceToHighQualityRemove();
 				cs.determineFlankPositions();
-				cs.setAdditionalSearchString(additional);
+				cs.setAdditionalSearchString(hmAdditional);
 				cs.setCutType(type);
 				//only correctly found ones
 				//and filter for events that are the same in ID and class
@@ -615,6 +653,20 @@ public class SequenceController {
 	    public int compareTo(CompareSequence object1, CompareSequence object2) {
 	        return object1.getDelStart() - object2.getDelStart();
 	    }
+	}
+	public void setStartEndPositions(int[] startPositions, int[] endPositions) {
+		this.startPositions = startPositions;
+		this.endPositions = endPositions;
+		
+	}
+	public void setMinimalCount(long minimalCount) {
+		this.minimalCount = minimalCount;
+	}
+	public void setThreads(int cpu) {
+		this.nrCPUs = cpu;
+	}
+	public void setIncludeStartEnd(boolean includeStartEnd) {
+		this.includeStartEnd = includeStartEnd;
 	}
 	
 }
