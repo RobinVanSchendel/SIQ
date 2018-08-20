@@ -11,6 +11,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -28,8 +29,11 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.SpinnerModel;
+import javax.swing.SpinnerNumberModel;
 
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.DNATools;
@@ -66,12 +70,15 @@ public class GUI implements ActionListener {
 	private MenuBarCustom mbc;
 	private ArrayList<RichSequence> sequences;
 	JProgressBar progressBar;
+	JLabel maxE = new JLabel("maxError:");
+	private JSpinner maxError;
+	HashMap<String, String> hmAdditional;
 	
-	public GUI()
+	public GUI(String version)
     {
         //make sure the program exits when the frame closes
         guiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        guiFrame.setTitle("Robin's Sanger Sequence Analyzer");
+        guiFrame.setTitle("Sanger Sequence Analyzer "+version+" - Tijsterman Lab");
         guiFrame.setSize(1200,600);
       
         //This will center the JFrame in the middle of the screen
@@ -139,11 +146,18 @@ public class GUI implements ActionListener {
         //comboPanel.add(new JLabel("select PAM site:"));
         //comboPanel.add(pamChooser);
         
-        maskLowQuality.setSelected(false); 
-        comboPanel.add(maskLowQuality);
+        maskLowQuality.setSelected(false);
+        //do not show this option
+        //comboPanel.add(maskLowQuality);
         
         maskLowQualityRemove.setSelected(true); 
         comboPanel.add(maskLowQualityRemove);
+        
+        SpinnerModel model = new SpinnerNumberModel(0.05, 0, 1.0, 0.01);
+        maxError = new JSpinner(model);
+        maxError.setPreferredSize(new Dimension(50,20));
+        comboPanel.add(maxE);
+        comboPanel.add(maxError);
         
         //The JFrame uses the BorderLayout layout manager.
         //Put the two JPanels and JButton in different areas.
@@ -198,6 +212,12 @@ public class GUI implements ActionListener {
 			boolean check = true;
 			progressBar.setMaximum(model.size()-1);
 			progressBar.setValue(0);
+			left.setText(left.getText().trim());
+			right.setText(right.getText().trim());
+			
+			sequences = Utils.fillArrayListSequences(subject);
+			hmAdditional = Utils.fillHashWithAddSequences(sequences);
+			
 			for(int i = 1; i<model.size();i++){
 				String ret = null;
 				if(mbc.tryToMatchFasta()){
@@ -297,7 +317,7 @@ public class GUI implements ActionListener {
 						subject = chooser.getSelectedFile();
 						model.insertElementAt(subject, 0);
 						if(si.hasNext() && !mbc.tryToMatchFasta()){
-							JOptionPane.showMessageDialog(guiFrame, "You selected a fasta file with two sequences\n"+s.getName()+"\n"+si.nextSequence().getName()+"\nI will search for translocations");
+							JOptionPane.showMessageDialog(guiFrame, "You selected a fasta file with two or more sequences\nI will search for templated flanks in the extra sequences.");
 						}
 					} catch (NoSuchElementException e1) {
 						JOptionPane.showMessageDialog(guiFrame,
@@ -322,28 +342,12 @@ public class GUI implements ActionListener {
 
 	private String analyzeFileAll(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		StringBuffer sb = new StringBuffer();
-		BufferedReader is = null;
-		try {
-			is = new BufferedReader(new FileReader(subject));
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		//get a SequenceDB of all sequences in the file
-		RichSequenceIterator si = IOTools.readFastaDNA(is, null);
-		Vector<RichSequence> subjects = new Vector<RichSequence>();
 		RichSequence subject2 = null;
-		
-		while(si.hasNext()){
-			try {
-				subjects.add(si.nextRichSequence());
-			} catch (NoSuchElementException e) {
-				e.printStackTrace();
-			} catch (BioException e) {
-				e.printStackTrace();
-			}
-			
+		//DISABLE TRANSLOCATION SEARCH AS IT CONFLICTS WITH SEARCHING FOR TEMPLATED FLANK INSERTIONS
+		if(sequences.size()>1) {
+			//subject2 = sequences.get(1);
 		}
-		
+
 		Chromatogram chromo = null;
 		try {
 			chromo = ChromatogramFactory.create(f);
@@ -352,7 +356,7 @@ public class GUI implements ActionListener {
 		}
 		//SymbolList symbols = trace.getSequence();
 		String name = f.getName();
-		for(RichSequence subject: subjects){
+		for(RichSequence subject: sequences){
 			if(checkLeftRight){
 				if(left.length()>0 && right.length()>0){
 					//System.out.println("hier!");
@@ -419,7 +423,7 @@ public class GUI implements ActionListener {
 			}
 			CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
 			//cs.setAndDetermineCorrectRange(0.01);
-			cs.setAndDetermineCorrectRange(0.05);
+			cs.setAndDetermineCorrectRange((double)maxError.getValue());
 			if(this.maskLowQuality.isSelected()){
 				cs.maskSequenceToHighQuality(left, right);
 			}
@@ -427,6 +431,7 @@ public class GUI implements ActionListener {
 				cs.maskSequenceToHighQualityRemove();
 			}
 			cs.determineFlankPositions();
+			cs.setAdditionalSearchString(hmAdditional);
 			if(printCompare){
 				String s = cs.toStringCompare(100); 
 				if(s != null){
@@ -470,31 +475,16 @@ public class GUI implements ActionListener {
 	}
 
 	private String analyzeFile(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
-		BufferedReader is = null;
-		try {
-			is = new BufferedReader(new FileReader(subject));
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
 		//get a SequenceDB of all sequences in the file
-		RichSequenceIterator si = IOTools.readFastaDNA(is, null);
 		RichSequence subject = null;
 		RichSequence subject2 = null;
 		
-		while(si.hasNext()){
-			try {
-				if(subject == null){
-					subject = si.nextRichSequence();
-				}
-				if(subject2 == null && si.hasNext()){
-					subject2 = si.nextRichSequence();
-				}
-			} catch (NoSuchElementException e) {
-				e.printStackTrace();
-			} catch (BioException e) {
-				e.printStackTrace();
-			}
-			
+		if(sequences.size()>0) {
+			subject = sequences.get(0);
+		}
+		//DISABLE
+		if(sequences.size()>1) {
+			//subject2 = sequences.get(1);
 		}
 		
 		Chromatogram chromo = null;
@@ -566,8 +556,9 @@ public class GUI implements ActionListener {
 		} catch (IllegalSymbolException e) {
 			e.printStackTrace();
 		}
+		
 		CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
-		cs.setAndDetermineCorrectRange(0.05);
+		cs.setAndDetermineCorrectRange((double)maxError.getValue());
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);
 		}
@@ -575,6 +566,7 @@ public class GUI implements ActionListener {
 			cs.maskSequenceToHighQualityRemove();
 		}
 		cs.determineFlankPositions();
+		cs.setAdditionalSearchString(hmAdditional);
 		if(printCompare){
 			return cs.toStringCompare(100);
 		}
@@ -631,14 +623,15 @@ public class GUI implements ActionListener {
 		}
 		CompareSequence cs = new CompareSequence(subject, null, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
 		if(this.maskLowQuality.isSelected()){
-			cs.setAndDetermineCorrectRange(0.05);
+			cs.setAndDetermineCorrectRange((double)maxError.getValue());
 			cs.maskSequenceToHighQuality(left, right);
 		}
 		if(this.maskLowQualityRemove.isSelected()){
-			cs.setAndDetermineCorrectRange(0.05);
+			cs.setAndDetermineCorrectRange((double)maxError.getValue());
 			cs.maskSequenceToHighQualityRemove();
 		}
 		cs.determineFlankPositions();
+		cs.setAdditionalSearchString(hmAdditional);
 		if(printCompare){
 			return cs.toStringCompare(100);
 		}
@@ -680,5 +673,8 @@ public class GUI implements ActionListener {
 				}
 			}
 		}
+	}
+	public void setMaxError(double e) {
+		maxError.setValue(e);
 	}
 }

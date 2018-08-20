@@ -5,19 +5,22 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
+
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import gui.GUI;
+import main.SV_Analyzer;
 import utils.CompareSequence;
 import utils.MyOptions;
 
@@ -33,141 +36,186 @@ public class HPRTFastQ {
 			System.err.println(e);
 			HelpFormatter formatter = new HelpFormatter();
 			formatter.printHelp( "HPRTFastQ", optionsApache );
+			System.exit(0);
 		}
 		MyOptions options = new MyOptions(cmd);
+		if(options.getHelp() || !options.hasOptions()) {
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp( "HPRTFastQ", optionsApache );
+			System.exit(0);
+		}
+		
 		if(options.printTemplate()) {
 			printTemplate();
-		}
-		System.out.println(options.printParameters());
-		
-		SequenceController sq = new SequenceController();
-		//for IS color parts
-		/*
-		HashMap<String, String> colorMap = new HashMap<String,String>();
-		colorMap.put("px458_Cas9-GFP", "brown");
-		colorMap.put("mmHPRT_sequence_Fasta", "purple");
-		colorMap.put("Flank insert", "orange");
-		colorMap.put("Flank insert rc", "red");
-		colorMap.put("Tandem duplication", "green");
-		colorMap.put("Tandem duplication2", "darkgreen");
-		*/
-		//System.out.println("input : "+cmd.getOptionValue("in"));
-		//System.out.println("out : "+cmd.getOptionValue("o"));
-		//System.out.println("postfix : "+cmd.getOptionValue("p"));
-		if(options.getMinNumber()>0 && !options.collapseEvents()) {
-			System.err.println("You specified a minimalCount to only output events that have been seen ["+options.getMinNumber()+"] times, but this does not work if you do not set the collapse to true");
-			System.err.println("Either remove this argument or set collapse to true");
 			System.exit(0);
 		}
-		//Print formatter
-		//HelpFormatter formatter = new HelpFormatter();
-		//formatter.printHelp( "HPRTFastQ", optionsApache );
-		//System.exit(0);
-		
-		String containsString = null; //".assembled"; //null
-		int[] startPositions = {81,216}; //these are the start positions (81, 216) and the end positions (326, 553) of the primers
-		int[] endPositions = {326,552}; //these are the end positions (326, 552) and the end positions (326, 553) of the primers
-		boolean keepOnlyPositions = false;
-		boolean includeStartEnd = false;
-		
-		
-		//if(collapse){
-		//	name +="_collapse";
-		//}
-		//name +=".txt";
-		
-		//set the output file
-		File output = new File(options.getOutput());
-		if(output.exists() && !options.overwrite()) {
-			System.out.println("Output file "+output.getAbsolutePath()+" already exists");
-			System.out.println("Add option -f to overwrite, exiting now!");
-			System.exit(0);
-		}
-		sq.setOutputFile(output);
-		
-		sq.setCollapseEvents(options.collapseEvents());
-		
-		//sq.setPrintOnlyISParts();
-		//sq.setColorMap(colorMap);
-		sq.setMinimalCount(options.getMinNumber());
-		sq.setIncludeStartEnd(includeStartEnd);
-		//if(!includeStartEnd) {
-			//name+= "_ignoreStartEndPosInKey";
-		//	
-		//}
-		File file = new File(cmd.getOptionValue("in"));
-		
-		if(sq.getOutputFile() != null){
-			sq.writeln("Type\t"+CompareSequence.getOneLineHeader());
-		}
-		else{
-			System.out.println("Type\t"+CompareSequence.getOneLineHeader());
-		}
-		
-		Scanner s = null;
-		final long startTime = System.nanoTime();
-		try {
-			s = new Scanner(file);
-			boolean first = true;
-			int fileColumn = -1;
-			int subjectColumn = -1;
-			int lFColumn = -1;
-			int rFColumn = -1;
-			int typeColumn = -1;
-			int addSearchColumn = -1;
-			while(s.hasNextLine()){
-				String line = s.nextLine();
-				String[] parts = line.split("\t");
-				if(first){
-					int i = 0;
-					for(String str: parts){
-						if(str.equals("Files")){
-							fileColumn = i;
-						}
-						if(str.equals("Subject")){
-							subjectColumn = i;
-						}
-						if(str.equals("LeftFlank")){
-							lFColumn = i;
-						}
-						if(str.equals("RightFlank")){
-							rFColumn = i;
-						}
-						if(str.equals("Type")){
-							typeColumn = i;
-						}
-						if(str.equals("AdditionalSearch")){
-							addSearchColumn = i;
-						}
-						i++;
-					}
-					first = false;
-				}
-				else{
-					String files = parts[fileColumn];
-					String subject = parts[subjectColumn];
-					String leftFlank = parts[lFColumn];
-					String rightFlank = parts[rFColumn];
-					String type = parts[typeColumn];
-					File search = null;
-					if(addSearchColumn>-1 && parts.length>addSearchColumn){
-						search = new File(parts[addSearchColumn]);
-					}
-					if(keepOnlyPositions) {
-						sq.setStartEndPositions(startPositions, endPositions);
-					}
-					sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
-				}
+		if(options.startGUI()) {
+			try {
+				UIManager.setLookAndFeel(
+				        UIManager.getSystemLookAndFeelClassName());
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InstantiationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (UnsupportedLookAndFeelException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			s.close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			GUI g = new GUI(SV_Analyzer.VERSION);
+			g.setMaxError(options.getMaxError());
 		}
-		final long duration = (System.nanoTime() - startTime);
-		long seconds = TimeUnit.NANOSECONDS.toSeconds(duration);
-		//System.out.println("This script took "+seconds+" seconds");
-		System.exit(0);
+		else {
+			System.out.println(options.printParameters());
+			
+			SequenceController sq = new SequenceController();
+			//for IS color parts
+			/*
+			HashMap<String, String> colorMap = new HashMap<String,String>();
+			colorMap.put("px458_Cas9-GFP", "brown");
+			colorMap.put("mmHPRT_sequence_Fasta", "purple");
+			colorMap.put("Flank insert", "orange");
+			colorMap.put("Flank insert rc", "red");
+			colorMap.put("Tandem duplication", "green");
+			colorMap.put("Tandem duplication2", "darkgreen");
+			*/
+			//System.out.println("input : "+cmd.getOptionValue("in"));
+			//System.out.println("out : "+cmd.getOptionValue("o"));
+			//System.out.println("postfix : "+cmd.getOptionValue("p"));
+			if(options.getMinNumber()>0 && !options.collapseEvents()) {
+				System.err.println("You specified a minimalCount to only output events that have been seen ["+options.getMinNumber()+"] times, but this does not work if you do not set the collapse to true");
+				System.err.println("Either remove this argument or set collapse to true");
+				System.exit(0);
+			}
+			//Print formatter
+			//HelpFormatter formatter = new HelpFormatter();
+			//formatter.printHelp( "HPRTFastQ", optionsApache );
+			//System.exit(0);
+			
+			String containsString = null; //".assembled"; //null
+			int[] startPositions = {81,216}; //these are the start positions (81, 216) and the end positions (326, 553) of the primers
+			int[] endPositions = {326,552}; //these are the end positions (326, 552) and the end positions (326, 553) of the primers
+			boolean keepOnlyPositions = false;
+			boolean includeStartEnd = true;
+			
+			
+			//if(collapse){
+			//	name +="_collapse";
+			//}
+			//name +=".txt";
+			
+			//set the output file
+			File output = new File(options.getOutput());
+			if(output.exists() && !options.overwrite()) {
+				System.out.println("Output file "+output.getAbsolutePath()+" already exists");
+				System.out.println("Add option -f to overwrite, exiting now!");
+				System.exit(0);
+			}
+			sq.setOutputFile(output);
+			
+			sq.setCollapseEvents(options.collapseEvents());
+			
+			//sq.setPrintOnlyISParts();
+			//sq.setColorMap(colorMap);
+			sq.setMinimalCount(options.getMinNumber());
+			sq.setIncludeStartEnd(includeStartEnd);
+			//if(!includeStartEnd) {
+				//name+= "_ignoreStartEndPosInKey";
+			//	
+			//}
+			String fileName = options.getFile();
+			File file = null;
+			if(fileName == null) {
+				//String files = 
+				String files = options.getSingleFile();
+				String subject = options.getSubject();
+				String leftFlank = options.getLeftFlank();
+				String rightFlank = options.getRightFlank();
+				String type = null;
+				File search = null;
+				
+				sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
+				System.exit(0);
+			}
+			else {
+				file = new File(options.getFile());
+			}
+			
+			if(sq.getOutputFile() != null){
+				sq.writeln("Type\t"+CompareSequence.getOneLineHeader());
+			}
+			else{
+				System.out.println("Type\t"+CompareSequence.getOneLineHeader());
+			}
+			
+			Scanner s = null;
+			final long startTime = System.nanoTime();
+			try {
+				s = new Scanner(file);
+				boolean first = true;
+				int fileColumn = -1;
+				int subjectColumn = -1;
+				int lFColumn = -1;
+				int rFColumn = -1;
+				int typeColumn = -1;
+				int addSearchColumn = -1;
+				while(s.hasNextLine()){
+					String line = s.nextLine();
+					String[] parts = line.split("\t");
+					if(first){
+						int i = 0;
+						for(String str: parts){
+							if(str.equals("Files")){
+								fileColumn = i;
+							}
+							if(str.equals("Subject")){
+								subjectColumn = i;
+							}
+							if(str.equals("LeftFlank")){
+								lFColumn = i;
+							}
+							if(str.equals("RightFlank")){
+								rFColumn = i;
+							}
+							if(str.equals("Type")){
+								typeColumn = i;
+							}
+							if(str.equals("AdditionalSearch")){
+								addSearchColumn = i;
+							}
+							i++;
+						}
+						first = false;
+					}
+					else{
+						String files = parts[fileColumn];
+						String subject = parts[subjectColumn];
+						String leftFlank = parts[lFColumn];
+						String rightFlank = parts[rFColumn];
+						String type = parts[typeColumn];
+						File search = null;
+						if(addSearchColumn>-1 && parts.length>addSearchColumn){
+							search = new File(parts[addSearchColumn]);
+						}
+						if(keepOnlyPositions) {
+							sq.setStartEndPositions(startPositions, endPositions);
+						}
+						sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
+					}
+				}
+				s.close();
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			final long duration = (System.nanoTime() - startTime);
+			long seconds = TimeUnit.NANOSECONDS.toSeconds(duration);
+			//System.out.println("This script took "+seconds+" seconds");
+		}
 	}
 
 	private static void printTemplate() {
@@ -214,7 +262,6 @@ public class HPRTFastQ {
 				.longOpt("input")
 				.hasArg()
 				.argName("FILE")
-				.required(true)
 				.desc("File containing a tab separated table containing the following info:\n"
 						+ "Files<tab>Subject<tab>LeftFlank<tab>RightFlank<tab>Type<tab>AdditionalSearch\r\n\n" + 
 						"<DIR><tab><ref_fasta><tab><leftFlank><tab><rightFlank><tab><Type><tab><additionalRefFastaFile>")
@@ -226,7 +273,6 @@ public class HPRTFastQ {
 				.longOpt("output_postfix")
 				.hasArg()
 				.argName("FILE")
-				.required(true)
 				.desc("The output will be set in the same location as the input and will add the postfix to the name")
 				.build();
 		o.addOption(outP);
@@ -235,14 +281,13 @@ public class HPRTFastQ {
 				.longOpt("output")
 				.hasArg()
 				.argName("FILE")
-				.required(true)
 				.desc("The output file will merge all the analyzed files into one single file")
 				.build();
 		o.addOption(out);
 
 		//maxBaseError
 		Option maxBError   = Option.builder( "e" )
-				.longOpt("maxBerror")
+				.longOpt("maxError")
                 .hasArg()
                 .type(Number.class)
                 .argName("NUMBER")
@@ -283,6 +328,48 @@ public class HPRTFastQ {
                 .desc("Overwrite the output file when it already exists")
                 .build();
 				o.addOption(over);
+		
+		Option gui   = Option.builder( "g" )
+				.longOpt("gui")
+                .desc("Start a gui to input files")
+                .build();
+				o.addOption(gui);
+		
+		Option reads   = Option.builder( "r" )
+				.longOpt("reads")
+				.hasArg()
+				.type(Number.class)
+                .desc("The number of reads that should be analyzed (all by default)")
+                .build();
+				o.addOption(reads);
+		
+		Option infile = Option.builder("infile")
+				.hasArg()
+				.argName("infile")
+				.desc("A single fastq file that will be analysed")
+				.build();
+		o.addOption(infile);
+		
+		Option subject = Option.builder("subject")
+				.hasArg()
+				.argName("subject")
+				.desc("A reference file to map the fastq file against")
+				.build();
+		o.addOption(subject);
+		
+		Option left = Option.builder("left")
+				.hasArg()
+				.argName("left")
+				.desc("leftFlank seq")
+				.build();
+		o.addOption(left);
+		
+		Option right = Option.builder("right")
+				.hasArg()
+				.argName("right")
+				.desc("right seq")
+				.build();
+		o.addOption(right);
 		
 		return o;
 	}

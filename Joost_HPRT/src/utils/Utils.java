@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.NoSuchElementException;
 
 import org.biojava.bio.BioException;
@@ -71,9 +72,6 @@ public class Utils {
 			return "";
 		}
 		//make them the same case:
-		left = left;//.toLowerCase();
-		del = del;//.toLowerCase();
-		right = right;//.toLowerCase();
 		//check the left part
 		left = new StringBuffer(left).reverse().toString();
 		del = new StringBuffer(del).reverse().toString();
@@ -104,6 +102,104 @@ public class Utils {
 		}
 		return ret;
 	}
+	public static String getHomologyAtBreakWithMismatch(String left, String delOrig, String right, double mismatchRate) {
+		//now also do it for insertions
+		if(left == null || right == null) {
+			return "";
+		}
+		if(delOrig == null){
+			return "";
+		}
+		//check the left part
+		left = new StringBuffer(left).reverse().toString();
+		String del = new StringBuffer(delOrig).reverse().toString();
+		//System.out.println("left"+left);
+		//System.out.println("del"+del);
+		
+		int index = 0;
+		int returnIndex = 0;
+		int numberCorrect = 0;
+		int numberMisses = 0;
+		int lastCorrectIndex = 0;
+		String homT = "";
+		while(index < left.length() && index < del.length()){
+			if(left.charAt(index) == del.charAt(index)){
+				numberCorrect++;
+				homT+=left.charAt(index);
+			}
+			else{
+				numberMisses++;
+				homT+='X';
+			}
+			//System.out.println(left.charAt(index)+" "+del.charAt(index));
+			//calculate the mismatch and see if this is a good index
+			//System.out.println("correct:"+numberCorrect+ " numbermiss: "+numberMisses);
+			//System.out.println(numberMisses/((double)numberCorrect+numberMisses));
+			if(numberMisses/((double)numberCorrect+numberMisses) <= mismatchRate){
+				returnIndex = index+1;
+				if(left.charAt(index) == del.charAt(index)){
+					lastCorrectIndex = returnIndex;
+				}
+			}
+			index++;
+		}
+		//System.out.println("index:"+returnIndex);
+		//System.out.println("indexReturn:"+returnIndex);
+		String leftHom = homT.substring(0, lastCorrectIndex);
+		//System.out.println("leftHom:"+leftHom);
+		leftHom = new StringBuffer(leftHom).reverse().toString();
+		
+		//right
+		//now also do it for insertions
+		//System.out.println("right"+right);
+		//System.out.println("del"+del);
+		del = delOrig;
+		numberCorrect = 0;
+		numberMisses = 0;
+		index = 0;
+		returnIndex = 0;
+		homT = "";
+		lastCorrectIndex = 0;
+		while(index < right.length() && index < del.length()){
+			//System.out.println(right.charAt(index));
+			//System.out.println("cor:"+numberCorrect);
+			//System.out.println("mis:"+numberMisses);
+			//System.out.println(index+" right: "+right.charAt(index)+" del: "+del.charAt(index));
+			if(right.charAt(index) == del.charAt(index)){
+				numberCorrect++;
+				homT+=right.charAt(index);
+			}
+			else{
+				numberMisses++;
+				homT+='X';
+			}
+			//calculate the mismatch and see if this is a good index
+			//System.out.println("cor:"+numberCorrect);
+			//System.out.println("mis:"+numberMisses);
+			
+			//System.out.println(numberMisses/((double)numberCorrect+numberMisses));
+			if(numberMisses/((double)numberCorrect+numberMisses) <= mismatchRate){
+				returnIndex = index+1;
+				if(right.charAt(index) == del.charAt(index)){
+					lastCorrectIndex = returnIndex;
+				}
+				//System.out.println(returnIndex);
+			}
+			index++;
+		}
+		//System.out.println("index:"+index);
+		//System.out.println("indexReturn:"+returnIndex);
+		//System.out.println("homT:"+homT+ ":"+lastCorrectIndex);
+		String rightHom = homT.substring(0, lastCorrectIndex);
+		//System.out.println("rightHom:"+rightHom);
+		//System.out.println("------------------");
+		String ret = leftHom+rightHom;
+		if(ret.length()> del.length()){
+			ret = del;
+		}
+		return ret;
+	}
+	
 	public static String[] longestCommonSubstringAllowMismatch(String subject, String query, int nrMismatches)
 	{
 	    if(subject == null || query == null){
@@ -224,5 +320,21 @@ public class Utils {
 			}
 		}
 		return null;
+	}
+	public static HashMap<String, String> fillHashWithAddSequences(ArrayList<RichSequence> sequences) {
+		if(sequences.size()<2) {
+			return null;
+		}
+		HashMap<String, String> hmAdditional = new HashMap<String, String>();
+		int index = 0;
+		for(RichSequence rc: sequences) {
+			//skip first!!
+			if(index >0) {
+				hmAdditional.put(rc.getName(), rc.seqString().toString());
+			}
+			index++;
+		}
+		return hmAdditional;
+	
 	}
 }

@@ -42,6 +42,8 @@ public class SequenceFileThread implements Runnable {
 	private int[] endPositions;
 	private long minimalCount;
 	private boolean includeStartEnd;
+	private long maxReads;
+	private boolean printHeader = false;
 	
 	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, HashMap<String, String> additional){
 		this.f = f;
@@ -57,6 +59,9 @@ public class SequenceFileThread implements Runnable {
 	
 	@Override
 	public void run() {
+		runReal();
+	}
+	public void runReal() {
 		Thread.currentThread().setName(f.getName());
 		boolean printOnlyIsParts = false;
 		boolean collapseEvents = collapse;
@@ -98,21 +103,6 @@ public class SequenceFileThread implements Runnable {
 			while(iter.hasNext()){
 				FastqRecord fastqRecord = iter.next();
 				QualitySequence quals = fastqRecord.getQualitySequence();
-				/*
-				if(!fastqRecord.getId().contains("M01495:68:000000000-B4DGY:1:2117:19644:8652")){
-					continue;
-				}
-				System.out.println(fastqRecord.getId());
-				System.out.println(quals);
-				Iterator<PhredQuality> pqs = quals.iterator();
-				System.out.println(fastqRecord.getNucleotideSequence().toString());
-				for(int index = 0;index<quals.getLength();index++){
-					//System.out.println(pqs.next().getErrorProbability());
-					PhredQuality pq = quals.get(index);
-					Nucleotide n = fastqRecord.getNucleotideSequence().get(index);
-					System.out.println(index+":"+n.toString()+":"+pq.getErrorProbability());
-				}
-				*/
 				RichSequence query = null;
 				try {
 					query = RichSequence.Tools.createRichSequence(fastqRecord.getId(),DNATools.createDNA(fastqRecord.getNucleotideSequence().toString()));
@@ -126,6 +116,10 @@ public class SequenceFileThread implements Runnable {
 				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, f.getParentFile().getName());
 				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemove();
+				//small speedup
+				if(cs.getRemarks().length()>0) {
+					continue;
+				}
 				cs.determineFlankPositions();
 				cs.setAdditionalSearchString(hmAdditional);
 				//cs.setCutType(type);
@@ -143,6 +137,15 @@ public class SequenceFileThread implements Runnable {
 							String key = cs.getKey(includeStartEnd);
 							if(countEvents.containsKey(key)){
 								countEvents.put(key, countEvents.get(key)+1);
+								//while this works, it might be slow and/or incorrect!
+								//the best would be to give the majority here
+								//replaced not so great sequences with more accurate ones
+								//to be able to filter better later
+								//20180731, added match positions as now sometimes shorter events are selected
+								//which causes problems with filters later
+								if(cs.getNrNs()<csEvents.get(key).getNrNs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
+									csEvents.put(key, cs);
+								}
 							}
 							else{
 								countEvents.put(key, 1);
@@ -171,6 +174,7 @@ public class SequenceFileThread implements Runnable {
 					}
 				}
 				else {
+					//System.err.println(cs.getRemarks());
 					wrong++;
 				}
 				//System.out.println(cs.toStringOneLine());
@@ -190,8 +194,11 @@ public class SequenceFileThread implements Runnable {
 					long duration = TimeUnit.MILLISECONDS.convert((end-start), TimeUnit.NANOSECONDS);
 					//System.out.println("So far took :"+duration+" milliseconds");
 					start = end;
-					System.out.println(Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" correct fraction: "+(correct/(double)(correct+wrong)));
+					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" correct fraction: "+(correct/(double)(correct+wrong)));
 					//iter.close();
+					//break;
+				}
+				if(counter>= this.maxReads) {
 					break;
 				}
 			}
@@ -205,6 +212,9 @@ public class SequenceFileThread implements Runnable {
 				//NO NOT HERE
 				//writer.println("countEvents\t"+CompareSequence.getOneLineHeader());
 				int count = 0;
+				if(printHeader) {
+					writer.println("countEvents\t"+CompareSequence.getOneLineHeader());
+				}
 				for(String key: csEvents.keySet()){
 					//only output if we saw it minimalCount times
 					if(countEvents.get(key)>=minimalCount) {
@@ -257,5 +267,15 @@ public class SequenceFileThread implements Runnable {
 	}
 	public void setCollapseStartEnd(boolean includeStartEnd) {
 		this.includeStartEnd = includeStartEnd;
+	}
+
+	public void setMaximumReads(long maxReads) {
+		this.maxReads = maxReads;
+		
+	}
+
+	public void printHeader() {
+		this.printHeader = true;
+		
 	}
 }

@@ -127,6 +127,7 @@ public class ReduceSizeCollapsedFile {
 				}
 				catch(Exception e) {
 					System.out.println("whatever...");
+					//e.printStackTrace();
 				}
 				if(totalLines %100000 == 0) {
 					System.out.println("Already processed "+totalLines+" lines");

@@ -44,6 +44,7 @@ import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
 import utils.CompareSequence;
+import utils.MyError;
 import utils.MyOptions;
 import utils.SequenceFileThread;
 import utils.Utils;
@@ -223,7 +224,7 @@ public class SequenceController {
 		}
 		return al;
 	}
-	public void readFilesFASTQ(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput){
+	public void readFilesFASTQ(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, String containsString, MyOptions options){
 		BufferedReader is = null, is2 = null;
 		RichSequence subject = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
@@ -291,7 +292,7 @@ public class SequenceController {
 								
 								//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 								CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
-								cs.setAndDetermineCorrectRange(0.05);
+								cs.setAndDetermineCorrectRange(options.getMaxError());
 								cs.maskSequenceToHighQualityRemove();
 								cs.determineFlankPositions();
 								//cs.setAdditionalSearchString(additional);
@@ -364,6 +365,10 @@ public class SequenceController {
 		writer.close();
 	}
 	public void readFilesFASTQMultiThreaded(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, String containsString, MyOptions options){
+		File f = new File(subjectFile);
+		if(!f.exists()) {
+			MyError.err("The reference input file does not exist: "+f.getAbsolutePath());
+		}
 		BufferedReader is = null, is2 = null;
 		RichSequence subject = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
@@ -389,6 +394,12 @@ public class SequenceController {
 		}
 		
 		File d = new File(dir);
+		if(!d.exists()) {
+			MyError.err("The directory does not exist: "+d.getAbsolutePath());
+		}
+		if(!d.exists()) {
+			MyError.err("The directory "+d.getAbsolutePath()+" is not a directory!");
+		}
 		Vector<File> ab1s = getFASTQFiles(d, containsString);
 		System.out.println("Found "+ab1s.size()+" FASTQ files");
 		int fileNr = 1;
@@ -401,20 +412,36 @@ public class SequenceController {
 			prepostfix = "_collapse_";
 		}
 		String postfix = options.getOutputPostfix();
+		SequenceFileThread sft = null;
 		for(File seqs: ab1s){
 			System.out.println(fileNr+"/"+ab1s.size()+":"+seqs.getName());
 			File output = new File(seqs.getAbsolutePath()+prepostfix+postfix);
+			if(!options.overwrite() && output.exists()) {
+				System.err.println("File "+output.getAbsolutePath()+" already exists, skipping!");
+				continue;
+			}
 			files.add(output);
-			SequenceFileThread sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, options.collapseEvents(), options.getMaxError(), hmAdditional);
+			sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, options.collapseEvents(), options.getMaxError(), hmAdditional);
 			if(startPositions != null && endPositions!= null) {
 				sft.setStartEndPositions(startPositions, endPositions);
 			}
 			sft.setMinimalCount(options.getMinNumber());
 			sft.setCollapseStartEnd(includeStartEnd);
+			sft.setMaximumReads(options.getMaxReads());
+			if(options.getSingleFile()!= null) {
+				sft.printHeader();
+			}
 			Thread newThread = new Thread(sft);
 			v.add(newThread);
 			//newThread.start();
 			fileNr++;
+		}
+		if(v.size()==0) {
+			System.exit(0);
+		}
+		if(ab1s.size() == 1) {
+			sft.runReal();
+			return;
 		}
 		//int max = Runtime.getRuntime().availableProcessors();
 		long max = options.getThreads();
@@ -447,6 +474,10 @@ public class SequenceController {
 		writeAllFilesToOutput(files);
 	}
 	private void writeAllFilesToOutput(Vector<File> files) {
+		//only if more than one file
+		if(files.size()<=1) {
+			return;
+		}
 		//create outputstream for output
 		if(getOutputFile() != null){
 			try {
@@ -475,12 +506,19 @@ public class SequenceController {
 				e.printStackTrace();
 			}
 		}
+		System.out.println("Written all output to "+getOutputFile().getAbsolutePath());
 	}
 	private Vector<File> getFASTQFiles(File d, String containsString) {
 		Vector<File> files = new Vector<File>();
+		//hack to also allow single Files
+		if(d.isFile()) {
+			files.add(d);
+			return files;
+		}
 		for(File f: d.listFiles()){
+			//recursive
 			if(f.isDirectory()){
-				files.addAll(getAB1Files(f));
+				files.addAll(getFASTQFiles(f, containsString));
 			}
 			//for some reason .gz does not work yet
 			else if(f.isFile() && f.getName().endsWith(".fastq") || f.getName().endsWith(".fastq.gz")){

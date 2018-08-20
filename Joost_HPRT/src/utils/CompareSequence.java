@@ -27,6 +27,7 @@ public class CompareSequence {
 	private final static String replacementFlank = "FLK1";
 	private String leftSite, rightSite;
 	public final static int minimalRangeSize = 40;
+	private final static double maxMismatchRate = 0.1;
 	private static final int ALLLOWEDJUMPDISTANCE = 1;
 	//this introduces possible problems... I am aware of this 'feature' missing SNVs 30bp away from flanks
 	private static final int MINIMUMSECONDSIZE = 30;
@@ -149,11 +150,13 @@ public class CompareSequence {
 			}
 			// translocation
 			if(subject2!= null){
+				//improve the search position
 				flankTwo = findRight(subject2.seqString().substring(rightPos), seqRemain);
 				searchTranslocation = true;
 			}
 			else{
-				flankTwo = findRight(subject.seqString().substring(rightPos), seqRemain);
+				//the rightPos can theoretically be incorrect. here it it better to use the subjectEnd of flankOne
+				flankTwo = findRight(subject.seqString().substring(flankOne.getSubjectEnd()), seqRemain);
 			}
 			//System.out.println("flankOne"+":"+flankOne+":"+flankOne.length());
 			//System.out.println("flankTwo"+":"+flankTwo+":"+flankTwo.length());
@@ -168,13 +171,24 @@ public class CompareSequence {
 				//System.out.println(flankTwo.length());
 				//System.out.println(flankTwo);
 				if(flankOne.length()>=minimumSizeWithoutLeftRight && flankTwo.length()<minimumSizeWithoutLeftRight ){
-					this.leftFlank = flankOne;
-					this.setRemarks("Cannot find the second flank of the event, please do it manually");
+					this.setRemarks("Cannot find the second flank of the event");
+					//this.setRemarks("boo!");
 					//System.out.println("Cannot find the second flank of the event, please do it manually");
 					//System.err.println("Cannot find the second flank of the event, please do it manually");
 				}
+				else if( flankOne.length()<minimumSizeWithoutLeftRight && flankTwo.length()>=minimumSizeWithoutLeftRight) {
+					//only allow this if query starts ok
+					if(flankOne.getQueryStart()>0) {
+						this.setRemarks("Second flank is ok, but left is not "+flankOne);
+					}
+				}
 				else if(flankOne.length()<50 && flankTwo.length()<50 ){
-					this.setRemarks("Cannot find the flanks of the event, please do it manually");
+					//unless the query start at the beginning
+					//this.leftFlank = flankOne;
+					//System.out.println(flankOne);
+					//System.out.println(flankTwo);
+					//System.out.println(this.query.seqString());
+					setRemarks("Cannot find the flanks of the event, please do it manually "+flankOne.length()+" "+flankTwo.length());
 					//System.err.println("Cannot find the flanks of the event, please do it manually");
 				}
 				else{
@@ -207,7 +221,7 @@ public class CompareSequence {
 				//System.out.println(flankTwo.length());
 				if(flankOne.length()>=minimumSizeWithoutLeftRight && flankTwo.length()<minimumSizeWithoutLeftRight ){
 					this.leftFlank = flankOne;
-					this.setRemarks("Cannot find the second flank of the event, please do it manually");
+					this.setRemarks("2Cannot find the second flank of the event, please do it manually");
 					System.err.println("Cannot find the second flank of the event, please do it manually");
 				}
 				else if(flankOne.length()<50 && flankTwo.length()<50 ){
@@ -379,6 +393,7 @@ public class CompareSequence {
 		//System.out.println("left :"+this.leftFlank);
 		checkCall();
 		String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
+		//TODO: I became unsure if this is really a good idea. 
 		if(insertDelCommon.length()>10){
 			//if we masked, then probably this check is not correct
 			//after testing it turns out that most often this is correct
@@ -483,6 +498,8 @@ public class CompareSequence {
 		int size = 20;
 		String homology = "";
 		int homologyLength = -1;
+		String homologyM = "";
+		int homologyLengthM = -1;
 		checkCall();
 		//only do it when no weird things found
 		if(this.remarks.length() == 0 && insert.length()>0){
@@ -492,6 +509,8 @@ public class CompareSequence {
 		if(del.length()>0 && insert.length() == 0){
 			homology = Utils.getHomologyAtBreak(leftFlank.getString(), del, rightFlank);
 			homologyLength = homology.length();
+			homologyM = Utils.getHomologyAtBreakWithMismatch(leftFlank.getString(), del, rightFlank, maxMismatchRate);
+			homologyLengthM = homologyM.length();
 		}
 		if(this.getType()== Type.TANDEMDUPLICATION){
 			homology = getHomologyTandemDuplication();
@@ -532,6 +551,8 @@ public class CompareSequence {
 		ret.append(getColorHomology()).append(s);
 		ret.append(homology).append(s);
 		ret.append(homologyLength).append(s);
+		ret.append(homologyM).append(s);
+		ret.append(homologyLengthM).append(s);
 		ret.append(delLength).append(s);
 		ret.append(getInsertion().length()).append(s);
 		ret.append(mod).append(s);
@@ -856,7 +877,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "CutType\tName\tDir\tFile\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tLongestRevCompInsert\tRanges\tMasked\t"
+		String ret = "CutType\tName\tDir\tFile\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tLongestRevCompInsert\tRanges\tMasked\t"
 				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tReversed\tSchematic\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos"+s+"isStartPos"+s+"isEndPos"+s+"isStartPosRel"+s+"isEndPosRel";
@@ -970,7 +991,7 @@ public class CompareSequence {
 		}
 		if(ranges.size()>=1){
 			String dna = this.query.seqString();
-			String tempDNA = "";
+			StringBuffer tempDNA = new StringBuffer();
 			long j=0;
 			Range correct = null;
 			String largestCommon = null;
@@ -1002,22 +1023,22 @@ public class CompareSequence {
 			if(correct != null){
 				long begin = correct.getBegin();
 				for(;j<begin;j++){
-					tempDNA += "X";
+					tempDNA.append("X");
 				}
 				long end = correct.getEnd();
 				for(;j<=end;j++){
-					tempDNA += dna.charAt((int) j);
+					tempDNA.append(dna.charAt((int) j));
 				}
 				//System.out.println(this.getName());
 				//System.out.println(correct);
 				//System.out.println(tempDNA);
 				while(tempDNA.length()<dna.length()){
-					tempDNA += "X";
+					tempDNA.append("X");
 				}
 				//System.out.println("mod:"+tempDNA);
 				try {
 					//no assignment
-					this.query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(tempDNA));
+					this.query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(tempDNA.toString()));
 					masked = true;
 				} catch (IllegalSymbolException e) {
 					// TODO Auto-generated catch block
@@ -1030,6 +1051,10 @@ public class CompareSequence {
 		}
 	}
 	public void setAdditionalSearchString(HashMap<String, String> additional){
+		//safety
+		if(additional== null) {
+			return;
+		}
 		Vector<Sequence> temp = new Vector<Sequence>();
 		for(String name: additional.keySet()) {
 			String str = additional.get(name);
@@ -1224,5 +1249,9 @@ public class CompareSequence {
 	}
 	public int getRelativeDelEnd(){
 		return this.getDelEnd()-this.pamSiteLocation;
+	}
+	public long getNrNs() {
+		long count = query.seqString().chars().filter(ch -> ch == 'n').count();
+		return count;
 	}
 }
