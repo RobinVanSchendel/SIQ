@@ -152,12 +152,12 @@ public class TestSingleFile {
 			String left = "TTGTATACCTAATCATTATG";
 			String right = "CCGAGGATTTGGAAAAAGTG";
 			
-			CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left, right, null, null);
+			CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left, right, null, null, true);
 			//s.setAdditionalSearchString(additional);
 			s.determineFlankPositions();
 			System.out.println(s.toStringOneLine());
 			
-			s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null, null);
+			s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null, null, true);
 			s.setAndDetermineCorrectRange(0.05);
 			//s.setAdditionalSearchString(additional);
 			//s.maskSequenceToHighQuality(left, right);
