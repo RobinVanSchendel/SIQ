@@ -100,7 +100,8 @@ public class HPRTFastQ {
 			int[] startPositions = {81,216}; //these are the start positions (81, 216) and the end positions (326, 553) of the primers
 			int[] endPositions = {326,552}; //these are the end positions (326, 552) and the end positions (326, 553) of the primers
 			boolean keepOnlyPositions = false;
-			boolean includeStartEnd = true;
+			//because we check the positions now we don't have to keep the start_end in the key
+			boolean includeStartEnd = false;
 			
 			
 			//if(collapse){
@@ -130,15 +131,8 @@ public class HPRTFastQ {
 			String fileName = options.getFile();
 			File file = null;
 			if(fileName == null) {
-				//String files = 
-				String files = options.getSingleFile();
-				String subject = options.getSubject();
-				String leftFlank = options.getLeftFlank();
-				String rightFlank = options.getRightFlank();
-				String type = null;
-				File search = null;
-				
-				sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
+				sq.readFilesFASTQMultiThreaded(options);
+				//sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
 				System.exit(0);
 			}
 			else {
@@ -370,6 +364,44 @@ public class HPRTFastQ {
 				.desc("right seq")
 				.build();
 		o.addOption(right);
+		
+		Option add = Option.builder("a")
+				.longOpt("additionalSearch")
+				.hasArg()
+				.argName("right")
+				.desc("right seq")
+				.build();
+		o.addOption(add);
+		
+		Option leftP = Option.builder("leftPrimer")
+				.hasArg()
+				.argName("leftPrimer")
+				.desc("leftPrimer seq")
+				.build();
+		o.addOption(leftP);
+		
+		Option rightP = Option.builder("rightPrimer")
+				.hasArg()
+				.argName("rightPrimer")
+				.desc("rightPrimer seq")
+				.build();
+		o.addOption(rightP);
+		
+		Option minPassedPrimer   = Option.builder( "minPassedPrimer" )
+				.longOpt("minPassedPrimer")
+                .hasArg()
+                .type(Number.class)
+                .argName("NUMBER")
+                .desc("The minimal number of bases an event should start passed the primer (default 5)" )
+                .build();
+				o.addOption(minPassedPrimer);
+		
+		Option alias   = Option.builder( "alias" )
+				.longOpt("alias")
+                .hasArg()
+                .desc("The sample name that will be included in the final output" )
+                .build();
+				o.addOption(alias);
 		
 		return o;
 	}

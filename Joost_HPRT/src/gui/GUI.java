@@ -421,7 +421,7 @@ public class GUI implements ActionListener {
 			} catch (IllegalSymbolException e) {
 				e.printStackTrace();
 			}
-			CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
+			CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true);
 			//cs.setAndDetermineCorrectRange(0.01);
 			cs.setAndDetermineCorrectRange((double)maxError.getValue());
 			if(this.maskLowQuality.isSelected()){
@@ -557,7 +557,7 @@ public class GUI implements ActionListener {
 			e.printStackTrace();
 		}
 		
-		CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
+		CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true);
 		cs.setAndDetermineCorrectRange((double)maxError.getValue());
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);
@@ -621,7 +621,7 @@ public class GUI implements ActionListener {
 		} catch (IllegalSymbolException e) {
 			e.printStackTrace();
 		}
-		CompareSequence cs = new CompareSequence(subject, null, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent());
+		CompareSequence cs = new CompareSequence(subject, null, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true);
 		if(this.maskLowQuality.isSelected()){
 			cs.setAndDetermineCorrectRange((double)maxError.getValue());
 			cs.maskSequenceToHighQuality(left, right);

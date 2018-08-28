@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Vector;
 
+import utils.CompareSequence;
 import utils.SetAndPosition;
 import utils.UtilsReduce;
 
@@ -81,6 +82,10 @@ public class ReduceSizeCollapsedFilepICL {
 		
 		int lines = 0;
 		int totalLines = 0;
+		int totalIncorrectPos = 0;
+		int totalIncorrectPosInward = 0;
+		int totalCorrect = 0;
+		boolean printFirstError = true;
 		
 		
 		while(s.hasNextLine()) {
@@ -95,6 +100,9 @@ public class ReduceSizeCollapsedFilepICL {
 			}
 			else if(!parts[index.get("countEvents")].equals("countEvents")) {
 				totalLines++;
+				if(totalLines %10000 == 0) {
+					//System.out.println("Already processed "+totalLines+" lines");
+				}
 				try {
 					if(!removeColumns.isEmpty()) {
 						for(String key: removeColumns.keySet()) {
@@ -103,8 +111,17 @@ public class ReduceSizeCollapsedFilepICL {
 							}
 						}
 					}
+					int count = Integer.parseInt(parts[index.get("countEvents")]);
 					if(!UtilsReduce.positionIsOk(parts,index, pos, "matchStart", "matchEnd", "File", maxPosDeviation, countMap)) {
+						if(count>100) {
+							if(printFirstError) {
+								System.out.println("Counts\t"+CompareSequence.getOneLineHeader());
+								printFirstError = false;
+							}
+							System.out.println(String.join("\t", parts));
+						}
 						//System.out.println(String.join("\t", parts));
+						totalIncorrectPos+=count;
 						continue;
 					}
 					if(!UtilsReduce.positionIsOkInward(parts,index, posInward, "delStart", "delEnd", "File",0, countMap)) {
@@ -116,8 +133,10 @@ public class ReduceSizeCollapsedFilepICL {
 							}
 						}
 						*/
+						totalIncorrectPosInward+=count;
 						continue;
 					}
+					totalCorrect+=count;
 					//for reduceByKey I have to check later if the counts are ok
 					if(reduceByKey || Integer.parseInt(parts[index.get("countEvents")])>=minimumCounts) {
 						if(replaceNames) {
@@ -134,7 +153,6 @@ public class ReduceSizeCollapsedFilepICL {
 						if(reduceByKey) {
 							//Key = 
 							String key = UtilsReduce.extractKey(parts, index.get("File"), index.get("Subject"), index.get("delStart"), index.get("delEnd"), index.get("insertion"));
-							int count = Integer.parseInt(parts[index.get("countEvents")]);
 							if(hm.containsKey(key)) {
 								hmCounts.put(key, hmCounts.get(key)+count);
 							}
@@ -165,9 +183,6 @@ public class ReduceSizeCollapsedFilepICL {
 					e.printStackTrace();
 					System.exit(0);
 				}
-				if(totalLines %10000 == 0) {
-					System.out.println("Already processed "+totalLines+" lines");
-				}
 			}
 		}
 		//now print the hash if needed
@@ -189,6 +204,7 @@ public class ReduceSizeCollapsedFilepICL {
 		s.close();
 		pw.close();
 		System.out.println("Total lines printed: "+lines+" out of "+totalLines);
+		System.out.println("Total correct "+totalCorrect+" wrong pos: "+totalIncorrectPos+ " wrong pos inward "+totalIncorrectPosInward);
 		if(notFoundNames.size()>0) {
 			System.out.println("Could not replace:");
 			Collections.sort(notFoundNames);

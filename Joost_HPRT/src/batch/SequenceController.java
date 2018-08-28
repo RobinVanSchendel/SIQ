@@ -62,7 +62,8 @@ public class SequenceController {
 	private int[] endPositions;
 	private long minimalCount;
 	private int nrCPUs = Runtime.getRuntime().availableProcessors();
-	private boolean includeStartEnd = true;
+	private boolean includeStartEnd = false;
+	private boolean checkReverse = true;
 	
 	public void readFiles(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, PrintWriter writer){
 		BufferedReader is = null, is2 = null;
@@ -106,7 +107,7 @@ public class SequenceController {
 								e.printStackTrace();
 							}
 							//mask
-							CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
+							CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName(), checkReverse);
 							cs.setAndDetermineCorrectRange(0.05);
 							cs.maskSequenceToHighQualityRemove();
 							cs.determineFlankPositions();
@@ -194,7 +195,7 @@ public class SequenceController {
 					//System.out.println(seqs.getName()+" no subject found");
 					continue;
 				}
-				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent());
+				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent(), checkReverse);
 				cs.setAndDetermineCorrectRange(0.05);
 				cs.maskSequenceToHighQualityRemove();
 				cs.determineFlankPositions();
@@ -291,7 +292,7 @@ public class SequenceController {
 								//mask
 								
 								//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
-								CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
+								CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName(), checkReverse);
 								cs.setAndDetermineCorrectRange(options.getMaxError());
 								cs.maskSequenceToHighQualityRemove();
 								cs.determineFlankPositions();
@@ -364,6 +365,10 @@ public class SequenceController {
 		}
 		writer.close();
 	}
+	public void readFilesFASTQMultiThreaded (MyOptions options){
+		readFilesFASTQMultiThreaded(options.getSingleFile(),options.getSubject(), options.getLeftFlank(), options.getRightFlank(), null, options.getSearchAdditional(), true, null, options);
+		
+	}
 	public void readFilesFASTQMultiThreaded(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, String containsString, MyOptions options){
 		File f = new File(subjectFile);
 		if(!f.exists()) {
@@ -422,12 +427,13 @@ public class SequenceController {
 			}
 			files.add(output);
 			sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, options.collapseEvents(), options.getMaxError(), hmAdditional);
-			if(startPositions != null && endPositions!= null) {
-				sft.setStartEndPositions(startPositions, endPositions);
-			}
 			sft.setMinimalCount(options.getMinNumber());
 			sft.setCollapseStartEnd(includeStartEnd);
 			sft.setMaximumReads(options.getMaxReads());
+			sft.setLeftPrimer(options.getLeftPrimer());
+			sft.setRightPrimer(options.getRightPrimer());
+			sft.setMinPassedPrimer(options.getMinPassedPrimer());
+			sft.setAlias(options.getAlias());
 			if(options.getSingleFile()!= null) {
 				sft.printHeader();
 			}
@@ -615,7 +621,7 @@ public class SequenceController {
 					e.printStackTrace();
 				}
 				//mask
-				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent());
+				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParent(), checkReverse);
 				cs.setAndDetermineCorrectRange(quality);
 				cs.maskSequenceToHighQualityRemove();
 				cs.determineFlankPositions();

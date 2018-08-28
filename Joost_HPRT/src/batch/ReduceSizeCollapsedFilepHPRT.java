@@ -47,7 +47,7 @@ public class ReduceSizeCollapsedFilepHPRT {
 			System.out.println(key+"\t"+namesMap.get(key));
 		}
 		HashMap<String, Integer> removeColumns = new HashMap<String, Integer>();
-		removeColumns.put("Raw",-1);
+		//removeColumns.put("Raw",-1);
 		removeColumns.put("Schematic", -1);
 		removeColumns.put("Name", -1);
 		removeColumns.put("CutType", -1);
@@ -82,6 +82,10 @@ public class ReduceSizeCollapsedFilepHPRT {
 		
 		int lines = 0;
 		int totalLines = 0;
+		int totalIncorrectPos = 0;
+		int totalIncorrectPosInward = 0;
+		int totalCorrect = 0;
+		boolean printFirstError = true;
 		
 		
 		while(s.hasNextLine()) {
@@ -104,11 +108,15 @@ public class ReduceSizeCollapsedFilepHPRT {
 							}
 						}
 					}
+					int count = Integer.parseInt(parts[index.get("countEvents")]);
 					if(totalLines %10000 == 0) {
 						System.out.println("Already processed "+totalLines+" lines");
 					}
 					if(!UtilsReduce.positionIsOk(parts,index, pos, "matchStart", "matchEnd", "File", maxPosDeviation, null)) {
-						//System.out.println(String.join("\t", parts));
+						if(count>10000) {
+							//System.out.println(String.join("\t", parts));
+						}
+						totalIncorrectPos+=count;
 						continue;
 					}
 					//the sequence should at least continue a few bases inside the expected location
@@ -121,8 +129,13 @@ public class ReduceSizeCollapsedFilepHPRT {
 							}
 						}
 						*/
+						if(count>10000) {
+							//System.out.println(String.join("\t", parts));
+						}
+						totalIncorrectPosInward+=count;
 						continue;
 					}
+					totalCorrect+=count;
 					//for reduceByKey I have to check later if the counts are ok
 					if(reduceByKey || Integer.parseInt(parts[index.get("countEvents")])>=minimumCounts) {
 						if(replaceNames) {
@@ -139,7 +152,6 @@ public class ReduceSizeCollapsedFilepHPRT {
 						if(reduceByKey) {
 							//Key = 
 							String key = UtilsReduce.extractKey(parts, index.get("File"), index.get("Subject"), index.get("delStart"), index.get("delEnd"), index.get("insertion"));
-							int count = Integer.parseInt(parts[index.get("countEvents")]);
 							if(hm.containsKey(key)) {
 								hmCounts.put(key, hmCounts.get(key)+count);
 								//but also check if that count is the highest
@@ -199,6 +211,7 @@ public class ReduceSizeCollapsedFilepHPRT {
 		s.close();
 		pw.close();
 		System.out.println("Total lines printed: "+lines+" out of "+totalLines);
+		System.out.println("Total correct "+totalCorrect+" wrong pos: "+totalIncorrectPos+ " wrong pos inward "+totalIncorrectPosInward);
 		if(notFoundNames.size()>0) {
 			System.out.println("Could not replace:");
 			Collections.sort(notFoundNames);
