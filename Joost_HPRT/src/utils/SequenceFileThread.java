@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
@@ -22,12 +23,14 @@ import org.jcvi.jillion.core.residue.nt.Nucleotide;
 import org.jcvi.jillion.core.util.iter.StreamingIterator;
 import org.jcvi.jillion.trace.fastq.FastqDataStore;
 import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
+import org.jcvi.jillion.trace.fastq.FastqFileReader;
+import org.jcvi.jillion.trace.fastq.FastqFileReader.Results;
 import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
 public class SequenceFileThread implements Runnable {
 
-	private File f, output;
+	private File f, output, outputStats;
 	private boolean writeToOutput;
 	private RichSequence subject;
 	private String leftFlank, rightFlank;
@@ -38,12 +41,13 @@ public class SequenceFileThread implements Runnable {
 	private boolean collapse;
 	private double maxError;
 	private HashMap<String, String> hmAdditional;
-	private int[] startPositions;
-	private int[] endPositions;
 	private long minimalCount;
 	private boolean includeStartEnd;
 	private long maxReads;
 	private boolean printHeader = false;
+	private long minPassedPrimer;
+	private String leftPrimer, rightPrimer;
+	private String alias = "";
 	
 	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, HashMap<String, String> additional){
 		this.f = f;
@@ -52,6 +56,7 @@ public class SequenceFileThread implements Runnable {
 		this.leftFlank = leftFlank;
 		this.rightFlank = rightFlank;
 		this.output = output;
+		this.outputStats = new File(output.getAbsolutePath()+"stats.txt");
 		this.collapse = collapse;
 		this.maxError = maxError;
 		this.hmAdditional = additional;
@@ -65,16 +70,25 @@ public class SequenceFileThread implements Runnable {
 		Thread.currentThread().setName(f.getName());
 		boolean printOnlyIsParts = false;
 		boolean collapseEvents = collapse;
-		PrintWriter writer = null;
+		PrintWriter writer = null, writerStats = null;
 		String type = "";
 		if(writeToOutput){
 			try {
 				writer = new PrintWriter(new FileOutputStream(output,false));
+				writerStats = new PrintWriter(new FileOutputStream(outputStats,false));
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} 
 		}
+		int counter = 0;
+		int wrong = 0;
+		int correct = 0;
+		int wrongPositionLeft = 0;
+		int wrongPositionRight = 0;
+		int badQual = 0;
+		Utils utils = new Utils();
+		long realStart = System.nanoTime();
 		try {
 			FastqDataStore datastore = new FastqFileDataStoreBuilder(f)
 			   .qualityCodec(FastqQualityCodec.SANGER)				   
@@ -96,9 +110,8 @@ public class SequenceFileThread implements Runnable {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			int counter = 0;
-			int wrong = 0;
-			int correct = 0;
+			
+			ArrayList<SetAndPosition> poss = createSetAndPosition();
 			long start = System.nanoTime();
 			while(iter.hasNext()){
 				FastqRecord fastqRecord = iter.next();
@@ -113,25 +126,40 @@ public class SequenceFileThread implements Runnable {
 				//mask
 				
 				//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
-				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, f.getParentFile().getName());
+				boolean checkReverse = false;
+				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, f.getParentFile().getName(), checkReverse);
 				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemove();
-				//small speedup
-				if(cs.getRemarks().length()>0) {
-					continue;
+				
+				if(cs.getRemarks().length()!=0) {
+					badQual++;
 				}
-				cs.determineFlankPositions();
-				cs.setAdditionalSearchString(hmAdditional);
-				//cs.setCutType(type);
-				cs.setCurrentFile(f.getName());
+				//small speedup
+				boolean leftCorrect = false;
+				boolean rightCorrect = false;
+				System.out.println(java.lang.Thread.activeCount());
+				if(cs.getRemarks().length()==0) {
+					cs.determineFlankPositions();
+					//System.out.println("So far took :"+duration+" milliseconds");
+					leftCorrect = cs.isCorrectPositionLeft(poss);
+					rightCorrect = cs.isCorrectPositionRight(poss);
+					if(!leftCorrect) {
+						wrongPositionLeft++;
+					}
+					if(!rightCorrect) {
+						wrongPositionRight++;
+					}
+					if(leftCorrect && rightCorrect) {
+						cs.setAdditionalSearchString(hmAdditional);
+						//cs.setCutType(type);
+						cs.setCurrentFile(f.getName());
+						cs.setCurrentAlias(alias);
+					}
+				}
 				//only correctly found ones
 				//System.out.println(cs.toStringOneLine());
-				if(cs.getRemarks().length() == 0){
+				if(cs.getRemarks().length() == 0 && leftCorrect && rightCorrect){
 					correct++;
-					//maybe discard
-					if(!startEndPositionIsOK(cs)) {
-						continue;
-					}
 					if(!printOnlyIsParts){
 						if(collapseEvents){
 							String key = cs.getKey(includeStartEnd);
@@ -194,7 +222,7 @@ public class SequenceFileThread implements Runnable {
 					long duration = TimeUnit.MILLISECONDS.convert((end-start), TimeUnit.NANOSECONDS);
 					//System.out.println("So far took :"+duration+" milliseconds");
 					start = end;
-					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" correct fraction: "+(correct/(double)(correct+wrong)));
+					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPositionL: "+wrongPositionLeft+" wrongPositionR: "+wrongPositionRight+ " correct fraction: "+(correct/(double)(correct+wrong)));
 					//iter.close();
 					//break;
 				}
@@ -228,40 +256,55 @@ public class SequenceFileThread implements Runnable {
 			}
 			writer.close();
 		}
-	}
-
-	private boolean startEndPositionIsOK(CompareSequence cs) {
-		if(startPositions == null || endPositions == null) {
-			return true;
+		if(writerStats!= null) {
+			writerStats.println(f.getName()+"\treads\t"+counter);
+			writerStats.println(f.getName()+"\tcorrect\t"+correct);
+			writerStats.println(f.getName()+"\twrong\t"+wrong);
+			writerStats.println(f.getName()+"\twrongLeft\t"+wrongPositionLeft);
+			writerStats.println(f.getName()+"\twrongRight\t"+wrongPositionRight);
+			writerStats.println(f.getName()+"\tbadQual\t"+badQual);
+			writerStats.close();
+			System.out.println("Written stats to: "+outputStats.getAbsolutePath());
 		}
-		boolean startIsOk  = startPositionIsOk(cs.getMatchStart());
-		boolean endIsOk  = endPositionIsOk(cs.getMatchEnd());
-		return startIsOk && endIsOk;
+		long end = System.nanoTime();
+		long duration = TimeUnit.MILLISECONDS.convert((end-realStart), TimeUnit.NANOSECONDS);
+		System.out.println("duration "+duration);
+		utils.printCacheStats();
 	}
 
-	private boolean endPositionIsOk(int matchEnd) {
-		for(Integer i: endPositions) {
-			if(i == matchEnd) {
-				return true;
-			}
+	private ArrayList<SetAndPosition> createSetAndPosition() {
+		int leftPos = subject.seqString().indexOf(leftPrimer);
+		int rightPos = subject.seqString().indexOf(Utils.reverseComplement(rightPrimer));
+		if(leftPos == -1 || rightPos == -1) {
+			System.err.println("Cannot find primers!");
+			System.err.println(subject.seqString());
+			System.err.println(leftPrimer);
+			System.err.println(rightPrimer);
+			System.err.println(leftPos);
+			System.err.println(rightPos);
 		}
-		return false;
-	}
-
-	private boolean startPositionIsOk(int matchStart) {
-		for(Integer i: startPositions) {
-			if(i == matchStart) {
-				return true;
-			}
+		//now adjust the rightPosition
+		rightPos += rightPrimer.length();
+		SetAndPosition sp = new SetAndPosition(subject.getName(),leftPos, rightPos);
+		long leftPlus = leftPos+leftPrimer.length();
+		long rightPlus = rightPos-rightPrimer.length();
+		SetAndPosition spone = new SetAndPosition(subject.getName(),leftPlus, rightPlus);
+		leftPlus += minPassedPrimer;
+		rightPlus -= minPassedPrimer;
+		SetAndPosition sptwo = null;
+		if(minPassedPrimer != 0) {
+			sptwo = new SetAndPosition(subject.getName(), leftPlus, rightPlus);
 		}
-		return false;
+		ArrayList<SetAndPosition> al = new ArrayList<SetAndPosition>();
+		al.add(sp);
+		al.add(spone);
+		al.add(sptwo);
+		System.out.println(sp);
+		System.out.println(spone);
+		System.out.println(sptwo);
+		return al;
 	}
 
-	public void setStartEndPositions(int[] startPositions, int[] endPositions) {
-		this.startPositions = startPositions;
-		this.endPositions = endPositions;
-		
-	}
 	public void setMinimalCount(long minimalCount) {
 		this.minimalCount = minimalCount;
 	}
@@ -277,5 +320,21 @@ public class SequenceFileThread implements Runnable {
 	public void printHeader() {
 		this.printHeader = true;
 		
+	}
+
+	public void setLeftPrimer(String leftPrimer) {
+		this.leftPrimer = leftPrimer;
+	}
+
+	public void setRightPrimer(String rightPrimer) {
+		this.rightPrimer = rightPrimer;
+	}
+
+	public void setMinPassedPrimer(long minPassedPrimer) {
+		this.minPassedPrimer = minPassedPrimer;
+	}
+	
+	public void setAlias(String alias) {
+		this.alias = alias;
 	}
 }

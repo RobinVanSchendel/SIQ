@@ -5,7 +5,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 
 import org.biojava.bio.BioException;
@@ -15,7 +22,20 @@ import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
 
+import javassist.bytecode.Descriptor.Iterator;
+
 public class Utils {
+	public HashMap<String, String> lcss = new HashMap<String, String>();
+	public HashMap<String, Integer> lcssTop = new HashMap<String, Integer>();
+	public int cacheHit = 0;
+	public int cacheMiss = 0;
+	public void printCacheStats() {
+		System.out.println("cacheHit: "+cacheHit+" cacheMiss: "+cacheMiss);
+		Map<String, Integer> ordered = sortByValue(lcssTop);
+		for(String key: ordered.keySet()) {
+			System.out.println(ordered.get(key)+"\t"+key);
+		}
+	}
 	public static String getMutation(String ref, String alt){
 		ref = ref.toUpperCase();
 		alt = alt.toUpperCase();
@@ -41,9 +61,12 @@ public class Utils {
 	}
 	public static String longestCommonSubstring(String S1, String S2)
 	{
-	    if(S1 == null || S2 == null){
+	    if(S1 == null || S2 == null || S1.equals("")|| S2.equals("")){
 	    	return "";
 	    }
+	    //System.out.println("======miss");
+	    //System.out.println(S1);
+	    //System.out.println(S2);
 		//S1 = S1.toLowerCase();
 	    //S2 = S2.toLowerCase();
 		int Start = 0;
@@ -63,9 +86,20 @@ public class Utils {
 	                Max = x;
 	                Start = i;
 	            }
-	         }
+	            //possible speedup
+	            if(Max == S1.length() || Max == S2.length()) {
+	            	break;
+	            }
+	        }
+	        //possible speedup
+	        if(Max == S1.length() || Max == S2.length()) {
+            	break;
+            }
 	    }
-	    return S1.substring(Start, (Start + Max));
+	    String sub = S1.substring(Start, (Start + Max));
+	    //long mem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+	    //System.out.println("Usage "+mem);
+	    return sub;
 	}
 	public static String getHomologyAtBreak(String left, String del, String right) {
 		if(left == null || right == null){
@@ -337,4 +371,15 @@ public class Utils {
 		return hmAdditional;
 	
 	}
+	public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
+        List<Entry<K, V>> list = new ArrayList<>(map.entrySet());
+        list.sort(Entry.comparingByValue());
+
+        Map<K, V> result = new LinkedHashMap<>();
+        for (Entry<K, V> entry : list) {
+            result.put(entry.getKey(), entry.getValue());
+        }
+
+        return result;
+    }
 }

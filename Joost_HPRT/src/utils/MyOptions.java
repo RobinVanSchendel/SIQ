@@ -1,5 +1,6 @@
 package utils;
 
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -47,7 +48,7 @@ public class MyOptions {
 				e.printStackTrace();
 			}
 		}
-		return -1;
+		return 5;
 	}
 	public String getOutput() {
 		if(cmd.hasOption('o')) {
@@ -147,5 +148,33 @@ public class MyOptions {
 	}
 	public String getRightFlank() {
 		return cmd.getOptionValue("right");
+	}
+	public File getSearchAdditional() {
+		if(cmd.hasOption('a')) {
+			return new File(cmd.getOptionValue("additionalSearch"));
+		}
+		return null;
+	}
+	public String getLeftPrimer() {
+		String ret = cmd.getOptionValue("leftPrimer");
+		return ret.toLowerCase();
+	}
+	public String getRightPrimer() {
+		String ret = cmd.getOptionValue("rightPrimer");
+		return ret.toLowerCase();
+	}
+	public long getMinPassedPrimer() {
+		if(cmd.hasOption("minPassedPrimer")) {
+			try {
+				return (Long) cmd.getParsedOptionValue("minPassedPrimer");
+			} catch (ParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return 5;
+	}
+	public String getAlias() {
+		return cmd.getOptionValue("alias");
 	}
 }

@@ -29,27 +29,33 @@ public class CompareSequence {
 	public final static int minimalRangeSize = 40;
 	private final static double maxMismatchRate = 0.1;
 	private static final int ALLLOWEDJUMPDISTANCE = 1;
+	private static final int MAXIMUMTRIESSOLVING = 5;
 	//this introduces possible problems... I am aware of this 'feature' missing SNVs 30bp away from flanks
 	private static final int MINIMUMSECONDSIZE = 30;
 	private ArrayList<Range> ranges = new ArrayList<Range>();
 	private boolean masked = false;
 	private QualitySequence quals;
 	private InsertionSolverTwoSides is;
-	private int minSizeInsertionSolver = 5;
+	
 	public boolean searchTranslocation = false;
 	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI};
 	public String dir;
 	private String cutType;
 	private Vector<Sequence> additionalSearchSequence;
 	private boolean possibleDouble = false;
-	private int solveInsertStart = -100;
-	private int solveInsertEnd = 100;
+	//be careful to change also the value for minSizeInsertionSolver
+	private final int solveInsertStart = -100;
+	private final int solveInsertEnd = 100;
+	//changed to 6!
+	private final int minSizeInsertionSolver = 6;
+	
 	private String fileName;
 	private boolean reversed = false;
 	private boolean jumpedRight = false;
 	private boolean jumpedLeft = false;
+	private String alias = "";
 	
-	public CompareSequence(RichSequence subject, RichSequence subject2, RichSequence query, QualitySequence quals, String left, String right, String pamSite, String dir) {
+	public CompareSequence(RichSequence subject, RichSequence subject2, RichSequence query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse) {
 		this.subject = subject;
 		this.subject2 = subject2;
 		this.query = query;
@@ -71,35 +77,44 @@ public class CompareSequence {
 		else{
 			this.pamSiteLocation = 0;
 		}
-		checkAndPossibleReverse();
+		if(checkReverse) {
+			checkAndPossibleReverse();
+		}
+	}
+	private String longestCommonSubstring(String s1, String s2) {
+		return Utils.longestCommonSubstring(s1,s2);
+		
 	}
 	private void checkAndPossibleReverse() {
 		String queryS = query.seqString().toString();
 		String subjectS = subject.seqString().toString();
-		int size = Utils.longestCommonSubstring(queryS, subjectS).length();
-		String revCom = Utils.reverseComplement(queryS);
-		String rc = Utils.longestCommonSubstring(revCom, subjectS);
-		//System.out.println("took\t"+duration1+"\t"+duration2+"\t"+duration3);
-		int altSize = rc.length();
+		int size = longestCommonSubstring(queryS, subjectS).length();
+		
 		//System.out.println(this.getName());
 		//System.out.println("size: "+size+" rcSize: "+altSize);
 		//take the reverse complement of the query.
 		//sometimes that is not correct, although we don't really know if that is true
-		if(size <40 && altSize>size){
-			try {
-				query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(revCom));
-				//also turn around the quality
-				if(quals!= null){
-					//System.out.println("Reversing the qual!");
-					QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
-					quals = qsb.reverse().build();
+		if(size <40) {
+			String revCom = Utils.reverseComplement(queryS);
+			String rc = longestCommonSubstring(revCom, subjectS);
+			//System.out.println("took\t"+duration1+"\t"+duration2+"\t"+duration3);
+			int altSize = rc.length();
+			if( altSize>size){
+				try {
+					query = RichSequence.Tools.createRichSequence(this.query.getName(), DNATools.createDNA(revCom));
+					//also turn around the quality
+					if(quals!= null){
+						//System.out.println("Reversing the qual!");
+						QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
+						quals = qsb.reverse().build();
+					}
+					this.reversed  = true;
+				} catch (IllegalSymbolException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
-				this.reversed  = true;
-			} catch (IllegalSymbolException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				//System.out.println("Took RC");
 			}
-			//System.out.println("Took RC");		
 		}
 	}
 	public void determineFlankPositions(){
@@ -215,7 +230,7 @@ public class CompareSequence {
 			//System.out.println(seqRemain.length());
 			String seqRemainSubjectRest = seqRemainSubject.substring(pos);
 			//start searching after the leftFlank
-			flankTwo = Utils.longestCommonSubstring(seqRemainSubjectRest, seqRemain);
+			flankTwo = longestCommonSubstring(seqRemainSubjectRest, seqRemain);
 			if(flankOne.length()<minimumSizeWithoutLeftRight || flankTwo.length()<minimumSizeWithoutLeftRight ){
 				//System.out.println(flankOne.length());
 				//System.out.println(flankTwo.length());
@@ -392,7 +407,7 @@ public class CompareSequence {
 		//}
 		//System.out.println("left :"+this.leftFlank);
 		checkCall();
-		String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
+		String insertDelCommon =  longestCommonSubstring(del, insert);
 		//TODO: I became unsure if this is really a good idea. 
 		if(insertDelCommon.length()>10){
 			//if we masked, then probably this check is not correct
@@ -406,10 +421,10 @@ public class CompareSequence {
 		if(index>0){
 			query = query.substring(index);
 		}
-		String first = Utils.longestCommonSubstring(substring, query);
+		String first = longestCommonSubstring(substring, query);
 		String leftOver = substring.substring(0,substring.indexOf(first));
 		String queryOver = query.substring(0,query.indexOf(first));
-		String second = Utils.longestCommonSubstring(leftOver, queryOver);
+		String second = longestCommonSubstring(leftOver, queryOver);
 		if(second.length()>MINIMUMSECONDSIZE){
 			//check if we allow the jump, previously this led to deletions not being spotted
 			int locFirstSub = substring.indexOf(first);
@@ -504,7 +519,7 @@ public class CompareSequence {
 		//only do it when no weird things found
 		if(this.remarks.length() == 0 && insert.length()>0){
 			//currently fixed value
-			solveInsertion(solveInsertStart,solveInsertEnd);
+			solveInsertion(solveInsertStart,solveInsertEnd, MAXIMUMTRIESSOLVING);
 		}
 		if(del.length()>0 && insert.length() == 0){
 			homology = Utils.getHomologyAtBreak(leftFlank.getString(), del, rightFlank);
@@ -533,6 +548,7 @@ public class CompareSequence {
 		ret.append(getName()).append(s);
 		ret.append(dir).append(s);
 		ret.append(fileName).append(s);
+		ret.append(alias).append(s);
 		ret.append(getIDPart()).append(s);
 		ret.append(possibleDouble).append(s);
 		ret.append(getSubject()).append(s);
@@ -711,7 +727,7 @@ public class CompareSequence {
 		}
 		return "";
 	}
-	private void solveInsertion(int start, int end) {
+	private void solveInsertion(int start, int end, int maxTries) {
 		//disabled for translocation
 		if(!searchTranslocation && this.insert.length()>=minSizeInsertionSolver){
 			String left = this.getCorrectedLeftFlankRelative(start, end);
@@ -720,6 +736,7 @@ public class CompareSequence {
 			is.setAdjustedPositionLeft(start);		
 			is.setAdjustedPositionRight(start);
 			is.search(true, true);
+			is.setMaxTriesSolved(maxTries);
 			if(this.additionalSearchSequence != null){
 				is.setTDNA(additionalSearchSequence);
 			}
@@ -798,6 +815,9 @@ public class CompareSequence {
 		return Type.UNKNOWN;
 	}
 	public String getSecondaryType() {
+		if(this.remarks.length() != 0) {
+			return "";
+		}
 		if(this.getType() == Type.TANDEMDUPLICATION_COMPOUND){
 			//how long is the remaining part
 			String[] poss = is.getPosS().split(";");
@@ -836,11 +856,42 @@ public class CompareSequence {
 				return "TANDEMDUPLICATION_AND_OTHER_EVENT_FOUND";
 			}
 			else{
-				return "TANDEMDUPLICATION_AND_OTHER_EVENT_FOUND_AND_REMAINING_"+lenghtOther;
+				return "TANDEMDUPLICATION_AND_OTHER_EVENT_FOUND_AND_REMAINING";
 			}
 			//add other if you can find them
 		}
-		return "";
+		//experimental code for DELINS
+		if(getType() == Type.DELINS) {
+			if(this.getInsertion().length()<minSizeInsertionSolver) {
+				return "DELINS_<"+minSizeInsertionSolver;
+			}
+			//solving has been tried
+			else {
+				//SOLVED
+				String ret = "FLANKINSERT";
+				String tDNA = "";
+				String orientation = "";
+				if(is.getType().equals("NOT SOLVED")) {
+					ret="DELINS_UNKNOWN";
+				}
+				else if(is.getType().equals("PARTIALLY SOLVED") && is.getLengthS().split(";").length>3) {
+					if(is.getFirstLength()<10 && getInsertion().length()>20) {
+						ret="DELINS_LOCATION_UNKNOWN";
+					}
+				}
+				if(is.getFirstHitInTDNA()) {
+					tDNA="_OTHERSEQ";
+					//tDNA+=is.getFirstHit();
+					//System.out.println(tDNA);
+				}
+				if(is.getFirstHit().contains("rc")) {
+					orientation="_RC";
+				}
+				
+				return ret+tDNA+orientation;
+			}
+		}
+		return ""+getType();
 	}
 	public String getSubject() {
 		String ret = subject.getName();
@@ -877,15 +928,16 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "CutType\tName\tDir\tFile\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tLongestRevCompInsert\tRanges\tMasked\t"
+		String ret = "CutType\tName\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tLongestRevCompInsert\tRanges\tMasked\t"
 				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tReversed\tSchematic\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos"+s+"isStartPos"+s+"isEndPos"+s+"isStartPosRel"+s+"isEndPosRel";
+		System.out.println("hier!");
 		return ret;
 	}
 	public String getRevCompInsertion(){
 		if(insert.length()>=5){
-			String found = Utils.longestCommonSubstring(subject.seqString(), Utils.reverseComplement(insert)); 
+			String found = longestCommonSubstring(subject.seqString(), Utils.reverseComplement(insert)); 
 			if(found.length()>=5){
 				return found+"|"+subject.seqString().indexOf(found)+"-"+(subject.seqString().indexOf(found)+found.length());
 			}
@@ -926,11 +978,12 @@ public class CompareSequence {
 		long first = -1;
 		long last = quals.getLength()-1;
 		for(long j = 0;j<quals.getLength();j++){
-			if(first == -1 && quals.get(j).getErrorProbability()<=maxError){
+			double errorP = quals.get(j).getErrorProbability();
+			if(first == -1 && errorP <= maxError){
 				first = j;
 			}
 			//break range on the first bad base
-			if(first >= 0 && quals.get(j).getErrorProbability()>maxError){
+			if(first >= 0 && errorP > maxError){
 				//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 				if(j-first >= minimalRangeSize){
 					//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
@@ -1000,8 +1053,8 @@ public class CompareSequence {
 			long largestRangeLength = -1;
 			for(Range r: ranges){
 				String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
-				String lcsL = Utils.longestCommonSubstring(sub, left);
-				String lcsR = Utils.longestCommonSubstring(sub, right);
+				String lcsL = longestCommonSubstring(sub, left);
+				String lcsR = longestCommonSubstring(sub, right);
 				if(largestCommon == null || (lcsL.length()+lcsR.length()) >largestCommon.length()){
 					largestCommon = lcsL+"_"+lcsR;
 					rangeContainingLargest = r;
@@ -1165,7 +1218,7 @@ public class CompareSequence {
 	}
 	public String[] printISParts(HashMap<String, String> colorMap) {
 		if(this.insert.length()>0){
-			solveInsertion(solveInsertStart,solveInsertEnd);
+			solveInsertion(solveInsertStart,solveInsertEnd, -1);
 			if(this.is != null){
 				return this.is.printISParts(colorMap);
 			}
@@ -1253,5 +1306,68 @@ public class CompareSequence {
 	public long getNrNs() {
 		long count = query.seqString().chars().filter(ch -> ch == 'n').count();
 		return count;
+	}
+	public boolean isCorrectPositionLeft(ArrayList<SetAndPosition> poss) {
+		boolean firstFilterOKa = false;
+		boolean secondFilterOK = false;
+		if(getMatchStart()>=poss.get(0).getMin() && getMatchStart()<= poss.get(1).getMin()) {
+			firstFilterOKa = true;
+		}
+		if(poss.get(2) != null && getDelStart() >= poss.get(2).getMin()) {
+			secondFilterOK = true;
+		}
+		//if filter is disabled.
+		else if(poss.get(2) == null) {
+			secondFilterOK = true;
+		}
+		return firstFilterOKa && secondFilterOK;
+	}
+	public boolean isCorrectPositionRight(ArrayList<SetAndPosition> poss) {
+		boolean firstFilterOKb = false;
+		boolean secondFilterOK = false;
+		if(getMatchEnd()>=poss.get(1).getMax() && getMatchEnd()<= poss.get(0).getMax()) {
+			firstFilterOKb = true;
+		}
+		if(poss.get(2) != null && getDelEnd() <= poss.get(2).getMax()) {
+			secondFilterOK = true;
+		}
+		//if filter is disabled
+		else if(poss.get(2) == null) {
+			secondFilterOK = true;
+		}
+		return firstFilterOKb && secondFilterOK;
+	}
+	public boolean isCorrectPosition(ArrayList<SetAndPosition> poss) {
+		//does matchStart begin within the primer?
+		boolean firstFilterOKa = false;
+		boolean firstFilterOKb = false;
+		boolean secondFilterOK = false;
+		//System.out.println("match: "+getMatchStart()+" "+this.getMatchEnd());
+		//System.out.println(getDelStart()+" "+this.getDelEnd());
+		 
+		if(getMatchStart()>=poss.get(0).getMin() && getMatchStart()<= poss.get(1).getMin()) {
+			firstFilterOKa = true;
+		}
+		if(getMatchEnd()>=poss.get(1).getMax() && getMatchEnd()<= poss.get(0).getMax()) {
+			firstFilterOKb = true;
+		}
+		if(poss.get(2).positionsBounded(getDelStart(), getDelEnd())) {
+			secondFilterOK = true;
+		}
+		//System.out.println(firstFilterOKa);
+		//System.out.println(firstFilterOKb);
+		//System.out.println(secondFilterOK);
+		boolean ret = firstFilterOKa && firstFilterOKb && secondFilterOK;
+		if(ret == false) {
+			this.setRemarks("Position problem");
+		}
+		return ret;
+		
+	}
+	public String getRaw() {
+		return this.query.seqString();
+	}
+	public void setCurrentAlias(String alias) {
+		this.alias  = alias;
 	}
 }
