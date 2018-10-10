@@ -1,0 +1,6 @@
+{
+  "mainFilterSNPS.in": "/exports/humgen/rvanschendel/Project_Cromwell/cromwell-executions/gVCFCombine/19ed93fd-af1b-4a35-9dd7-a1c5f46cdb8e/call-combineGVCF/execution/20180830_gvcf_test.txt.g.vcf",
+  "mainFilterSNPS.outputFile": "20180831_gvcf_test_filter.g.vcf",
+  "mainFilterSNPS.reference": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa"
+}
+

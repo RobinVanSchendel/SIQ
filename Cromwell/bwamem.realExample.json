@@ -1,0 +1,6 @@
+{
+  "bwasub.inputSamplesFile": "samples.txt",
+  "bwasub.reference": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa",
+  "bwasub.outputDir": "/exports/humgen/rvanschendel/Project_Cromwell/bams"
+}
+

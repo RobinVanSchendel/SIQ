@@ -1,0 +1,6 @@
+{
+    "RunPindel.inputRealSamplesFile" : "PindelTestSamples.txt",
+    "RunPindel.outputDir" : "/exports/humgen/rvanschendel/Project_Cromwell/bams",
+    "RunPindel.outputFile" : "pindelTest",
+    "RunPindel.outputFileAnalysis" : "/exports/humgen/rvanschendel/Project_Cromwell/bams/20180830_testPindelA.txt"
+}

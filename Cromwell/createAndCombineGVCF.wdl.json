@@ -1,0 +1,5 @@
+{
+  "gVCFCombine.files": "combineFileGVCF.txt",
+  "gVCFCombine.reference": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa",
+  "gVCFCombine.outputFile": "20180830_gvcf_test.txt"
+}

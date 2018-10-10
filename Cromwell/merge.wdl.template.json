@@ -1,0 +1,6 @@
+{
+  "merge.dir": "String",
+  "merge.inputRealSamplesFile": "File",
+  "merge.outputDir": "String"
+}
+

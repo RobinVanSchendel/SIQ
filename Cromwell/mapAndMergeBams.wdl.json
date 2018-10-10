@@ -1,0 +1,8 @@
+{
+  "main_workflow.inputRealSamplesFile": "/exports/humgen/rvanschendel/Project_Cromwell/mergeSamples.txt",
+  "main_workflow.outputDir": "/exports/humgen/rvanschendel/Project_Cromwell/bams",
+  "main_workflow.inputSamplesFile": "/exports/humgen/rvanschendel/Project_Cromwell/samples.txt",
+  "main_workflow.reference": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa",
+  "main_workflow.outputDirMerge": "/exports/humgen/rvanschendel/Project_Cromwell/sortedbams"
+}
+

@@ -1,0 +1,14 @@
+{
+  "bwasub.ref_pac": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa.pac",
+  "bwasub.ref_fasta_index": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa.fai",
+  "bwasub.ref_sa": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa.sa",
+  "bwasub.ref_ann": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa.ann",
+  "bwasub.ref_fasta": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa",
+  "bwasub.reference": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa",
+  "bwasub.FASTQ": "/exports/humgen/rvanschendel/Project_Hartwig/LUMC-001-004/XF1562-26-5_HM7GVCCXY_S10_L004_R1_001.fastq.gz",
+  "bwasub.sample_id": "XF1562-26-5",
+  "bwasub.FASTQ2": "/exports/humgen/rvanschendel/Project_Hartwig/LUMC-001-004/XF1562-26-5_HM7GVCCXY_S10_L004_R2_001.fastq.gz",
+  "bwasub.ref_bwt": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa.bwt",
+  "bwasub.ref_amb": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa.amb"
+}
+
