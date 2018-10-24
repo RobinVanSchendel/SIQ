@@ -1,0 +1,7 @@
+{
+  "merge.dir": "/exports/humgen/rvanschendel/Project_Cromwell/bams",
+  "merge.inputRealSamplesFile": "/exports/humgen/rvanschendel/Project_Cromwell/mergeSamples.txt",
+  "merge.outputDir": "/exports/humgen/rvanschendel/Project_Cromwell/sorted_bams"
+
+}
+

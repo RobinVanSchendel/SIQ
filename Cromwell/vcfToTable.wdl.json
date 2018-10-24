@@ -1,0 +1,5 @@
+{
+  "mainFilterSNPS.in": "20180831_gvcf_test_filter.g.vcf",
+  "mainFilterSNPS.outputFile": "20180910_VCF_Table.txt",
+  "mainFilterSNPS.reference": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa"
+}

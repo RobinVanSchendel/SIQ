@@ -1,0 +1,6 @@
+{
+  "gVCFCombine.outputFile": "/exports/humgen/rvanschendel/Project_Cromwell/mergedGVCF/mergeGVCF_output_filtered.g.vcf",
+  "gVCFCombine.file": "/exports/humgen/rvanschendel/Project_Cromwell/mergedGVCF/mergeGVCF_output.g.vcf",
+  "gVCFCombine.reference": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa"
+}
+
