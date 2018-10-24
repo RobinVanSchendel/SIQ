@@ -25,17 +25,6 @@ import org.biojavax.bio.seq.RichSequenceIterator;
 import javassist.bytecode.Descriptor.Iterator;
 
 public class Utils {
-	public HashMap<String, String> lcss = new HashMap<String, String>();
-	public HashMap<String, Integer> lcssTop = new HashMap<String, Integer>();
-	public int cacheHit = 0;
-	public int cacheMiss = 0;
-	public void printCacheStats() {
-		System.out.println("cacheHit: "+cacheHit+" cacheMiss: "+cacheMiss);
-		Map<String, Integer> ordered = sortByValue(lcssTop);
-		for(String key: ordered.keySet()) {
-			System.out.println(ordered.get(key)+"\t"+key);
-		}
-	}
 	public static String getMutation(String ref, String alt){
 		ref = ref.toUpperCase();
 		alt = alt.toUpperCase();
