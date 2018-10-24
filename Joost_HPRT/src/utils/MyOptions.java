@@ -61,14 +61,6 @@ public class MyOptions {
 		}*/
 		return null;
 	}
-	public String getOutputPostfix() {
-		if(cmd.hasOption('p')) {
-			return cmd.getOptionValue('p');
-		}
-		else {
-			return "_tmp";
-		}
-	}
 	public long getThreads() {
 		if(cmd.hasOption('t')) {
 			try {
@@ -150,8 +142,10 @@ public class MyOptions {
 		return cmd.getOptionValue("right");
 	}
 	public File getSearchAdditional() {
-		if(cmd.hasOption('a')) {
-			return new File(cmd.getOptionValue("additionalSearch"));
+		if(cmd.hasOption("additionalSearch")) {
+			if(cmd.getOptionValue("additionalSearch").length()>0) {
+				return new File(cmd.getOptionValue("additionalSearch"));
+			}
 		}
 		return null;
 	}
@@ -176,5 +170,9 @@ public class MyOptions {
 	}
 	public String getAlias() {
 		return cmd.getOptionValue("alias");
+	}
+	//at the moment we don't allow jumps for NGS analysis
+	public boolean allowJump() {
+		return false;
 	}
 }

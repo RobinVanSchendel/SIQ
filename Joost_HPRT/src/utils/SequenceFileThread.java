@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
@@ -48,6 +50,8 @@ public class SequenceFileThread implements Runnable {
 	private long minPassedPrimer;
 	private String leftPrimer, rightPrimer;
 	private String alias = "";
+	private KMERLocation kmerl;
+	private boolean allowJump;
 	
 	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, HashMap<String, String> additional){
 		this.f = f;
@@ -56,7 +60,7 @@ public class SequenceFileThread implements Runnable {
 		this.leftFlank = leftFlank;
 		this.rightFlank = rightFlank;
 		this.output = output;
-		this.outputStats = new File(output.getAbsolutePath()+"stats.txt");
+		this.outputStats = new File(output.getAbsolutePath()+".stats.txt");
 		this.collapse = collapse;
 		this.maxError = maxError;
 		this.hmAdditional = additional;
@@ -81,41 +85,22 @@ public class SequenceFileThread implements Runnable {
 				e.printStackTrace();
 			} 
 		}
-		int counter = 0;
-		int wrong = 0;
-		int correct = 0;
-		int wrongPositionLeft = 0;
-		int wrongPositionRight = 0;
-		int badQual = 0;
-		Utils utils = new Utils();
 		long realStart = System.nanoTime();
+		ArrayList<SetAndPosition> poss = createSetAndPosition();
+		AtomicLong start = new AtomicLong(System.nanoTime());
+		AtomicInteger counter = new AtomicInteger(0);
+		AtomicInteger wrong = new AtomicInteger(0);
+		AtomicInteger wrongPosition = new AtomicInteger(0);
+		//AtomicInteger wrongPositionRight = new AtomicInteger(0);
+		AtomicInteger badQual = new AtomicInteger(0);
+		AtomicInteger correct = new AtomicInteger(0);
+		HashMap<String, Integer> remarks = new HashMap<String, Integer>();
+		
 		try {
-			FastqDataStore datastore = new FastqFileDataStoreBuilder(f)
-			   .qualityCodec(FastqQualityCodec.SANGER)				   
-			   .hint(DataStoreProviderHint.ITERATION_ONLY).build();
-			//FastqDataStore datastore = new FastqFileDataStoreBuilder(seqs)
-			   //.qualityCodec(FastqQualityCodec.ILLUMINA)				   
-			   //.hint(DataStoreProviderHint.ITERATION_ONLY);//.build();
-			if(writeToOutput){
-				//Very expensive call!!
-				//System.out.println(f.getName()+"\tnum records = \t" + datastore.getNumberOfRecords());
-			}
-			//Chromatogram chromo = ChromatogramFactory.create(seqs);
-			//NucleotideSequence seq = chromo.getNucleotideSequence();
-			//QualitySequence quals = chromo.getQualitySequence();
-			StreamingIterator<FastqRecord> iter = null;
-			try {
-				iter = datastore.iterator();
-			} catch (DataStoreException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			
-			ArrayList<SetAndPosition> poss = createSetAndPosition();
-			long start = System.nanoTime();
-			while(iter.hasNext()){
-				FastqRecord fastqRecord = iter.next();
+			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
+			        (id, fastqRecord) -> {
 				QualitySequence quals = fastqRecord.getQualitySequence();
+				/*
 				RichSequence query = null;
 				try {
 					query = RichSequence.Tools.createRichSequence(fastqRecord.getId(),DNATools.createDNA(fastqRecord.getNucleotideSequence().toString()));
@@ -123,43 +108,49 @@ public class SequenceFileThread implements Runnable {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
+				*/
 				//mask
 				
 				//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 				boolean checkReverse = false;
-				CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, f.getParentFile().getName(), checkReverse);
+				CompareSequence cs = new CompareSequence(subject, fastqRecord.getNucleotideSequence().toString(), quals, leftFlank, rightFlank, null, f.getParentFile().getName(), checkReverse, id, kmerl);
 				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemove();
+				cs.setAllowJump(this.allowJump);
 				
 				if(cs.getRemarks().length()!=0) {
-					badQual++;
+					badQual.getAndIncrement();
 				}
 				//small speedup
 				boolean leftCorrect = false;
 				boolean rightCorrect = false;
-				System.out.println(java.lang.Thread.activeCount());
 				if(cs.getRemarks().length()==0) {
 					cs.determineFlankPositions();
-					//System.out.println("So far took :"+duration+" milliseconds");
 					leftCorrect = cs.isCorrectPositionLeft(poss);
 					rightCorrect = cs.isCorrectPositionRight(poss);
-					if(!leftCorrect) {
-						wrongPositionLeft++;
-					}
-					if(!rightCorrect) {
-						wrongPositionRight++;
-					}
 					if(leftCorrect && rightCorrect) {
 						cs.setAdditionalSearchString(hmAdditional);
 						//cs.setCutType(type);
 						cs.setCurrentFile(f.getName());
-						cs.setCurrentAlias(alias);
+						cs.setCurrentAlias(alias, f.getName());
+					}
+					else {
+						wrongPosition.getAndIncrement();
+						if(cs.getRemarks().length()>0) {
+							String rs = cs.getRemarks();
+							if(remarks.containsKey(rs)) {
+								remarks.put(rs, remarks.get(rs)+1);
+							}
+							else {
+								remarks.put(rs, 1);
+							}
+						}
 					}
 				}
 				//only correctly found ones
 				//System.out.println(cs.toStringOneLine());
 				if(cs.getRemarks().length() == 0 && leftCorrect && rightCorrect){
-					correct++;
+					correct.getAndIncrement();
 					if(!printOnlyIsParts){
 						if(collapseEvents){
 							String key = cs.getKey(includeStartEnd);
@@ -182,15 +173,6 @@ public class SequenceFileThread implements Runnable {
 								//actualEvents.put(key, cs.toStringOneLine());
 							}
 						}
-						else{
-							if(writer != null){
-								writer.println(type+"\t"+cs.toStringOneLine());
-								//System.out.println(type+"\t"+cs.toStringOneLine());
-							}
-							else{
-								System.out.println(type+"\t"+cs.toStringOneLine());
-							}
-						}
 					}
 					else{
 						String[] ret = cs.printISParts(colorMap);
@@ -203,37 +185,32 @@ public class SequenceFileThread implements Runnable {
 				}
 				else {
 					//System.err.println(cs.getRemarks());
-					wrong++;
+					wrong.getAndIncrement();
 				}
 				//System.out.println(cs.toStringOneLine());
 				//no masking
-				/*
-				cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, cellType.getName());
-				cs.determineFlankPositions();
-				cs.setAdditionalSearchString(additional.seqString());
-				//only correctly found ones
-				if(cs.getRemarks().length() == 0){
-					System.out.println(type+"\t"+cs.toStringOneLine());
-				}
-				*/
-				counter++;
-				if(writer != null && counter%1000==0){
+				counter.getAndIncrement();
+				if(counter.get()%10000==0){
 					long end = System.nanoTime();
-					long duration = TimeUnit.MILLISECONDS.convert((end-start), TimeUnit.NANOSECONDS);
+					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
 					//System.out.println("So far took :"+duration+" milliseconds");
-					start = end;
-					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPositionL: "+wrongPositionLeft+" wrongPositionR: "+wrongPositionRight+ " correct fraction: "+(correct/(double)(correct+wrong)));
+					start.set(end);
+					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get())));
 					//iter.close();
 					//break;
 				}
-				if(counter>= this.maxReads) {
-					break;
+				if(counter.get()>= this.maxReads) {
+					throw new BreakException();
 				}
-			}
-			
-		} catch (IOException e1) {
-			e1.printStackTrace();
+			});
+		} catch (IOException | RuntimeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BreakException e) {
+			//this is just to escape the lambda expression
+			//e.printStackTrace();
 		}
+			
 		if(writer != null){
 			if(collapseEvents){
 				//System.out.println("Writing events "+csEvents.size()+" to: "+output.getAbsolutePath());
@@ -260,16 +237,17 @@ public class SequenceFileThread implements Runnable {
 			writerStats.println(f.getName()+"\treads\t"+counter);
 			writerStats.println(f.getName()+"\tcorrect\t"+correct);
 			writerStats.println(f.getName()+"\twrong\t"+wrong);
-			writerStats.println(f.getName()+"\twrongLeft\t"+wrongPositionLeft);
-			writerStats.println(f.getName()+"\twrongRight\t"+wrongPositionRight);
+			writerStats.println(f.getName()+"\twrongPosition\t"+wrongPosition);
 			writerStats.println(f.getName()+"\tbadQual\t"+badQual);
+			for(String key: remarks.keySet()) {
+				writerStats.println(f.getName()+"\t"+key+"\t"+remarks.get(key));
+			}
 			writerStats.close();
 			System.out.println("Written stats to: "+outputStats.getAbsolutePath());
 		}
 		long end = System.nanoTime();
-		long duration = TimeUnit.MILLISECONDS.convert((end-realStart), TimeUnit.NANOSECONDS);
+		long duration = TimeUnit.SECONDS.convert((end-realStart), TimeUnit.NANOSECONDS);
 		System.out.println("duration "+duration);
-		utils.printCacheStats();
 	}
 
 	private ArrayList<SetAndPosition> createSetAndPosition() {
@@ -282,6 +260,7 @@ public class SequenceFileThread implements Runnable {
 			System.err.println(rightPrimer);
 			System.err.println(leftPos);
 			System.err.println(rightPos);
+			System.exit(1);
 		}
 		//now adjust the rightPosition
 		rightPos += rightPrimer.length();
@@ -336,5 +315,12 @@ public class SequenceFileThread implements Runnable {
 	
 	public void setAlias(String alias) {
 		this.alias = alias;
+	}
+	public void setKMERLocation(KMERLocation k) {
+		this.kmerl = k;
+	}
+
+	public void setAllowJump(boolean allowJump) {
+		this.allowJump = allowJump;
 	}
 }

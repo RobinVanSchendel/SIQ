@@ -12,6 +12,8 @@ public class KMERLocation {
 	HashMap<String, KMER> hm = new HashMap<String, KMER>();
 	private ArrayList<LCS> lcss = new ArrayList<LCS>();
 	private String query;
+	private static final int MINIMUMSECONDSIZE = 30;
+	
 	public KMERLocation (String s) {
 		this.ref = s;
 		initKMER();
@@ -36,7 +38,40 @@ public class KMERLocation {
 		}
 		return false;
 	}
-	public Left getMatchLeft(String seq, int leftPos) {
+	public Left getMatchLongestLeft(String seq, boolean allowJump) {
+		if(!hasQuery(seq)) {
+			//System.out.println("replaced");
+			fillLCS(seq);
+		}
+		//System.out.println(seq);
+		if(lcss.size()==0) {
+			return null;
+		}
+		if(lcss.size()==1) {
+			return lcss.get(0);
+		}
+		//get the longest
+		LCS max = this.getLCS(seq);
+		if(allowJump) {
+			//get the second longest left to max
+			int longesttwo = -1;
+			LCS maxTwo = null;
+			for(LCS lcs: lcss) {
+				if(lcs.length()>= MINIMUMSECONDSIZE && lcs.length()>longesttwo && !lcs.toString().equals(max.toString())) {
+					longesttwo = lcs.length();
+					maxTwo = lcs;
+				}
+			}
+			if(maxTwo != null) {
+				if(maxTwo.getSubjectStart()<max.getSubjectStart()) {
+					return maxTwo;
+				}
+			}
+		}
+		return max;
+	
+	}
+	public Left getMatchLeft(String seq, int leftPos, boolean allowJump) {
 		if(!hasQuery(seq)) {
 			//System.out.println("replaced");
 			fillLCS(seq);
@@ -82,24 +117,25 @@ public class KMERLocation {
 		if(max == null) {
 			return null;
 		}
-		
-		//possible take the next one
-		LCS second = null;
-		for(LCS lcs: lcss) {
-			int absDist = Math.abs(lcs.getSubjectStart()-max.getSubjectEnd());
-			int absDistQuery = Math.abs(lcs.getQueryStart()-max.getQueryEnd());
-			if(lcs != max && lcs.getSubjectStart()<leftPos-30 && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()>max.getSubjectStart()) {
-				second = lcs;
-				//System.out.println(absDist);
-				//System.out.println(absDistQuery);
-			}
-		}
-		//System.out.println("max:"+max);
-		//System.out.println("second:"+second);
 		boolean jumped = false;
-		if(second!= null) {
-			max = second;
-			jumped = true;
+		if(allowJump) {
+			//possible take the next one
+			LCS second = null;
+			for(LCS lcs: lcss) {
+				int absDist = Math.abs(lcs.getSubjectStart()-max.getSubjectEnd());
+				int absDistQuery = Math.abs(lcs.getQueryStart()-max.getQueryEnd());
+				if(lcs != max && lcs.getSubjectStart()<leftPos-30 && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()>max.getSubjectStart()) {
+					second = lcs;
+					//System.out.println(absDist);
+					//System.out.println(absDistQuery);
+				}
+			}
+			//System.out.println("max:"+max);
+			//System.out.println("second:"+second);
+			if(second!= null) {
+				max = second;
+				jumped = true;
+			}
 		}
 		//System.out.println("max:"+max);
 		//System.out.println(leftPos);
@@ -317,7 +353,7 @@ public class KMERLocation {
 		return lcs;
 		//System.out.println("final["+origKey+":"+key+"]:"+start+":"+end);
 	}
-	public String getMatchRight(String seq, int startPos, int minSize) {
+	public LCS getMatchRight(String seq, int startPos, int minSize, boolean allowJump) {
 		//System.out.println("seq"+seq);
 		//System.out.println("getMatchRight");
 		if(!hasQuery(seq)) {
@@ -328,99 +364,61 @@ public class KMERLocation {
 		if(lcss.size()==0) {
 			return null;
 		}
-		//System.out.println("lcs");
-		//for(LCS l: lcss) {
-			//System.out.println(l);
-		//}
 		int longest = -1;
 		LCS max = null;
 		for(LCS lcs: lcss) {
-			//System.out.println("lcs:"+lcs);
 			if(lcs.getSubjectEnd()>startPos && lcs.getString().length()>=minSize) {
-				//System.out.println("q:"+seq);
-				//System.out.println(lcs);
-				//System.out.println(seq.indexOf(lcs.getString()));
-				//System.out.println(lcss.size());
-				//System.out.println(startPos);
 				if(lcs.getString().length()>longest) {
 					longest = lcs.getString().length();
 					max = lcs;
-					//System.out.println("max now: "+max);
-					//System.out.println(longest);
-				}
-				//return lcs.getString();
-			}
-		}
-		if(max!= null) {
-			int startRefPos = Math.max(startPos, max.getSubjectStart());
-			//System.out.println(startPos);
-			//System.out.println(max.getSubjectStart());
-			//System.out.println(startRefPos);
-			//System.out.println(max.getSubjectEnd());
-			if(startRefPos == max.getSubjectEnd()) {
-				return null;
-			}
-			return ref.substring(startRefPos, max.getSubjectEnd());
-		}
-		return null;
-		/*
-		int refIndex = -1;
-		int seqIndex = -1;
-		for(int i = 0;i<seq.length();i++) {
-			if(i+KMERLENGTH<seq.length()) {
-				String s = seq.substring(i, i+KMERLENGTH);
-				if(hm.containsKey(s)) {
-					if(hm.get(s).getLocation().size()==1) {
-						refIndex = hm.get(s).getLocation().get(0);
-						//only break from this position
-						if(refIndex >= startPos) {
-							seqIndex = i;
-							//System.out.println(s);
-							//System.out.println(hm.get(s));
-							break;
-						}
-					}
 				}
 			}
 		}
-		//both need to be set
-		if(refIndex>0 && seqIndex>0) {
-			int queryStart = seqIndex;
-			int subjectStart = refIndex;
-			//System.out.println(ref.charAt(subjectStart));
-			//System.out.println(seq.charAt(queryStart));
-			while(refIndex<ref.length() && seqIndex<seq.length() && ref.charAt(refIndex) == seq.charAt(seqIndex)) {
-				refIndex++;
-				seqIndex++;
-				//System.out.println("+1");
-			}
-			int queryEnd = seqIndex;
-			int subjectEnd = refIndex;
-			//System.out.println("Query ["+queryStart+":"+queryEnd+"] " +seq.substring(queryStart, queryEnd));
-			//System.out.println("Subject ["+subjectStart+":"+subjectEnd+"] " +ref.substring(subjectStart, subjectEnd));
-			//return seq.substring(queryStart, queryEnd);
-			return seq.substring(queryStart, queryEnd);
+		if(max == null) {
+			return max;
 		}
-		return null;
-		*/
+		boolean jumped = false;
+		if(allowJump && max!= null) {
+			//can we find one closer by that is also long enough?
+			LCS second = null;
+			for(LCS lcs: lcss) {
+				int absDist = Math.abs(lcs.getSubjectEnd()-max.getSubjectStart());
+				int absDistQuery = Math.abs(lcs.getQueryEnd()-max.getQueryStart());
+				if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()<max.getSubjectStart()) {
+					second = lcs;
+				}
+			}
+			if(second != null) {
+				max = second;
+				jumped = true;
+			}
+		}
+		int startRefPos = Math.max(startPos, max.getSubjectStart());
+		if(startRefPos == max.getSubjectEnd()) {
+			return null;
+		}
+		String s = ref.substring(startRefPos, max.getSubjectEnd());
+		int startQuery = query.indexOf(s);
+		LCS lcs = new LCS(s,startRefPos, max.getSubjectEnd(), startQuery, startQuery+s.length(), jumped);
+		return lcs; 
 	}
-	public String getLCS(String seq) {
+	public LCS getLCS(String seq) {
 		//already have this one
 		if(!hasQuery(seq)) {
 			this.fillLCS(seq);
 		}
 		return getLCSInternal();
 	}
-	private String getLCSInternal() {
+	private LCS getLCSInternal() {
 		int maxLength = -1;
-		String maxString = "";
+		LCS max = null;
 		for(LCS lcs: lcss) {
 			//System.out.println(m);
 			if(lcs.getString().length()>maxLength) {
 				maxLength = lcs.getString().length();
-				maxString = lcs.getString();
+				max = lcs;
 			}
 		}
-		return maxString;
+		return max;
 	}
 }

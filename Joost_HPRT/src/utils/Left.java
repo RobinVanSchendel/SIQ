@@ -27,7 +27,7 @@ public class Left {
 	public String getString(){
 		return string;
 	}
-	public static Left getLeft(String subjectPart, String query, boolean findLeftMost){
+	public static Left getLeft(String subjectPart, String query, boolean findLeftMost, boolean allowJump){
 		String first = Utils.longestCommonSubstring(subjectPart, query);
 		int start = subjectPart.indexOf(first);
 		int end = start+first.length();
@@ -61,7 +61,7 @@ public class Left {
 		Left firstLeft = new Left(first,start, end,queryStart, queryEnd);
 		Left secondLeft = new Left(second,startSecond, endSecond, queryStartSecond,queryEndSecond);
 		//System.out.println(leftOver.endsWith(second));
-		if(second.length()>MINIMUMSECONDSIZE){
+		if(allowJump && second.length()>MINIMUMSECONDSIZE){
 			//check if we allow the jump, previously this led to deletions not being spotted
 			int locFirstSub = subjectPart.indexOf(first)+first.length();
 			int secSecondSubEnd = subjectPart.indexOf(second);
@@ -100,7 +100,7 @@ public class Left {
 		this.queryEnd++;
 		this.subjectEnd++;
 	}
-	public boolean getJumpedLeft() {
+	public boolean getJumped() {
 		return this.jumpedLeft;
 	}
 }
