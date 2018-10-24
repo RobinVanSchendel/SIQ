@@ -1,17 +1,12 @@
 package main;
 import gui.GUI;
+import gui.PropertiesManager;
 
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-
 public class SV_Analyzer {
-	public final static String VERSION = "2.0";
+	public final static String VERSION = "3.0";
 	public static void main(String[] args) {
 		
 		// TODO Auto-generated method stub
@@ -31,6 +26,7 @@ public class SV_Analyzer {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		new GUI(VERSION);
+		PropertiesManager pm = new PropertiesManager();
+		new GUI(VERSION, pm);
 	}
 }

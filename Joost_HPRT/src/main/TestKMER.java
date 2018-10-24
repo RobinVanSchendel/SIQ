@@ -15,9 +15,9 @@ public class TestKMER {
 		String leftFlank = "ggaggcctgatttca";
 		leftFlank = leftFlank.toUpperCase();
 		int leftPos = ref.indexOf(leftFlank)+leftFlank.length();
-		Left l = kml.getMatchLeft(seq, leftPos);
+		Left l = kml.getMatchLeft(seq, leftPos, true);
 		System.out.println("left:"+l);
 		int indexL = seq.indexOf(l.getString())+l.getString().length();
-		System.out.println("right"+kml.getMatchRight(seq.substring(indexL), l.getSubjectEnd(), 15));
+		System.out.println("right"+kml.getMatchRight(seq.substring(indexL), l.getSubjectEnd(), 15, true));
 	}
 }

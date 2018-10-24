@@ -16,10 +16,12 @@ import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
+import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
 import utils.CompareSequence;
+import utils.KMERLocation;
 
 public class TestSingleFile {
 
@@ -45,6 +47,41 @@ public class TestSingleFile {
 		Chromatogram chromo = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
 		File dir = new File("Z:\\Joost\\Files\\Sequences\\1045404");
+		System.out.println(CompareSequence.getOneLineHeader());
+		BufferedReader is = null;
+		try {
+			//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR2.txt"));
+			//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR1.txt"));
+			//is = new BufferedReader(new FileReader("Z:\\Evelyne\\JavaSoftware\\XF1290.fa.txt"));
+			//is = new BufferedReader(new FileReader("Z:\\Evelyne\\DNA\\Revertants sequencing\\XF1423_extended.fa.txt"));
+			//is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
+			//is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\XF1280_whole_unc-22_100bp_zone_for_polq.fa"));
+			is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_HPRT_test\\G4.fa.txt"));
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			System.exit(0);
+		}
+		//get a SequenceDB of all sequences in the file
+		RichSequenceIterator si = IOTools.readFastaDNA(is, null);
+		RichSequence hprtSeq = null;
+		while(si.hasNext()){
+			try {
+				hprtSeq = si.nextRichSequence();
+				//IOTools.writeFasta(System.out, hprtSeq, null);
+			} catch (NoSuchElementException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (BioException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		
 		for(File f: dir.listFiles()) {
 			if(!f.getName().endsWith(".ab1")) {
 				continue;
@@ -100,39 +137,7 @@ public class TestSingleFile {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			BufferedReader is = null;
-			try {
-				//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR2.txt"));
-				//is = new BufferedReader(new FileReader("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\HPRT-FASTA-CR1.txt"));
-				//is = new BufferedReader(new FileReader("Z:\\Evelyne\\JavaSoftware\\XF1290.fa.txt"));
-				//is = new BufferedReader(new FileReader("Z:\\Evelyne\\DNA\\Revertants sequencing\\XF1423_extended.fa.txt"));
-				//is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
-				//is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\XF1280_whole_unc-22_100bp_zone_for_polq.fa"));
-				is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_HPRT_test\\G4.fa.txt"));
-			} catch (FileNotFoundException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-				System.exit(0);
-			}
-			//get a SequenceDB of all sequences in the file
-			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
-			RichSequence hprtSeq = null;
-			while(si.hasNext()){
-				try {
-					hprtSeq = si.nextRichSequence();
-					//IOTools.writeFasta(System.out, hprtSeq, null);
-				} catch (NoSuchElementException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (BioException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-			System.out.println(CompareSequence.getOneLineHeader());
+			
 			//CR1
 			//String left = "TTTGTTTTGTATACCTAATCATTATG";
 			//String right = "CCGAGGATTTGGAAAAAGTGTTTA";
@@ -152,18 +157,52 @@ public class TestSingleFile {
 			String left = "TTGTATACCTAATCATTATG";
 			String right = "CCGAGGATTTGGAAAAAGTG";
 			
-			CompareSequence s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left, right, null, null, true);
+			CompareSequence kmerless1 = new CompareSequence(hprtSeq, seq.seqString(),chromo.getQualitySequence(), left, right, null, null, true, seq.getName(), null);
+			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
-			s.determineFlankPositions();
-			System.out.println(s.toStringOneLine());
+			kmerless1.determineFlankPositions();
+			String outputKMERless = kmerless1.toStringOneLine();
+			System.out.println(outputKMERless);
+			KMERLocation kmerl = new KMERLocation(hprtSeq.seqString());
+			CompareSequence kmerWith = new CompareSequence(hprtSeq, seq.seqString(),chromo.getQualitySequence(), left, right, null, null, true, seq.getName(), kmerl);
+			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
+			//s.setAdditionalSearchString(additional);
+			kmerWith.determineFlankPositions();
+			String outputKMER = kmerWith.toStringOneLine();
+			System.out.println(outputKMER);
 			
-			s = new CompareSequence(hprtSeq, null, seq,chromo.getQualitySequence(), left,right, null, null, true);
-			s.setAndDetermineCorrectRange(0.05);
+			if(kmerWith.getRemarks().length()==0 && kmerless1.getRemarks().length()==0 && !outputKMERless.equals(outputKMER)) {
+				System.err.println("KMER AND KMERLESS ARE NOT THE SAME");
+				System.err.println(outputKMERless);
+				System.err.println(outputKMER);
+			}
+			
+			
+			
+			kmerless1 = new CompareSequence(hprtSeq, seq.seqString(),chromo.getQualitySequence(), left,right, null, null, true, seq.getName(), null);
+			kmerless1.setAndDetermineCorrectRange(0.05);
 			//s.setAdditionalSearchString(additional);
 			//s.maskSequenceToHighQuality(left, right);
-			s.maskSequenceToHighQualityRemove();
-			s.determineFlankPositions();
-			System.out.println(s.toStringOneLine());
+			kmerless1.maskSequenceToHighQualityRemove();
+			kmerless1.determineFlankPositions();
+			outputKMERless = kmerless1.toStringOneLine();
+			System.out.println(outputKMERless);
+			
+			kmerWith = new CompareSequence(hprtSeq, seq.seqString(),chromo.getQualitySequence(), left,right, null, null, true, seq.getName(), kmerl);
+			kmerWith.setAndDetermineCorrectRange(0.05);
+			//s.setAdditionalSearchString(additional);
+			//s.maskSequenceToHighQuality(left, right);
+			kmerWith.maskSequenceToHighQualityRemove();
+			kmerWith.determineFlankPositions();
+			outputKMER = kmerWith.toStringOneLine();
+			System.out.println(outputKMER);
+			
+			if(kmerWith.getRemarks().length()==0 && kmerless1.getRemarks().length()==0 && !outputKMERless.equals(outputKMER)) {
+				System.err.println("KMER AND KMERLESS ARE NOT THE SAME (QUALTIY MASKED)");
+				System.err.println(outputKMERless);
+				System.err.println(outputKMER);
+			}
+			
 		}
 	}
 
