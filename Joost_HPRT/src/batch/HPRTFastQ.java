@@ -20,6 +20,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import gui.GUI;
+import gui.PropertiesManager;
 import main.SV_Analyzer;
 import utils.CompareSequence;
 import utils.MyOptions;
@@ -66,48 +67,20 @@ public class HPRTFastQ {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			GUI g = new GUI(SV_Analyzer.VERSION);
+			PropertiesManager pm = new PropertiesManager();
+			GUI g = new GUI(SV_Analyzer.VERSION, pm);
 			g.setMaxError(options.getMaxError());
 		}
 		else {
 			System.out.println(options.printParameters());
 			
 			SequenceController sq = new SequenceController();
-			//for IS color parts
-			/*
-			HashMap<String, String> colorMap = new HashMap<String,String>();
-			colorMap.put("px458_Cas9-GFP", "brown");
-			colorMap.put("mmHPRT_sequence_Fasta", "purple");
-			colorMap.put("Flank insert", "orange");
-			colorMap.put("Flank insert rc", "red");
-			colorMap.put("Tandem duplication", "green");
-			colorMap.put("Tandem duplication2", "darkgreen");
-			*/
-			//System.out.println("input : "+cmd.getOptionValue("in"));
-			//System.out.println("out : "+cmd.getOptionValue("o"));
-			//System.out.println("postfix : "+cmd.getOptionValue("p"));
 			if(options.getMinNumber()>0 && !options.collapseEvents()) {
 				System.err.println("You specified a minimalCount to only output events that have been seen ["+options.getMinNumber()+"] times, but this does not work if you do not set the collapse to true");
 				System.err.println("Either remove this argument or set collapse to true");
 				System.exit(0);
 			}
-			//Print formatter
-			//HelpFormatter formatter = new HelpFormatter();
-			//formatter.printHelp( "HPRTFastQ", optionsApache );
-			//System.exit(0);
-			
 			String containsString = null; //".assembled"; //null
-			int[] startPositions = {81,216}; //these are the start positions (81, 216) and the end positions (326, 553) of the primers
-			int[] endPositions = {326,552}; //these are the end positions (326, 552) and the end positions (326, 553) of the primers
-			boolean keepOnlyPositions = false;
-			//because we check the positions now we don't have to keep the start_end in the key
-			boolean includeStartEnd = false;
-			
-			
-			//if(collapse){
-			//	name +="_collapse";
-			//}
-			//name +=".txt";
 			
 			//set the output file
 			File output = new File(options.getOutput());
@@ -120,14 +93,6 @@ public class HPRTFastQ {
 			
 			sq.setCollapseEvents(options.collapseEvents());
 			
-			//sq.setPrintOnlyISParts();
-			//sq.setColorMap(colorMap);
-			sq.setMinimalCount(options.getMinNumber());
-			sq.setIncludeStartEnd(includeStartEnd);
-			//if(!includeStartEnd) {
-				//name+= "_ignoreStartEndPosInKey";
-			//	
-			//}
 			String fileName = options.getFile();
 			File file = null;
 			if(fileName == null) {
@@ -147,7 +112,7 @@ public class HPRTFastQ {
 			}
 			
 			Scanner s = null;
-			final long startTime = System.nanoTime();
+			//final long startTime = System.nanoTime();
 			try {
 				s = new Scanner(file);
 				boolean first = true;
@@ -195,9 +160,6 @@ public class HPRTFastQ {
 						if(addSearchColumn>-1 && parts.length>addSearchColumn){
 							search = new File(parts[addSearchColumn]);
 						}
-						if(keepOnlyPositions) {
-							sq.setStartEndPositions(startPositions, endPositions);
-						}
 						sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
 					}
 				}
@@ -206,8 +168,8 @@ public class HPRTFastQ {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			final long duration = (System.nanoTime() - startTime);
-			long seconds = TimeUnit.NANOSECONDS.toSeconds(duration);
+			//final long duration = (System.nanoTime() - startTime);
+			//long seconds = TimeUnit.NANOSECONDS.toSeconds(duration);
 			//System.out.println("This script took "+seconds+" seconds");
 		}
 	}
@@ -232,13 +194,6 @@ public class HPRTFastQ {
 		System.out.println("Created template file: "+template.getPath());
 	}
 
-	private static void setOptions(Options options) {
-		if(!options.hasShortOption("e")) {
-			//options.getOption("e").se
-			
-		}
-	}
-
 	private static Options createOptions() {
 		Options o = new Options();
 		//threads
@@ -261,15 +216,6 @@ public class HPRTFastQ {
 						"<DIR><tab><ref_fasta><tab><leftFlank><tab><rightFlank><tab><Type><tab><additionalRefFastaFile>")
 				.build();
 		o.addOption(input);
-		
-		//output prefix
-		Option outP = Option.builder("p")
-				.longOpt("output_postfix")
-				.hasArg()
-				.argName("FILE")
-				.desc("The output will be set in the same location as the input and will add the postfix to the name")
-				.build();
-		o.addOption(outP);
 		
 		Option out = Option.builder("o")
 				.longOpt("output")

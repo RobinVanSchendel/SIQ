@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Vector;
+import java.util.concurrent.TimeUnit;
 
 import org.biojavax.bio.seq.RichSequence;
 
@@ -29,8 +30,8 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//extra parameters
 		String analyseDirName = null; //"XF1494";
 		//analyseDirName = "XF1488"; //"XF1494";
-		analyseDirName = "XF1602";
-		boolean printNonCorrect = false; //false
+		//analyseDirName = "XF1414";
+		boolean printNonCorrect = true; //false
 		boolean printXY = true;
 		
 		ArrayList<CompareSequence> al = new ArrayList<CompareSequence>();
@@ -48,6 +49,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 			String[] flanks = obtainLeftRightFlank(leftRightFlankFile, tempDir.getName());
 		}
 		//Good to go!
+		long start = System.nanoTime();
 		for(File tempDir: ab1FileDirs){
 			if(analyseDirName!= null && !tempDir.getName().equals(analyseDirName)){
 				continue;
@@ -62,7 +64,13 @@ public class PrimaseInitiationAnalysisOrderedDir {
 			//get Left and RightFlanks
 			String[] flanks = obtainLeftRightFlank(leftRightFlankFile, tempDir.getName());
 			al.addAll(sq.readFilesTryToMatch(tempDir, currentSequence, flanks[0], flanks[1], null, null, printNonCorrect,quality));
+			//System.out.println(CompareSequence.getOneLineHeader());
+			for(CompareSequence cs: al) {
+				
+				//System.out.println(cs.toStringOneLine());
+			}
 			System.out.println("We now have "+al.size()+" sequences");
+			//System.exit(0);
 		}
 		//do something
 		HashMap<String, ArrayList<CompareSequence>> hm = new HashMap<String,ArrayList<CompareSequence>>();
@@ -132,6 +140,8 @@ public class PrimaseInitiationAnalysisOrderedDir {
 			sq.setSequences(al);
 			sq.printXY();
 		}
+		long end = System.nanoTime();
+		System.out.println("Took "+TimeUnit.SECONDS.convert((end-start),TimeUnit.NANOSECONDS)+" seconds");
 	}
 
 	private static Vector<String> fillBlackList(String blacklist) {

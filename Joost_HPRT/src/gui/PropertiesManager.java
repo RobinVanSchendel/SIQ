@@ -31,7 +31,7 @@ public class PropertiesManager {
 			e.printStackTrace();
 		}
 		for(Object key: props.keySet()) {
-			System.out.println(key+" "+props.getProperty((String) key));
+			//System.out.println(key+" "+props.getProperty((String) key));
 		}
 	}
 	private String getPropFileName() {
@@ -50,7 +50,7 @@ public class PropertiesManager {
 	}
 	public void setProperty(String key, String value) {
 		props.setProperty(key, value);
-		System.out.println(key+" "+value);
+		//System.out.println(key+" "+value);
 		writePropFile();
 	}
 	public void writePropFile() {
@@ -68,11 +68,11 @@ public class PropertiesManager {
 			String s = columns[i];
 			if(getPropertyBoolean(s)) {
 				include[i] = true;
-				System.out.println(s+" true");
+				//System.out.println(s+" true");
 			}
 			else {
 				include[i] = false;
-				System.out.println(s+" false");
+				//System.out.println(s+" false");
 			}
 		}
 		return include;

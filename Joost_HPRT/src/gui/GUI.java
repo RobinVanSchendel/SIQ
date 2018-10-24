@@ -3,17 +3,16 @@ package gui;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
-import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,19 +35,17 @@ import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 
 import org.biojava.bio.BioException;
-import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.seq.SequenceIterator;
-import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
-import org.biojavax.bio.seq.RichSequenceIterator;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
 import utils.CompareSequence;
+import utils.KMERLocation;
 import utils.Utils;
 
 public class GUI implements ActionListener {
@@ -73,8 +70,11 @@ public class GUI implements ActionListener {
 	JLabel maxE = new JLabel("maxError:");
 	private JSpinner maxError;
 	HashMap<String, String> hmAdditional;
+	private PropertiesManager pm;
+	private ArrayList<JCheckBox> outputs = new ArrayList<JCheckBox>();
 	
-	public GUI(String version)
+	
+	public GUI(String version, PropertiesManager pm)
     {
         //make sure the program exits when the frame closes
         guiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -90,6 +90,7 @@ public class GUI implements ActionListener {
         JButton chooseSubject = new JButton("Seq (Fasta)");
         chooseSubject.setActionCommand("chooseSubject");
         chooseSubject.addActionListener(this);
+        this.pm = pm;
         
         comboPanel.add(comboLbl);
         
@@ -123,6 +124,7 @@ public class GUI implements ActionListener {
         progressBar.setValue(0);
         progressBar.setStringPainted(true);
         buttonPanel.add(progressBar, BorderLayout.CENTER);
+        
         
         //analyzeFiles = new JButton( "Start analysis Print Comparison");
         //analyzeFiles.setActionCommand("Start Comparison");
@@ -165,8 +167,11 @@ public class GUI implements ActionListener {
         //guiFrame.add(listPanel, BorderLayout.CENTER);
         guiFrame.add(buttonPanel,BorderLayout.SOUTH);
         
+        guiFrame.add(createOutputPanel(), BorderLayout.EAST);
+        
+        
         guiFrame.add(new JScrollPane(jFiles), BorderLayout.CENTER);
-        mbc = new MenuBarCustom();
+        mbc = new MenuBarCustom(pm);
         guiFrame.setJMenuBar(mbc.getMenuBar());
         
         //make sure the JFrame is visible
@@ -174,15 +179,75 @@ public class GUI implements ActionListener {
         guiFrame.setExtendedState(guiFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         
         //File tempFile = new File("C:/Users/rvanschendel/Documents/Project_Primase");
-        File tempFile = new File("Z:/Robin/Project_Primase/UV_TMP_hus-1-vs-N2/unc-22_sequencing");
-        if(tempFile.exists() && tempFile.isDirectory()){
-        	this.chooser.setCurrentDirectory(tempFile);
+        if(pm.getProperty("lastDir") != null) {
+        	File f = new File(pm.getProperty("lastDir"));
+        	this.chooser.setCurrentDirectory(f);
         }
+       	
     }
+
+	private JScrollPane createOutputPanel() {
+		JPanel jpanel = new JPanel();
+		//jpanel.setSize(30, 800);
+		jpanel.setLayout(new GridLayout(0,1));
+		String[] columns = CompareSequence.getOneLineHeaderArray();
+		JButton selectAll = new JButton("Select All");
+		selectAll.addActionListener(this);
+		JButton deselectAll = new JButton("Deselect All");
+		deselectAll.addActionListener(this);
+		jpanel.add(selectAll);
+		jpanel.add(deselectAll);
+		String[] mandatory = CompareSequence.mandatoryColumns();
+		for(String column: columns) {
+			JCheckBox item = new JCheckBox(column);
+			item.setSelected(pm.getPropertyBoolean(column));
+			item.setActionCommand("OUTPUT"+column);
+			item.addActionListener(this);
+			jpanel.add(item);
+			outputs.add(item);
+			for(String mandatoryColumn: mandatory) {
+				if(column.equals(mandatoryColumn)) {
+					item.setEnabled(false);
+					item.setSelected(true);
+					pm.setProperty(item.getText(), item.isSelected()+"");
+					break;
+				}
+			}
+		}
+		JScrollPane jsp = new JScrollPane(jpanel);
+		jsp.setPreferredSize( new Dimension( 200, 500 ) );
+		return jsp;
+	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		if(e.getActionCommand().equals("dirChooser")){
+		//System.out.println(e.getActionCommand());
+		if(e.getActionCommand().equals("Select All")) {
+			//System.out.println("hier!");
+			for(JCheckBox jcb: outputs) {
+				if(jcb.isEnabled()) {
+					jcb.setSelected(true);
+					pm.setProperty(jcb.getText(), jcb.isSelected()+"");
+				}
+			}
+			pm.writePropFile();
+		}
+		else if(e.getActionCommand().equals("Deselect All")) {
+			for(JCheckBox jcb: outputs) {
+				if(jcb.isEnabled()) {
+					jcb.setSelected(false);
+					pm.setProperty(jcb.getText(), jcb.isSelected()+"");
+				}
+			}
+			pm.writePropFile();
+		}
+		else if(e.getActionCommand().startsWith("OUTPUT")) {
+			if(e.getSource() instanceof JCheckBox) {
+				JCheckBox jcb = (JCheckBox) e.getSource();
+				pm.setProperty(jcb.getText(), jcb.isSelected()+"");
+			}
+		}
+		else if(e.getActionCommand().equals("dirChooser")){
 			chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 			chooser.setMultiSelectionEnabled(true);
 			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
@@ -220,25 +285,30 @@ public class GUI implements ActionListener {
 			
 			for(int i = 1; i<model.size();i++){
 				String ret = null;
-				if(mbc.tryToMatchFasta()){
-					ret = analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), check, false);
-				}
-				else if(mbc.tryAllFasta()){
-					ret = analyzeFileAll(model.getElementAt(i), left.getText(), right.getText(), check, false);
-				}
-				else{
+				//if(mbc.tryToMatchFasta()){
+				//	ret = analyzeFileTryToMatch(model.getElementAt(i), left.getText(), right.getText(), check, false);
+				//}
+				//else if(mbc.tryAllFasta()){
+				//	ret = analyzeFileAll(model.getElementAt(i), left.getText(), right.getText(), check, false);
+				//}
+				//else{
 					ret = analyzeFile(model.getElementAt(i), left.getText(), right.getText(), check, false);
-				}
+				//}
 				check = false;
 				//at least show the name
-				if(ret == null){
-					ret = model.getElementAt(i).getName();
+				//not any more
+				//if(ret == null){
+					//ret = model.getElementAt(i).getName();
+				//}
+				if(ret != null) {
+					area.append(ret+"\n");
 				}
-				area.append(ret+"\n");
 				progressBar.setValue(i);
 				progressBar.update(progressBar.getGraphics());
 				guiFrame.update(guiFrame.getGraphics());
 			}
+			//Remove columns that users don't want to see
+			area.setText(removeUnneededColumns(area.getText()));
 			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 			JScrollPane scrollPane = new JScrollPane(area);
 			scrollPane.setPreferredSize( new Dimension( 500, 500 ) );
@@ -293,6 +363,7 @@ public class GUI implements ActionListener {
 			chooser.setMultiSelectionEnabled(false);
 			sequences = null;
 			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+				pm.setProperty("lastDir", chooser.getSelectedFile().getParent());
 				//remove the subject if we already have one
 				if(subject != null){
 					subject = null;
@@ -316,7 +387,7 @@ public class GUI implements ActionListener {
 						fillInPamSite(s.seqString().toString());
 						subject = chooser.getSelectedFile();
 						model.insertElementAt(subject, 0);
-						if(si.hasNext() && !mbc.tryToMatchFasta()){
+						if(si.hasNext()) {// && !mbc.tryToMatchFasta()){
 							JOptionPane.showMessageDialog(guiFrame, "You selected a fasta file with two or more sequences\nI will search for templated flanks in the extra sequences.");
 						}
 					} catch (NoSuchElementException e1) {
@@ -340,6 +411,28 @@ public class GUI implements ActionListener {
 		}
 	}
 
+	private String removeUnneededColumns(String s) {
+		String[] rows = s.split("\n");
+		StringBuffer sb = new StringBuffer(5000);
+		//System.out.println("removeUnneededColumns");
+		boolean[] keepColumns = pm.getOutputColumns();
+		for(String row: rows) {
+			StringBuffer rowBuffer = new StringBuffer(5000);
+			String[] columns = row.split("\t");
+			for(int column = 0; column<columns.length;column++) {
+				if(keepColumns[column]) {
+					if(rowBuffer.length()>0) {
+						rowBuffer.append("\t");
+					}
+					rowBuffer.append(columns[column]);
+				}
+			}
+			sb.append(rowBuffer);
+			sb.append("\n");
+		}
+		return sb.toString();
+	}
+	/*
 	private String analyzeFileAll(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		StringBuffer sb = new StringBuffer();
 		RichSequence subject2 = null;
@@ -421,7 +514,8 @@ public class GUI implements ActionListener {
 			} catch (IllegalSymbolException e) {
 				e.printStackTrace();
 			}
-			CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true);
+			KMERLocation kmerl = new KMERLocation(subject.seqString());
+			CompareSequence cs = new CompareSequence(subject, subject2, seq.toString(), quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true, name, kmerl);
 			//cs.setAndDetermineCorrectRange(0.01);
 			cs.setAndDetermineCorrectRange((double)maxError.getValue());
 			if(this.maskLowQuality.isSelected()){
@@ -432,24 +526,27 @@ public class GUI implements ActionListener {
 			}
 			cs.determineFlankPositions();
 			cs.setAdditionalSearchString(hmAdditional);
-			if(printCompare){
-				String s = cs.toStringCompare(100); 
-				if(s != null){
+			if(!pm.getPropertyBoolean("printCorrectColumnsOnly") || (pm.getPropertyBoolean("printCorrectColumnsOnly") && cs.getRemarks().length()==0)) {
+				if(printCompare){
+					String s = cs.toStringCompare(100); 
+					if(s != null){
+						if(sb.length()>0){
+							sb.append("\n");
+						}
+						sb.append(s);
+					}
+				}
+				else{
 					if(sb.length()>0){
 						sb.append("\n");
 					}
-					sb.append(s);
+					sb.append(cs.toStringOneLine());
 				}
-			}
-			else{
-				if(sb.length()>0){
-					sb.append("\n");
-				}
-				sb.append(cs.toStringOneLine());
 			}
 		}
 		return sb.toString();
 	}
+	*/
 
 	private void fillInPamSite(String string) {
 		if(pamChooser != null) {
@@ -477,7 +574,6 @@ public class GUI implements ActionListener {
 	private String analyzeFile(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		//get a SequenceDB of all sequences in the file
 		RichSequence subject = null;
-		RichSequence subject2 = null;
 		
 		if(sequences.size()>0) {
 			subject = sequences.get(0);
@@ -513,7 +609,7 @@ public class GUI implements ActionListener {
 					System.out.println((left+right).toLowerCase());
 					return null;
 				}
-				if(subject2 == null && leftPos > rightPos){
+				if(leftPos > rightPos){
 					JOptionPane.showMessageDialog(guiFrame,
 						    "The left flank can be found, but past the right flank, which cannot be correct"
 						    		+ " please select the correct flanks!",
@@ -523,7 +619,7 @@ public class GUI implements ActionListener {
 					System.out.println("leftPost:"+leftPos +":rightPos"+rightPos);
 					return null;
 				}
-				if(subject2 == null && leftRightPos < 0) {
+				if(leftRightPos < 0) {
 					JOptionPane.showMessageDialog(guiFrame,
 						    "left and right flank cannot be found connected in the fasta file."
 						    + " If you are using two break sites, all is ok",
@@ -531,33 +627,14 @@ public class GUI implements ActionListener {
 						    JOptionPane.WARNING_MESSAGE);
 				}
 			}
-			//translocation, look for right in the other file
-			if(subject2 != null){
-				int leftPos = subject.seqString().indexOf(left.toLowerCase());
-				int rightPos = subject2.seqString().indexOf(right.toLowerCase());
-				if(left.length()== 0 || right.length() == 0 || (leftPos < 0 && rightPos < 0)){
-					JOptionPane.showMessageDialog(guiFrame,
-						    "left and right cannot be found in the fasta file"
-						    		+ " please select the correct flanks!",
-						    "left + right problem",
-						    JOptionPane.ERROR_MESSAGE);
-					System.out.println(subject.seqString());
-					System.out.println((left+right).toLowerCase());
-					return null;
-				}
-			}
 		}
 		//Sequence query = new SimpleSequence(symbols, name, name, Annotation.EMPTY_ANNOTATION);
 		NucleotideSequence seq = chromo.getNucleotideSequence();
 		QualitySequence quals = chromo.getQualitySequence();
-		RichSequence query = null;
-		try {
-			query = RichSequence.Tools.createRichSequence(name, DNATools.createDNA(seq.toString()));
-		} catch (IllegalSymbolException e) {
-			e.printStackTrace();
-		}
 		
-		CompareSequence cs = new CompareSequence(subject, subject2, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true);
+		KMERLocation kmerl = new KMERLocation(subject.seqString());
+		//kmerl = null;
+		CompareSequence cs = new CompareSequence(subject, seq.toString(), quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true, name, kmerl);
 		cs.setAndDetermineCorrectRange((double)maxError.getValue());
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);
@@ -567,11 +644,16 @@ public class GUI implements ActionListener {
 		}
 		cs.determineFlankPositions();
 		cs.setAdditionalSearchString(hmAdditional);
+		//do we want to print it?
+		if(pm.getPropertyBoolean("printCorrectColumnsOnly") && cs.getRemarks().length()>0) {
+			return null;
+		}
 		if(printCompare){
 			return cs.toStringCompare(100);
 		}
 		return cs.toStringOneLine();
 	}
+	/*
 	private String analyzeFileTryToMatch(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		
 		if(mbc.tryToMatchFasta() && sequences == null ){
@@ -615,13 +697,8 @@ public class GUI implements ActionListener {
 		//Sequence query = new SimpleSequence(symbols, name, name, Annotation.EMPTY_ANNOTATION);
 		NucleotideSequence seq = chromo.getNucleotideSequence();
 		QualitySequence quals = chromo.getQualitySequence();
-		RichSequence query = null;
-		try {
-			query = RichSequence.Tools.createRichSequence(name, DNATools.createDNA(seq.toString()));
-		} catch (IllegalSymbolException e) {
-			e.printStackTrace();
-		}
-		CompareSequence cs = new CompareSequence(subject, null, query, quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true);
+		KMERLocation kmerl = new KMERLocation(subject.seqString());
+		CompareSequence cs = new CompareSequence(subject, null, seq.toString(), quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true, name, kmerl);
 		if(this.maskLowQuality.isSelected()){
 			cs.setAndDetermineCorrectRange((double)maxError.getValue());
 			cs.maskSequenceToHighQuality(left, right);
@@ -637,6 +714,7 @@ public class GUI implements ActionListener {
 		}
 		return cs.toStringOneLine();
 	}
+	*/
 
 	private void fillTable() {
 		model.removeAllElements();
@@ -676,5 +754,8 @@ public class GUI implements ActionListener {
 	}
 	public void setMaxError(double e) {
 		maxError.setValue(e);
+	}
+	private void fillMenuBarOutput() {
+		
 	}
 }
