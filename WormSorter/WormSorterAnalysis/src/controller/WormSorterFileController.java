@@ -19,6 +19,7 @@ public class WormSorterFileController {
 	private WormList wl = new WormList();
 	private final static int MAX = 0;
 	private boolean control;
+	private String pmt;
 	public WormSorterFileController(File f, File ch0, File ch1, File ch2, File ch3) {
 		this.f = f;
 		this.ch0 = ch0;
@@ -26,7 +27,7 @@ public class WormSorterFileController {
 		this.ch2 = ch2;
 		this.ch3 = ch3;
 		readFile(MAX);
-		readChannels(MAX);
+		//readChannels(MAX);
 	}
 	public WormSorterFileController(File f) {
 		this.f = f;
@@ -186,7 +187,9 @@ public class WormSorterFileController {
 					first = false;
 					for(int i=0;i<parts.length;i++) {
 						columns.put(parts[i], i);
+						//System.out.println(i+"\t"+parts[i]);
 					}
+					
 				}
 				else {
 					if(parts.length>3) {
@@ -197,13 +200,30 @@ public class WormSorterFileController {
 						double red = Double.parseDouble(parts[columns.get("Red")]);
 						double green = Double.parseDouble(parts[columns.get("Green")]);
 						double violet = Double.parseDouble(parts[columns.get("Violet")]);
+						double phgreen = Double.parseDouble(parts[columns.get("PH Green")]);
 						w.setTOF(tof);
 						w.setRed(red);
 						w.setGreen(green);
 						w.setViolet(violet);
 						w.setExtinction(extinction);
+						w.setPHGreen(phgreen);
 						index++;
 					}
+					else if(line.contains("PMT voltage")) {
+						String violet = s.nextLine();
+						String green = s.nextLine();
+						String red = s.nextLine();
+						this.setPMT(violet,"Violet:");
+						this.setPMT(green,"Green:");
+						this.setPMT(red,"Red:");
+					}
+					/*
+					else if(line.contains("Lasers")) {
+						System.out.println(s.nextLine());
+						System.out.println(s.nextLine());
+						System.out.println(s.nextLine());
+					}
+					*/
 				}
 				if(max>0 && index>=max) {
 					break;
@@ -213,6 +233,15 @@ public class WormSorterFileController {
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+		
+	}
+	private void setPMT(String line, String color) {
+		if(this.pmt == null) {
+			pmt = line;
+		}
+		else {
+			this.pmt+= "\t"+line;
 		}
 		
 	}
@@ -239,5 +268,10 @@ public class WormSorterFileController {
 	}
 	public boolean containsWorm(Worm w) {
 		return wl.contains(w);
+	}
+	public void printContents() {
+		String content = f.getName();
+		content += "\t"+wl.getWorms().size()+"\t"+pmt;
+		System.out.println(content);
 	}
 }

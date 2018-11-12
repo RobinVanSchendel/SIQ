@@ -74,7 +74,7 @@ public class WormSorterController {
 					total++;
 				}
 			}
-			System.out.println(wsfc.getFile()+"\tTotal: "+total+"\tRed: "+countRed+" Perc:"+100*countRed/(double)total+"%");
+			System.out.println(wsfc.getFile()+"\tTotal: "+total+"\tRed: "+countRed+" Perc:\t"+100*countRed/(double)total+"%");
 		}
 	}
 	public ArrayList<Worm> getWormsHighRed(double tofMin, double tofMax) {
@@ -105,18 +105,23 @@ public class WormSorterController {
 		
 		DescriptiveStatistics stats = new DescriptiveStatistics();
 		for(double d: test.keySet()) {
-			stats.addValue(test.get(d));
+			//stats.addValue(test.get(d));
 		}
 		for(double d: test.keySet()) {
 			//System.out.println(d+"\t"+test.get(d));
 			x[i] = d;
-			y[i] = test.get(d)+2*stats.getStandardDeviation();
+			y[i] = test.get(d);//+2*stats.getStandardDeviation();
 			i++;
 		}
 		t = new PolyTrendLine(1);
 		t.setValues(y, x);
 		for(double d: test.keySet()) {
-			System.out.println(d+"\t"+test.get(d)+"\t"+this.getPredict(d));
+			stats.addValue(test.get(d)-t.predict(d));
+		}
+		//System.out.println(x);
+		t.setDeviation(2*stats.getStandardDeviation());
+		for(double d: test.keySet()) {
+			//System.out.println(d+"\t"+test.get(d)+"\t"+this.getPredict(d));
 		}
 	}
 	public double getPredict(double x) {
@@ -124,5 +129,31 @@ public class WormSorterController {
 			return t.predict(x);
 		}
 		return Double.NaN;
+	}
+
+	public ArrayList<Worm> getWormsNotHighRed(double tofMin, double tofMax) {
+		ArrayList<Worm> al = new ArrayList<Worm>();
+		if(tofMax<tofMin) {
+			System.err.println("tofMax < tofMin");
+		}
+		for(WormSorterFileController wsfc: wsfcs) {
+			WormList wList = wsfc.getWormList();
+			for(Worm w: wList.getWorms()) {
+				if(w.getTOF()>=tofMin && w.getTOF()<=tofMax) {
+					double max = getPredict(w.getExtinction());
+					if(w.getRed()<=max) {
+						//System.out.println(wsfc.getFile()+"\t"+w);
+						al.add(w);
+					}
+				}
+			}
+		}
+		return al;
+	}
+
+	public void printContents() {
+		for(WormSorterFileController wsfc: wsfcs) {
+			wsfc.printContents();
+		}
 	}
 }
