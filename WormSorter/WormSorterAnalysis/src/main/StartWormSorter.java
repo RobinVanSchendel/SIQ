@@ -25,18 +25,26 @@ public class StartWormSorter {
 		WormSorterController wsc = new WormSorterController(); 
 		
 		File profDir = new File("C:\\WormSorter\\20181029");
-		FileInfoList fileInfo = FileInfoList.parse("20181107_Exp1.txt");
+		FileInfoList fileInfo = FileInfoList.parse("20181107_Exp1a.txt");
 
 		for(FileInfo s: fileInfo.getFileInfos()) {
 			wsc.addFile(profDir, s);
 		}
+		wsc.printContents();
+		//System.exit(0);
 		wsc.setTrendLine("Extinction", "Red", tofMin, tofMax);
 		
 		wsc.printWormsHighRed(tofMin, tofMax);
 		ArrayList<Worm> al = wsc.getWormsHighRed(tofMin, tofMax);
+		ArrayList<Worm> alNot = wsc.getWormsNotHighRed(tofMin, tofMax);
+		System.out.println("color\t"+Worm.getHeader());
 		for(Worm w: al) {
-			System.out.println(w);
-			System.out.println(w.getChannelsString());
+			System.out.println("Red\t"+w);
+			//System.out.println(w.getChannelsString());
+		}
+		for(Worm w: alNot) {
+			System.out.println("NotRed\t"+w);
+			//System.out.println(w.getChannelsString());
 		}
 	}
 
