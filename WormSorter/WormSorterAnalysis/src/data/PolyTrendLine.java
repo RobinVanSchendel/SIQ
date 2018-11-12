@@ -17,4 +17,9 @@ public class PolyTrendLine extends OLSTrendLine {
     }
     @Override
     protected boolean logY() {return false;}
+	@Override
+	public void setDeviation(double d) {
+		this.deviation = d;
+		
+	}
 }

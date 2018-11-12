@@ -9,6 +9,7 @@ import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 public abstract class OLSTrendLine implements TrendLine {
 
     RealMatrix coef = null; // will hold prediction coefs once we get values
+    double deviation = 0.0;
 
     protected abstract double[] xVector(double x); // create vector of values from x
     protected abstract boolean logY(); // set true to predict log of y (note: y must be positive)
@@ -39,6 +40,6 @@ public abstract class OLSTrendLine implements TrendLine {
     public double predict(double x) {
         double yhat = coef.preMultiply(xVector(x))[0]; // apply coefs to xVector
         if (logY()) yhat = (Math.exp(yhat)); // if we predicted ln y, we still need to get y
-        return yhat;
+        return yhat+deviation;
     }
 }

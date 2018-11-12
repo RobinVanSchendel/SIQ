@@ -7,6 +7,7 @@ public class Worm {
 	private double tof, green, red, violet, extinction;
 	private String file;
 	private HashMap<String, Channel> channels = new HashMap<String, Channel>();
+	private double phgreen;
 	public Worm(int id, String file) {
 		this.id = id;
 		this.file = file;
@@ -77,17 +78,18 @@ public class Worm {
 		return -1.0;
 	}
 	public static String getHeader() {
-		return "id\ttof\textinction\tviolet\tgreen\tred";
+		return "file\tid\ttof\textinction\tviolet\tgreen\tred\tphgreen";
 	}
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
-		sb.append("file:"+file).append("\t");
-		sb.append("id:"+id).append("\t");
-		sb.append("tof:"+tof).append("\t");
-		sb.append("e:"+extinction).append("\t");
-		sb.append("v:"+violet).append("\t");
-		sb.append("g:"+green).append("\t");
-		sb.append("r"+red).append("\t");
+		sb.append(file).append("\t");
+		sb.append(id).append("\t");
+		sb.append(tof).append("\t");
+		sb.append(extinction).append("\t");
+		sb.append(violet).append("\t");
+		sb.append(green).append("\t");
+		sb.append(red).append("\t");
+		sb.append(phgreen).append("\t");
 		return sb.toString();
 	}
 	public double getExtinction() {
@@ -99,5 +101,9 @@ public class Worm {
 	public String getFile() {
 		// TODO Auto-generated method stub
 		return file;
+	}
+	public void setPHGreen(double phgreen) {
+		this.phgreen = phgreen;
+		
 	}
 }
