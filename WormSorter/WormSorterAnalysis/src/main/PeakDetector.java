@@ -17,7 +17,6 @@ public class PeakDetector {
 				String str = s.nextLine();
 				String[] parts = str.split("\t");
 				ArrayList<Integer> al = new ArrayList<Integer>();
-				boolean filled = false;
 				DescriptiveStatistics dv = new DescriptiveStatistics();
 				for(String part: parts) {
 					int i = Integer.parseInt(part);
