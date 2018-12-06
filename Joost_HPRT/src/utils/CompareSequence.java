@@ -114,7 +114,8 @@ public class CompareSequence {
 		}
 		if(!leftRightIsOK) {
 			System.err.println("Something wrong with left or right "+leftSite+":"+rightSite);
-			System.exit(0);
+			this.setRemarks("Something wrong with left or right");
+			//System.exit(0);
 		}
 	}
 	private String longestCommonSubstring(String s1, String s2) {
@@ -177,6 +178,7 @@ public class CompareSequence {
 		String flankTwo = "";
 		boolean print = false;
 		if(this.leftRightIsFilled){
+			//System.out.println("leftRightIsFilled");
 			leftPos = subject.seqString().indexOf(leftSite)+leftSite.length();
 			//misuse the pamSiteLocation to make it relative to the left position
 			if(this.pamSiteLocation == 0){
@@ -187,6 +189,7 @@ public class CompareSequence {
 			}
 			else {			
 				Left kmerFlankOne = kmerl.getMatchLeft(query, leftPos, allowJump);
+				//System.out.println("leftKMER:"+kmerFlankOne);
 				if(kmerFlankOne != null) {
 					this.jumpedLeft = kmerFlankOne.getJumped();
 				}
@@ -456,6 +459,12 @@ public class CompareSequence {
 			del = del.substring(1)+rightFlank.charAt(0);
 			rightFlank = rightFlank.substring(1);
 		}
+		//bug, insert is not placed as far as possible to the left
+		while(del.length()==0 && insert.length()>0 && insert.charAt(0) == rightFlank.charAt(0)) {
+			leftFlank.addCharEnd(insert.charAt(0));
+			insert = insert.substring(1)+rightFlank.charAt(0);
+			rightFlank = rightFlank.substring(1);
+		}
 		//no longer report as people might see it as an error, while it is more of a warning
 		//if(madeMinimal){
 			//this.setRemarks("Made deletion and insertion minimal, probably that means the cut was at a different location, moved by "+moved+" positions");
@@ -615,7 +624,7 @@ public class CompareSequence {
 		else {
 			ret.append(getName()).append(s);
 		}
-		if(alias == null) {
+		if(alias != null) {
 			ret.append(alias).append(s);
 		}
 		else {
@@ -724,7 +733,7 @@ public class CompareSequence {
 	}
 	private void checkCall() {
 		//only if remarks are not set this call is valid
-		if(this.remarks.length()==0){
+		if(this.remarks.length()==0 && query!=null && subject != null){
 			String totalquery = this.getLeftFlank(0)+this.getInsertion()+this.getRightFlank(0);
 			if(!query.contains(totalquery)){
 				System.out.println("QUERY IS COMPLETELY BROKEN!!");
@@ -752,7 +761,8 @@ public class CompareSequence {
 				System.out.println("subject:"+subject.seqString());
 				System.out.println(getName());
 				System.out.println(this.getRemarks());
-				System.exit(0);
+				this.setRemarks("SUBJECT BROKEN");
+				//System.exit(0);
 			}
 			else{
 				//System.out.println("SOMETHING IS COMPLETELY OK!!");
@@ -760,6 +770,16 @@ public class CompareSequence {
 		}
 	}
 	private String getHomologyTandemDuplication() {
+		//bug, the tandem duplication is not always left
+		//added check
+		if(!leftFlank.getString().endsWith(insert)) {
+			System.out.println(this.getName());
+			System.err.println("The TD is not placed on the left side");
+			System.out.println(leftFlank.getString());
+			System.out.println(rightFlank);
+			System.out.println(insert);
+			System.exit(0);
+		}
 		int pos = leftFlank.getSubjectEnd();
 		int newPos = pos - insert.length();
 		String left = subject.seqString().substring(0, pos);
@@ -873,7 +893,7 @@ public class CompareSequence {
 		}
 		else if(this.getDel().length()== 0 && this.getInsertion().length() > 0 &&
 			is != null && is.getType().equals("SOLVED") && is.getPosS().equals("0") 
-					&& !is.getMatchS().contains(";") && is.getLargestMatch()>=minSizeInsertionSolver){
+					&& !is.getMatchS().contains(";") && is.getLargestMatch()>=minSizeInsertionSolver && !is.getSubS2().contains("rc")){
 				return Type.TANDEMDUPLICATION;
 		}
 		else if(this.getDel().length()== 0 && this.getInsertion().length()>0 && containsTD){
@@ -970,10 +990,16 @@ public class CompareSequence {
 		return ""+getType();
 	}
 	public String getSubject() {
+		if(subject == null) {
+			return "";
+		}
 		String ret = subject.getName();
 		return ret;
 	}
 	public String getSubjectComments() {
+		if(subject == null) {
+			return "";
+		}
 		if(subject.getDescription() == null){
 			return getSubject();
 		}
