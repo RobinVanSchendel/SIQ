@@ -460,10 +460,12 @@ public class CompareSequence {
 			rightFlank = rightFlank.substring(1);
 		}
 		//bug, insert is not placed as far as possible to the left
-		while(del.length()==0 && insert.length()>0 && insert.charAt(0) == rightFlank.charAt(0)) {
-			leftFlank.addCharEnd(insert.charAt(0));
-			insert = insert.substring(1)+rightFlank.charAt(0);
-			rightFlank = rightFlank.substring(1);
+		if(rightFlank != null) {
+			while(del.length()==0 && insert.length()>0 && rightFlank.length()>0 && insert.charAt(0) == rightFlank.charAt(0)) {
+				leftFlank.addCharEnd(insert.charAt(0));
+				insert = insert.substring(1)+rightFlank.charAt(0);
+				rightFlank = rightFlank.substring(1);
+			}
 		}
 		//no longer report as people might see it as an error, while it is more of a warning
 		//if(madeMinimal){
