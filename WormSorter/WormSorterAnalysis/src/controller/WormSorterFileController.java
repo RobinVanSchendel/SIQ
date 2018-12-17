@@ -34,19 +34,28 @@ public class WormSorterFileController {
 		readFile(MAX);
 	}
 	private void readChannels(int nr) {
+		/*
 		int lines = getNrLines(ch0);
 		ch0A = readChannelArray("ch0", ch0, lines);
 		ch1A = readChannelArray("ch1", ch1, lines);
 		ch2A = readChannelArray("ch2", ch2, lines);
 		ch3A = readChannelArray("ch3", ch3, lines);
-		/*
 		printWormChannel(5);
 		printWormChannel(1);
+		*/
 		readChannel("ch0", ch0, nr);
 		readChannel("ch1", ch1, nr);
 		readChannel("ch2", ch2, nr);
 		readChannel("ch3", ch3, nr);
-		*/
+		System.out.println("Cleaning channels");
+		cleanChannels();
+		System.out.println("Done cleaning channels");
+		wl.checkWorms();
+	}
+	private void cleanChannels() {
+		for(Worm w: wl.getWorms()){
+			w.cleanChannels();
+		}
 	}
 	private int getNrLines(File ch02) {
 		Scanner s;
@@ -130,12 +139,12 @@ public class WormSorterFileController {
 	}
 	private void readChannel(String string, File f, int max) {
 		System.out.println("Reading channel "+string);
+		int lines = 0;
 		try {
 			BufferedReader br = new BufferedReader( 
                     new FileReader(f)); 
 			ArrayList<Integer> ids = new ArrayList<Integer>();
 			boolean first = true;
-			int lines = 0;
 			boolean stop = false;
 			String line;
 			while((line = br.readLine()) != null) {
@@ -158,6 +167,7 @@ public class WormSorterFileController {
 						index++;
 						if(max>0 && index == max) {
 							//System.out.println("break");
+							br.close();
 							break;
 						}
 					}
@@ -201,12 +211,18 @@ public class WormSorterFileController {
 						double green = Double.parseDouble(parts[columns.get("Green")]);
 						double violet = Double.parseDouble(parts[columns.get("Violet")]);
 						double phgreen = Double.parseDouble(parts[columns.get("PH Green")]);
+						double phred = Double.parseDouble(parts[columns.get("PH Red")]);
+						double phext = Double.parseDouble(parts[columns.get("PH Extinction")]);
+						double phv = Double.parseDouble(parts[columns.get("PH Violet")]);
 						w.setTOF(tof);
 						w.setRed(red);
 						w.setGreen(green);
 						w.setViolet(violet);
 						w.setExtinction(extinction);
 						w.setPHGreen(phgreen);
+						w.setPHRed(phred);
+						w.setPHExt(phext);
+						w.setPHViolet(phv);
 						index++;
 					}
 					else if(line.contains("PMT voltage")) {

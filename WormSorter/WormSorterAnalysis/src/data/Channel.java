@@ -51,5 +51,78 @@ public class Channel {
 		String s = avg+"\t"+high+"\t"+high/avg;
 		return s;
 	}
-	
+
+	public int size() {
+		return values.size();
+	}
+	public ArrayList<Integer> getValues(){
+		return values;
+	}
+
+	public void removeFrom(int lastIndex) {
+		while(values.size()>lastIndex){
+			values.remove(values.size()-1);
+		}
+	}
+	public ArrayList<XY> findPeaks(int minDist) {
+
+        int count = 0; // To handle special case of singleton list
+
+        int left  = Integer.MAX_VALUE;
+        int mid   = Integer.MAX_VALUE;
+        int right = Integer.MAX_VALUE;
+        ArrayList<XY> loc = new ArrayList<XY>();
+        //ArrayList<Integer> max = new ArrayList<Integer>();
+        
+        for(Integer i: values) {
+            count++;
+            left = mid;
+            mid = right;
+            right = i;
+
+            if (right < mid && mid > left) {
+            	//if(count-prevMax>=minDist) {
+            		//loc.add(count);
+            		//max.add(mid);
+            		//System.out.println(count+" local max: " + mid);
+            		int highestPos = getHighestIndex(values,count,minDist);
+            		//System.out.println(highestPos+" local highest: " + arr.get(highestPos));
+            		if(!loc.contains(highestPos)) {
+            			if(loc.size()>0 && highestPos-loc.get(loc.size()-1).getX()>(minDist/2)) {
+            				XY xy = new XY(highestPos, values.get(highestPos));
+            				loc.add(xy);
+            				//System.out.println("added");
+            			}
+            			else if(loc.size()==0) {
+            				XY xy = new XY(highestPos, values.get(highestPos));
+            				loc.add(xy);
+            			}
+            			//max.add(arr.get(highestPos));
+            		}
+            		//prevMax = count;
+            	//}
+            }
+        }
+       return loc;
+    }
+	private static int getHighestIndex(ArrayList<Integer> arr, int count, int minDist) {
+		int start = count-minDist/2;
+		int end = count+minDist/2;
+		if(start<0) {
+			start = 0;
+		}
+		if(end > arr.size()) {
+			end = arr.size();
+		}
+		int maxPos = -1;
+		int maxSize = -1;
+		while(start<end) {
+			if(arr.get(start)>maxSize) {
+				maxPos = start;
+				maxSize = arr.get(start);
+			}
+			start++;
+		}
+		return maxPos;
+	}
 }

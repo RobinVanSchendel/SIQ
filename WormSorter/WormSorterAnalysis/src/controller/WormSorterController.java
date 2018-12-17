@@ -52,7 +52,7 @@ public class WormSorterController {
 		return max;
 	}
 
-	public void printWormsHighRed(double tofMin, double tofMax) {
+	public void printWormsHighRed(String col1, String col2, double tofMin, double tofMax) {
 		if(tofMax<tofMin) {
 			System.err.println("tofMax < tofMin");
 		}
@@ -62,8 +62,8 @@ public class WormSorterController {
 			int countRed = 0;
 			for(Worm w: wList.getWorms()) {
 				if(w.getTOF()>=tofMin && w.getTOF()<=tofMax) {
-					double max = getPredict(w.getExtinction());
-					if(w.getRed()>max) {
+					double max = getPredict(w.getData(col1));
+					if(w.getData(col2)>max) {
 						//System.out.println(wsfc.getFile()+"\t"+w);
 						countRed++;
 						//System.out.println("Red\t"+wsfc.getFile()+"\t"+w);
@@ -77,7 +77,7 @@ public class WormSorterController {
 			System.out.println(wsfc.getFile()+"\tTotal: "+total+"\tRed: "+countRed+" Perc:\t"+100*countRed/(double)total+"%");
 		}
 	}
-	public ArrayList<Worm> getWormsHighRed(double tofMin, double tofMax) {
+	public ArrayList<Worm> getWormsHighRed(String col1, String col2, double tofMin, double tofMax) {
 		ArrayList<Worm> al = new ArrayList<Worm>();
 		if(tofMax<tofMin) {
 			System.err.println("tofMax < tofMin");
@@ -86,8 +86,8 @@ public class WormSorterController {
 			WormList wList = wsfc.getWormList();
 			for(Worm w: wList.getWorms()) {
 				if(w.getTOF()>=tofMin && w.getTOF()<=tofMax) {
-					double max = getPredict(w.getExtinction());
-					if(w.getRed()>max) {
+					double max = getPredict(w.getData(col1));
+					if(w.getData(col2)>max) {
 						//System.out.println(wsfc.getFile()+"\t"+w);
 						al.add(w);
 					}
@@ -97,7 +97,7 @@ public class WormSorterController {
 		return al;
 	}
 	
-	public void setTrendLine(String column1, String column2, double tofMin, double tofMax) {
+	public void setTrendLine(String column1, String column2, double tofMin, double tofMax, int timesSD) {
 		Map<Double,Double> test = getControlValues(column1, column2, tofMin, tofMax);
 		double[] x = new double[test.size()]; 
 		double[] y = new double[test.size()];
@@ -119,9 +119,9 @@ public class WormSorterController {
 			stats.addValue(test.get(d)-t.predict(d));
 		}
 		//System.out.println(x);
-		t.setDeviation(2*stats.getStandardDeviation());
+		t.setDeviation(timesSD*stats.getStandardDeviation());
 		for(double d: test.keySet()) {
-			//System.out.println(d+"\t"+test.get(d)+"\t"+this.getPredict(d));
+			System.out.println(column2+"\t"+d+"\t"+test.get(d)+"\t"+this.getPredict(d));
 		}
 	}
 	public double getPredict(double x) {
@@ -131,7 +131,7 @@ public class WormSorterController {
 		return Double.NaN;
 	}
 
-	public ArrayList<Worm> getWormsNotHighRed(double tofMin, double tofMax) {
+	public ArrayList<Worm> getWormsNotHighRed(String col1, String col2, double tofMin, double tofMax) {
 		ArrayList<Worm> al = new ArrayList<Worm>();
 		if(tofMax<tofMin) {
 			System.err.println("tofMax < tofMin");
@@ -140,8 +140,8 @@ public class WormSorterController {
 			WormList wList = wsfc.getWormList();
 			for(Worm w: wList.getWorms()) {
 				if(w.getTOF()>=tofMin && w.getTOF()<=tofMax) {
-					double max = getPredict(w.getExtinction());
-					if(w.getRed()<=max) {
+					double max = getPredict(w.getData(col1));
+					if(w.getData(col2)<=max) {
 						//System.out.println(wsfc.getFile()+"\t"+w);
 						al.add(w);
 					}
@@ -155,5 +155,120 @@ public class WormSorterController {
 		for(WormSorterFileController wsfc: wsfcs) {
 			wsfc.printContents();
 		}
+	}
+
+	public void printWormsHighRedAndGreen(ArrayList<Worm> reds, String col1, String col2, double tofMin, double tofMax) {
+		if(tofMax<tofMin) {
+			System.err.println("tofMax < tofMin");
+		}
+		for(WormSorterFileController wsfc: wsfcs) {
+			WormList wList = wsfc.getWormList();
+			String fileName = wsfc.getFile();
+			int total = 0;
+			int countRed = 0;
+			int countGreenRed = 0;
+			int countGreen = 0;
+			ArrayList<Worm> redDone = new ArrayList<Worm>();
+			for(Worm w: wList.getWorms()) {
+				if(w.getTOF()>=tofMin && w.getTOF()<=tofMax) {
+					double max = getPredict(w.getData(col1));
+					if(w.getData(col2)>max) {
+						//System.out.println(wsfc.getFile()+"\t"+w);
+						boolean contains = false;
+						for(Worm r: reds){
+							if(r.getKey().equals(w.getKey())){
+								contains = true;
+								break;
+							}
+						}
+						if(contains){
+							countGreenRed++;
+							//System.out.println("redGreen\t"+w);
+							redDone.add(w);
+						}
+						else{
+							countGreen++;
+						}
+						//System.out.println("Red\t"+wsfc.getFile()+"\t"+w);
+					}
+					else {
+						//System.out.println("nonRed\t"+wsfc.getFile()+"\t"+w);
+					}
+					total++;
+				}
+			}
+			for(Worm w: reds){
+				if(w.getFile().equals(fileName)){
+					countRed++;
+				}
+				boolean contains = false;
+				for(Worm r: redDone){
+					if(r.getKey().equals(w.getKey())){
+						contains = true;
+						break;
+					}
+				}
+				if(!contains && wsfc.getFile().equals("1588_05_01_pchange.txt") && w.getFile().equals("1588_05_01_pchange.txt") ){
+					//System.out.println("redNONGreen\t"+w);	
+				}
+			}
+			
+			countRed-=countGreenRed;
+			double percRed = countRed/(double)total;
+			double percGreenRed = countGreenRed/(double)total;
+			double perGreen = countGreen/(double)total;
+			double percGreenRedRed = countGreenRed/(double)(countRed+countGreenRed);
+			
+			String totalStr = wsfc.getFile()+"\tTotal: "+total+"\tRed: "+countRed+"\tGreen: "+countGreen+" \tGreenRed: "+countGreenRed;
+			totalStr+= "\tpercRed: \t"+percRed+"\tpercGreen: \t"+perGreen+"\tpercGreenRed: \t"+percGreenRed;
+			totalStr+= "\tpercGreenRedRed\t"+percGreenRedRed+"\t"+(1-percGreenRedRed);
+			System.out.println(totalStr);
+		}
+		
+	}
+
+	public ArrayList<Worm> getWormsHighRedAndGreen(ArrayList<Worm> reds, String col1, String col2, double tofMin,
+			double tofMax) {
+		if(tofMax<tofMin) {
+			System.err.println("tofMax < tofMin");
+		}
+		ArrayList<Worm> redAndGreenDone = new ArrayList<Worm>();
+		for(WormSorterFileController wsfc: wsfcs) {
+			WormList wList = wsfc.getWormList();
+			String fileName = wsfc.getFile();
+			int total = 0;
+			int countRed = 0;
+			int countGreenRed = 0;
+			int countGreen = 0;
+			for(Worm w: wList.getWorms()) {
+				if(w.getTOF()>=tofMin && w.getTOF()<=tofMax) {
+					double max = getPredict(w.getData(col1));
+					if(w.getData(col2)>max) {
+						//System.out.println(wsfc.getFile()+"\t"+w);
+						boolean contains = false;
+						for(Worm r: reds){
+							if(r.getKey().equals(w.getKey())){
+								contains = true;
+								break;
+							}
+						}
+						if(contains){
+							countGreenRed++;
+							//System.out.println("redGreen\t"+w);
+							redAndGreenDone.add(w);
+						}
+						else{
+							countGreen++;
+						}
+						//System.out.println("Red\t"+wsfc.getFile()+"\t"+w);
+					}
+					else {
+						//System.out.println("nonRed\t"+wsfc.getFile()+"\t"+w);
+					}
+					total++;
+				}
+			}
+		}
+		return redAndGreenDone;
 	}
 }

@@ -58,4 +58,9 @@ public class WormList {
 		// TODO Auto-generated method stub
 		return false;
 	}
+	public void checkWorms() {
+		for(Integer key: worms.keySet()) {
+			worms.get(key).checkWorm();
+		}
+	}
 }
