@@ -85,7 +85,6 @@ public class KMERLocation {
 		}
 		
 		if(lcss.size()==1) {
-			//System.out.println(lcss.size());
 			LCS one = lcss.get(0);
 			int start = one.getSubjectStart();
 			if(start > leftPos) {
@@ -109,11 +108,16 @@ public class KMERLocation {
 		int longest = -1;
 		LCS max = null;
 		for(LCS lcs: lcss) {
-			if(lcs.length()>longest && lcs.getSubjectStart()<leftPos) {
+			//recalculate the length based on the part that we can actually search for
+			//based on leftPos
+			int end = Math.min(lcs.getSubjectEnd(), leftPos);
+			int length = end - lcs.getSubjectStart();
+			if(length>longest && lcs.getSubjectStart()<leftPos) {
 				longest = lcs.length();
 				max = lcs;
 			}
 		}
+		//System.out.println("found max:"+max);
 		if(max == null) {
 			return null;
 		}
@@ -137,9 +141,10 @@ public class KMERLocation {
 				jumped = true;
 			}
 		}
-		//System.out.println("max:"+max);
+		//System.out.println("maxAgain:"+max);
 		//System.out.println(leftPos);
 		int maxPos = Math.min(max.getSubjectEnd(), leftPos);
+		//System.out.println("Changing position to:"+maxPos);
 		String leftS = ref.substring(max.getSubjectStart(), maxPos);
 		int queryEndPos = seq.indexOf(leftS)+leftS.length();
 		Left l = new Left(leftS,max.getSubjectStart(), maxPos, max.getQueryStart(),queryEndPos, jumped);
@@ -367,8 +372,11 @@ public class KMERLocation {
 		int longest = -1;
 		LCS max = null;
 		for(LCS lcs: lcss) {
-			if(lcs.getSubjectEnd()>startPos && lcs.getString().length()>=minSize) {
-				if(lcs.getString().length()>longest) {
+			//calculate the length on what we can actually use
+			int start = Math.max(lcs.getSubjectStart(), startPos);
+			int length = lcs.getSubjectEnd()-start;
+			if(lcs.getSubjectEnd()>startPos && length>=minSize) {
+				if(length>longest) {
 					longest = lcs.getString().length();
 					max = lcs;
 				}

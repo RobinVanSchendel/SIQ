@@ -24,6 +24,9 @@ public class Left {
 		this.queryStart = queryStart;
 		this.queryEnd = queryEnd;
 	}
+	public Left(String s) {
+		this.string = s;
+	}
 	public String getString(){
 		return string;
 	}
