@@ -259,11 +259,6 @@ public class CompareSequence {
 				*/
 			//System.out.println("flankOne"+":"+flankOne+":"+flankOne.length());
 			//System.out.println("flankTwo"+":"+flankTwo+":"+flankTwo.length());
-			int posTest = flankOne.getSubjectEnd();
-			//check if really unique
-			if(subject.seqString().indexOf(flankOne.getString(), posTest+1)>0){
-				this.setRemarks("leftFlank can be found at multiple places");
-			}
 			//check size
 			if(flankTwo == null || flankOne.length()<minimumSizeWithLeftRight || flankTwo.length()<minimumSizeWithLeftRight ){
 				//System.out.println(flankOne.length());
@@ -379,6 +374,13 @@ public class CompareSequence {
 		if(leftFlank == null || rightFlank == null) {
 			return;
 		}
+		int posTest = leftFlank.getSubjectEnd();
+		//check if really unique
+		if(subject.seqString().indexOf(leftFlank.getString(), posTest+1)>0){
+			this.setRemarks("leftFlank can be found at multiple places");
+		}
+
+		
 		int delPosStart = leftFlank.getSubjectEnd()+1;
 		int delPosEnd = subject.seqString().indexOf(rightFlank);
 		if(delPosEnd-delPosStart >=0){
@@ -1217,7 +1219,8 @@ public class CompareSequence {
 	public String getSchematic(){
 		int start = 250;
 		int end = 350;
-		if(leftFlank == null) {
+		//if subject is too small, simply return.
+		if(leftFlank == null && subject.seqString().length()<=end) {
 			return null;
 		}
 		int pos = leftFlank.getSubjectEnd();
