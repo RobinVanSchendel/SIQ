@@ -35,6 +35,8 @@ public class InsertionSolverTwoSides {
 	private String tDNAname;
 	private Vector<Sequence> tDNAVector;
 	private Vector<String> isParts;
+	private int maxTries = -1;
+	private String tDNAlongestLCS;
 	
 	public InsertionSolverTwoSides(String left, String right, String insertion, String id){
 		this.left = left.toLowerCase();
@@ -136,14 +138,15 @@ public class InsertionSolverTwoSides {
 		//speedup by only doing this if we have a long enough filer
 		if(subS.length()>=tDNAHitminium){
 			setLargestTDNAMatch(subS, false);
-			tDNAMatch = longestCommonSubstring(this.tDNA,subS);
+			tDNAMatch = this.tDNAlongestLCS;//longestCommonSubstring(this.tDNA,subS);
 			tDNAMatchName = this.tDNAname;
 			posLeftTDNA = this.lastMatchPos;
 			//System.out.println("pos: "+this.lastMatchPos);
 			//System.out.println(tDNAMatch);
 			setLargestTDNAMatch(subS, true);
-			tDNARCMatch = longestCommonSubstring(this.tDNArc,subS);
+			tDNARCMatch = this.tDNAlongestLCS;//longestCommonSubstring(this.tDNArc,subS);
 			tDNAMatchNameRC = this.tDNAname;
+			//System.out.println("TDNASEARCH: "+tDNAMatch);
 		}
 		
 		//System.out.println("posrc: "+this.lastMatchPos);
@@ -159,7 +162,10 @@ public class InsertionSolverTwoSides {
 			lengthtDNAMatch = countLowerCase(tDNAMatch);
 			lengthtDNARCMatch = countLowerCase(tDNARCMatch);
 		}
-		while(Math.max(lengthLCSLeft,lengthLCSRCLeft) >= minimumMatch || Math.max(lengthLCSRight, lengthLCSRCRight) >= minimumMatch || Math.max(lengthtDNAMatch, lengthtDNARCMatch) > this.tDNAHitminium){
+		//System.out.println(lengthtDNAMatch +" "+lengthtDNARCMatch);
+		int counter = 0;
+		while(counter!= maxTries && ( Math.max(lengthLCSLeft,lengthLCSRCLeft) >= minimumMatch || Math.max(lengthLCSRight, lengthLCSRCRight) >= minimumMatch || Math.max(lengthtDNAMatch, lengthtDNARCMatch) >= this.tDNAHitminium)){
+			counter++;
 			//System.out.println(lcs + lengthLCS);
 			boolean foundtDNA = false;
 			//hack the TDNA hits in here!
@@ -167,8 +173,9 @@ public class InsertionSolverTwoSides {
 			//> what can be found left and right
 			//the contains might not be necessary as the largest one will be picked already
 			//contains is a bad idea, as we are not sure how is begin searched
-			if(Math.max(lengthtDNAMatch, lengthtDNARCMatch) > this.tDNAHitminium  && Math.max(lengthtDNAMatch, lengthtDNARCMatch) > Math.max(Math.max(lengthLCSLeft,lengthLCSRCLeft), Math.max(lengthLCSRight, lengthLCSRCRight))){
+			if(Math.max(lengthtDNAMatch, lengthtDNARCMatch) >= this.tDNAHitminium  && Math.max(lengthtDNAMatch, lengthtDNARCMatch) > Math.max(Math.max(lengthLCSLeft,lengthLCSRCLeft), Math.max(lengthLCSRight, lengthLCSRCRight))){
 				setFirstHitInTDNA(true);
+				//System.out.println("TDNA HERE!");
 				if(lengthtDNAMatch >= lengthtDNARCMatch){
 					this.substituteString = "<"+tDNAMatchName+currentIndex+">";
 					addMatchS(tDNAMatch);
@@ -236,6 +243,7 @@ public class InsertionSolverTwoSides {
 			}
 			//right
 			else if(!foundtDNA){
+				setFirstHitInTDNA(false);
 				//take the closest one
 				if(lengthLCSRight == lengthLCSRCRight){
 					//left
@@ -283,11 +291,11 @@ public class InsertionSolverTwoSides {
 			//System.out.println("foundR:"+lcsRight);
 			//TDNA match
 			setLargestTDNAMatch(subS, false);
-			tDNAMatch = longestCommonSubstring(this.tDNA,subS);
+			tDNAMatch = this.tDNAlongestLCS;//longestCommonSubstring(this.tDNA,subS);
 			tDNAMatchName = this.tDNAname;
 			posLeftTDNA = this.lastMatchPos;
 			setLargestTDNAMatch(subS, true);
-			tDNARCMatch = longestCommonSubstring(this.tDNArc,subS);
+			tDNARCMatch = this.tDNAlongestLCS;//longestCommonSubstring(this.tDNArc,subS);
 			tDNAMatchNameRC = this.tDNAname;
 			if(this.tDNA != null){
 				posLeftTDNARC = tDNArc.length()-this.lastMatchPos-countLowerCase(tDNARCMatch);
@@ -312,30 +320,44 @@ public class InsertionSolverTwoSides {
 		if(this.tDNAVector != null && this.tDNAVector.size()>1){
 			int maxSize = 0;
 			Sequence current = null;
+			String maxLCS = null;
 			for(Sequence s: tDNAVector){
 				String lcs = null;
+				String str = s.seqString();
 				if(!rc){
-					lcs = longestCommonSubstring(s.seqString(), subS);
+					lcs = longestCommonSubstring(str, subS);
 				}
 				else{
-					lcs = longestCommonSubstring(Utils.reverseComplement(s.seqString()), subS);
+					lcs = longestCommonSubstring(Utils.reverseComplement(str), subS);
 				}
 				if(lcs.length()>maxSize){
 					current = s;
 					maxSize = lcs.length();
+					maxLCS = lcs;
 				}
 			}
 			//set it to the largest found
 			if(current != null){
-				this.tDNA = current.seqString();
-				this.tDNArc = Utils.reverseComplement(current.seqString());
+				//System.out.println("Something wrong here "+ current);
+				//System.out.println("Something wrong here "+ current.length());
+				//System.out.println("Something wrong here "+ current.getAlphabet());
+				String dna = current.seqString();
+				this.tDNA = dna;
+				this.tDNArc = Utils.reverseComplement(dna);
 				this.tDNAname = current.getName();
+				this.tDNAlongestLCS = maxLCS;
 			}
+			else {
+				this.tDNAlongestLCS = "";
+			}
+		}
+		else {
+			this.tDNAlongestLCS = "";
 		}
 	}
 	private void setFirstHitInTDNA(boolean fromTDNA) {
 		if(this.matchS.equals("")){
-			this.firstHitIsTDNA = true;
+			this.firstHitIsTDNA = fromTDNA;
 			this.firstHitIsTDNADirectPos = fromTDNA;
 		}
 		
@@ -570,6 +592,14 @@ public class InsertionSolverTwoSides {
 		}
 		return Integer.MIN_VALUE;
 	}
+	/*
+	public int getFirstPosStart() {
+		
+	}
+	public int getFirstPosEnd(){
+		
+	}
+	*/
 	public String getFirstHit(){
 		return this.firstHit ;
 	}
@@ -648,6 +678,9 @@ public class InsertionSolverTwoSides {
 			//System.out.println(b);
 			String query = b.getQuery().toLowerCase();
 			//only do it when we don't have it in the flank
+			System.out.println("query"+query);
+			System.out.println("left"+left);
+			System.out.println("right"+right);
 			if(left.contains(query) || right.contains(query)){
 				continue;
 			}
@@ -807,6 +840,16 @@ public class InsertionSolverTwoSides {
 			index++;
 		}
 		return ret;
+	}
+	public int getFirstLength() {
+		if(lengthS.length()>0){
+			String[] parts = lengthS.split(";");
+			return Integer.parseInt(parts[0]);
+		}
+		return Integer.MIN_VALUE;
+	}
+	public void setMaxTriesSolved(int maxTries) {
+		this.maxTries = maxTries;
 	}
 }
 
