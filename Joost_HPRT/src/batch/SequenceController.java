@@ -66,7 +66,7 @@ public class SequenceController {
 		readFilesFASTQMultiThreaded(options.getSingleFile(),options.getSubject(), options.getLeftFlank(), options.getRightFlank(), null, options.getSearchAdditional(), true, null, options);
 		
 	}
-	public void readFilesFASTQMultiThreaded(String dir, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, String containsString, MyOptions options){
+	public void readFilesFASTQMultiThreaded(String file, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, String containsString, MyOptions options){
 		File f = new File(subjectFile);
 		if(!f.exists()) {
 			MyError.err("The reference input file does not exist: "+f.getAbsolutePath());
@@ -95,7 +95,7 @@ public class SequenceController {
 			e1.printStackTrace();
 		}
 		
-		File d = new File(dir);
+		File d = new File(file);
 		if(!d.exists()) {
 			MyError.err("The directory does not exist: "+d.getAbsolutePath());
 		}
@@ -132,6 +132,8 @@ public class SequenceController {
 			if(options.getSingleFile()!= null) {
 				sft.printHeader();
 			}
+			sft.setFileF(options.getSingleFileF());
+			sft.setFileR(options.getSingleFileR());
 			Thread newThread = new Thread(sft);
 			v.add(newThread);
 			//newThread.start();
@@ -280,7 +282,7 @@ public class SequenceController {
 				CompareSequence cs = new CompareSequence(subject, seq.toString(), quals, leftFlank, rightFlank, null, seqs.getParent(), checkReverse, seqs.getName(), kmerl);
 				cs.setAndDetermineCorrectRange(quality);
 				cs.maskSequenceToHighQualityRemove();
-				cs.determineFlankPositions();
+				cs.determineFlankPositions(false);
 				cs.setAdditionalSearchString(hmAdditional);
 				cs.setCutType(type);
 				//only correctly found ones

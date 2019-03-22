@@ -290,6 +290,20 @@ public class HPRTFastQ {
 				.build();
 		o.addOption(infile);
 		
+		Option infileF = Option.builder("infileF")
+				.hasArg()
+				.argName("infile")
+				.desc("A single fastq file that will be analysed")
+				.build();
+		o.addOption(infileF);
+		
+		Option infileR = Option.builder("infileR")
+				.hasArg()
+				.argName("infile")
+				.desc("A single fastq file that will be analysed")
+				.build();
+		o.addOption(infileR);
+		
 		Option subject = Option.builder("subject")
 				.hasArg()
 				.argName("subject")
