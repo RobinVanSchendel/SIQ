@@ -12,11 +12,9 @@ import javax.swing.UnsupportedLookAndFeelException;
 
 import org.biojava.bio.*;
 import org.biojava.bio.seq.*;
-import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
-import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
@@ -26,27 +24,9 @@ import utils.KMERLocation;
 public class TestSingleFile {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		try {
-			UIManager.setLookAndFeel(
-			        UIManager.getSystemLookAndFeelClassName());
-		} catch (ClassNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (InstantiationException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IllegalAccessException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (UnsupportedLookAndFeelException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
 		RichSequence seq = null;
 		Chromatogram chromo = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
-		File dir = new File("Z:\\Joost\\Files\\Sequences\\1045404");
 		System.out.println(CompareSequence.getOneLineHeader());
 		BufferedReader is = null;
 		try {
@@ -56,7 +36,7 @@ public class TestSingleFile {
 			//is = new BufferedReader(new FileReader("Z:\\Evelyne\\DNA\\Revertants sequencing\\XF1423_extended.fa.txt"));
 			//is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
 			//is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\XF1280_whole_unc-22_100bp_zone_for_polq.fa"));
-			is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_HPRT_test\\G4.fa.txt"));
+			is = new BufferedReader(new FileReader("E:\\Project_Hartwig\\HPRT-FASTA-CR1.txt"));
 		} catch (FileNotFoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -80,13 +60,6 @@ public class TestSingleFile {
 				e.printStackTrace();
 			}
 		}
-		
-		
-		for(File f: dir.listFiles()) {
-			if(!f.getName().endsWith(".ab1")) {
-				continue;
-			}
-			try {
 				//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Lig3\\Tc1_transposon_If230\\1039717\\rde_3_20_2527773-1039717.ab1");
 				//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\100bp_insertion_zone\\Sequencing revertants\\1039028\\XF1289_78_2_2518043-1039028.ab1");
 				//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\G23_56bp_zone\\1040510\\XF1335_53_2538975-1040510.ab1");
@@ -100,6 +73,8 @@ public class TestSingleFile {
 				//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\Revertants\\1044472\\XF1474_91_A4_1_2597736-1044472.ab1");
 				//File f = new File("Z:\\Robin\\Project_Primase\\UV_TMP_hus-1-vs-N2\\unc-22_sequencing\\1046088\\33_51_4_2621330-1046088.ab1");
 				//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_HPRT_test\\Cas9N863A_G462ntE2_01_2611422-1045404.ab1");
+				//File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\plate_1C07_2481341-1036656.ab1");
+				File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\Ku80_1_WTcas9_CR1_A23_2538438-1040473.ab1");
 				
 				
 	
@@ -107,36 +82,14 @@ public class TestSingleFile {
 				//search additional 'TDNA'
 				//File add = new File("Z:\\Joost\\Files\\Manuscripts\\Schimmel_etal_2016\\Robin\\px458_HPRT.txt");
 				BufferedReader is2 = null;
-				
-				//is2 = new BufferedReader(new FileReader(add));
-				/*
-				SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
-				while(si2.hasNext()){
-					try {
-						additional.add(si2.nextSequence());
-					} catch (NoSuchElementException | BioException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				*/
-							
-				
-	
-				chromo = ChromatogramFactory.create(f);
 				try {
-					seq = RichSequence.Tools.createRichSequence(f.getName(), DNATools.createDNA(chromo.getNucleotideSequence().toString()));
-				} catch (IllegalSymbolException e) {
+					chromo = ChromatogramFactory.create(f);
+				} catch (Exception e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				String name = f.getName();
-				//seq = new SimpleSequence(symbols, name, name, Annotation.EMPTY_ANNOTATION);
-				//IOTools.writeFasta(System.out, seq,null);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+							
+				
 			
 			//CR1
 			//String left = "TTTGTTTTGTATACCTAATCATTATG";
@@ -154,30 +107,28 @@ public class TestSingleFile {
 			//G4XF1426
 			//String left = "ctaagagcatccaaattcttggctcgtgtgaatggctagcctgg";
 			//String right = "CCCCCCCCCCCCCCCCCCCCCCCGACTGCTTGCGGA";
-			String left = "TTGTATACCTAATCATTATG";
-			String right = "CCGAGGATTTGGAAAAAGTG";
+			//String left = "TTGTATACCTAATCATTATG";
+			//String right = "CCGAGGATTTGGAAAAAGTG";
+			String left = "GATTTGTTTTGTATACCTAAT";
+			String right = "TTATGGACAGGTTAGTAAGACCTCGAT";
+    		String query = "attagcgatgatgaaccaggttatgacctagatttgttttgtatacctaatcattatgccgaggatttggaaaaagtgtttattcctcattatgccgaggatttggaaaaagtgtttattcctcatggactgattatggaca";
+    		//String query = "attagcgatgatgaaccaggttatgacctagatttgttttgtatacctaatcattatgccgaggatttggaaaaatgaggatttggaaaaagtgtttattcctcatggactgattatggaca";
 			
-			CompareSequence kmerless1 = new CompareSequence(hprtSeq, seq.seqString(),chromo.getQualitySequence(), left, right, null, null, true, seq.getName(), null);
+			//CompareSequence kmerless1 = new CompareSequence(hprtSeq, query,null, left, right, null, null, true, "", null);
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
-			kmerless1.determineFlankPositions();
-			String outputKMERless = kmerless1.toStringOneLine();
-			System.out.println(outputKMERless);
+			//kmerless1.determineFlankPositions();
+			//String outputKMERless = kmerless1.toStringOneLine();
+			//System.out.println(outputKMERless);
 			KMERLocation kmerl = new KMERLocation(hprtSeq.seqString());
-			CompareSequence kmerWith = new CompareSequence(hprtSeq, seq.seqString(),chromo.getQualitySequence(), left, right, null, null, true, seq.getName(), kmerl);
+			CompareSequence kmerWith = new CompareSequence(hprtSeq, chromo.getNucleotideSequence().toString(),chromo.getQualitySequence(), left, right, null, null, true, "", kmerl);
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
 			kmerWith.determineFlankPositions();
 			String outputKMER = kmerWith.toStringOneLine();
 			System.out.println(outputKMER);
 			
-			if(kmerWith.getRemarks().length()==0 && kmerless1.getRemarks().length()==0 && !outputKMERless.equals(outputKMER)) {
-				System.err.println("KMER AND KMERLESS ARE NOT THE SAME");
-				System.err.println(outputKMERless);
-				System.err.println(outputKMER);
-			}
-			
-			
+			/*
 			
 			kmerless1 = new CompareSequence(hprtSeq, seq.seqString(),chromo.getQualitySequence(), left,right, null, null, true, seq.getName(), null);
 			kmerless1.setAndDetermineCorrectRange(0.05);
@@ -202,8 +153,6 @@ public class TestSingleFile {
 				System.err.println(outputKMERless);
 				System.err.println(outputKMER);
 			}
-			
-		}
+			*/
 	}
-
 }
