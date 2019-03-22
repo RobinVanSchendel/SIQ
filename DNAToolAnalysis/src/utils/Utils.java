@@ -41,8 +41,8 @@ public class Utils {
 					revCom.append('x');
 					break;
 				default:
-					System.out.println("Can't complement "+dna);
-					System.out.println("Can't complement "+c);
+					//System.out.println("Can't complement "+dna);
+					//System.out.println("Can't complement "+c);
 					//System.exit(0);
 			}
 		}
