@@ -1,6 +1,5 @@
 package utils;
 
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
