@@ -16,8 +16,8 @@ import utils.CompareSequence;
 public class MenuBarCustom implements ActionListener{
 	private JMenuBar menuBar;
 	private JMenu menu, menuOutput;
-	private JMenuItem menuItem;
-	private JCheckBoxMenuItem cbMenuItem, cbMenuItem2, printCorrectColumnsOnly;
+	private JMenuItem cbMenuItem;
+	private JCheckBoxMenuItem cbMenuItem2, printCorrectColumnsOnly;
 	private PropertiesManager pm;
 	
 	public MenuBarCustom(PropertiesManager pm){
@@ -29,8 +29,9 @@ public class MenuBarCustom implements ActionListener{
 		printCorrectColumnsOnly.addActionListener(this);
 		printCorrectColumnsOnly.setActionCommand("printCorrectColumnsOnly");
 		
-		//cbMenuItem = new JCheckBoxMenuItem("Try to match sequence to Fasta file name");
-		//menu.add(cbMenuItem);
+		cbMenuItem = new JMenuItem("Add Blast Search");
+		cbMenuItem.addActionListener(this);
+		menu.add(cbMenuItem);
 		//cbMenuItem2 = new JCheckBoxMenuItem("Match all sequences");
 		//menu.add(cbMenuItem2);
 		//menuOutput = new JMenu("Output");
@@ -64,6 +65,10 @@ public class MenuBarCustom implements ActionListener{
 		if(ae.getActionCommand().equals("printCorrectColumnsOnly")) {
 			pm.setProperty("printCorrectColumnsOnly", ""+printCorrectColumnsOnly.isSelected());
 			System.out.println("hier "+ printCorrectColumnsOnly.isSelected());
+		}
+		else if(ae.getActionCommand().equals("Add Blast Search")) {
+			BlastPanel bp = new BlastPanel(pm);
+			bp.setVisible(true);
 		}
 	}
 }

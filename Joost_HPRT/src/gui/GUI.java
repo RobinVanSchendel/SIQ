@@ -2,14 +2,19 @@ package gui;
 
 import java.awt.BorderLayout;
 import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
@@ -29,10 +34,11 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.Sequence;
@@ -44,11 +50,12 @@ import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
+import utils.AnalyzedFileController;
 import utils.CompareSequence;
 import utils.KMERLocation;
 import utils.Utils;
 
-public class GUI implements ActionListener {
+public class GUI implements ActionListener, MouseListener {
 	//JFileChooser chooser = new JFileChooser(new File("C:\\Users\\rvanschendel\\Documents\\Project_Joost"));
 	JFileChooser chooser = new JFileChooser();
 	JFrame guiFrame = new JFrame();
@@ -72,6 +79,7 @@ public class GUI implements ActionListener {
 	HashMap<String, String> hmAdditional;
 	private PropertiesManager pm;
 	private ArrayList<JCheckBox> outputs = new ArrayList<JCheckBox>();
+	private JButton analyzeFiles;
 	
 	
 	public GUI(String version, PropertiesManager pm)
@@ -112,7 +120,7 @@ public class GUI implements ActionListener {
         final JPanel listPanel = new JPanel();
         listPanel.setVisible(false);
           
-        JButton analyzeFiles = new JButton( "Start analysis");
+        analyzeFiles = new JButton( "Start analysis");
         analyzeFiles.setActionCommand("Start");
         analyzeFiles.addActionListener(this);
         
@@ -120,10 +128,17 @@ public class GUI implements ActionListener {
         buttonPanel.setSize(guiFrame.getWidth(), 400);
         buttonPanel.setLayout(new BorderLayout());
         buttonPanel.add(analyzeFiles);
-        progressBar = new JProgressBar(0, 50);
+        progressBar = new JProgressBar(0, 500);
         progressBar.setValue(0);
         progressBar.setStringPainted(true);
+        progressBar.setVisible(true);
         buttonPanel.add(progressBar, BorderLayout.CENTER);
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+            	guiFrame.setVisible(true);
+            }
+         });
+         t.start();
         
         
         //analyzeFiles = new JButton( "Start analysis Print Comparison");
@@ -170,12 +185,13 @@ public class GUI implements ActionListener {
         guiFrame.add(createOutputPanel(), BorderLayout.EAST);
         
         
+        jFiles.addMouseListener(this);
         guiFrame.add(new JScrollPane(jFiles), BorderLayout.CENTER);
         mbc = new MenuBarCustom(pm);
         guiFrame.setJMenuBar(mbc.getMenuBar());
         
         //make sure the JFrame is visible
-        guiFrame.setVisible(true);
+        
         guiFrame.setExtendedState(guiFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
         
         //File tempFile = new File("C:/Users/rvanschendel/Documents/Project_Primase");
@@ -221,7 +237,6 @@ public class GUI implements ActionListener {
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		//System.out.println(e.getActionCommand());
 		if(e.getActionCommand().equals("Select All")) {
 			//System.out.println("hier!");
 			for(JCheckBox jcb: outputs) {
@@ -270,19 +285,78 @@ public class GUI implements ActionListener {
 					    JOptionPane.ERROR_MESSAGE);
 				return;
 			}
-			JTextArea area = new JTextArea(CompareSequence.getOneLineHeader()+"\n");
-			area.setColumns(30);
-			 
-			guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+			//guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			boolean check = true;
 			progressBar.setMaximum(model.size()-1);
 			progressBar.setValue(0);
 			left.setText(left.getText().trim());
 			right.setText(right.getText().trim());
 			
-			sequences = Utils.fillArrayListSequences(subject);
-			hmAdditional = Utils.fillHashWithAddSequences(sequences);
+			//sequences = Utils.fillArrayListSequences(subject);
+			//hmAdditional = Utils.fillHashWithAddSequences(sequences);
+			AnalyzedFileController afc = new AnalyzedFileController(pm);
+			File[] files = new File[model.getSize()];
+			for(int i = 0;i<model.getSize();i++) {
+				files[i] = model.getElementAt(i);
+				//System.out.println("adding "+i +" "+model.getElementAt(i));
+			}
+			afc.setFiles(files);
+			afc.setLeft(left.getText());
+			afc.setRight(right.getText());
+			afc.setMaxError((double)maxError.getValue());
+			afc.setMaskLowQuality(maskLowQuality.isSelected());
+			afc.setMaskLowQualityRemove(maskLowQualityRemove.isSelected());
+			afc.setProgressBar(progressBar);
+			afc.setStartButton(analyzeFiles);
+			Thread newThread = new Thread(afc);
+			newThread.start();
+			/*
+			int lastNr = -1;
+			boolean lastBlast = false;
+			while(newThread.isAlive()) {
+					int newNr = afc.currentFileNr();
+					if(newNr!= lastNr) {
+						progressBar.setValue(afc.currentFileNr());
+						progressBar.update(progressBar.getGraphics());
+						lastNr = newNr;
+					}
+					if(lastBlast == false && afc.runningBlast()) {
+						System.out.println("blasting..");
+						progressBar.setValue(0);
+						progressBar.setIndeterminate(true);
+						analyzeFiles.setText("Start analysis - BLASTING....");
+						analyzeFiles.update(analyzeFiles.getGraphics());
+						progressBar.update(progressBar.getGraphics());
+						progressBar.setVisible(false);
+						progressBar.setVisible(true);
+						
+						lastBlast = true;
+						System.out.println(Thread.activeCount());
+					}
+					//progressBar.update(progressBar.getGraphics());
+					try {
+						Thread.sleep(200);
+					} catch (InterruptedException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+			}
+			//final update
+			if(!afc.runningBlast()) {
+				System.out.println("not blasting..");
+				analyzeFiles.setText("Start analysis");
+				analyzeFiles.update(analyzeFiles.getGraphics());
+				progressBar.setIndeterminate(false);
+			}
+			progressBar.setValue(afc.currentFileNr());
+			progressBar.update(progressBar.getGraphics());
 			
+			//progressBar.update(progressBar.getGraphics());
+			//Remove columns that users don't want to see
+			 */
+			
+		}
+			/*
 			for(int i = 1; i<model.size();i++){
 				String ret = null;
 				//if(mbc.tryToMatchFasta()){
@@ -411,27 +485,7 @@ public class GUI implements ActionListener {
 		}
 	}
 
-	private String removeUnneededColumns(String s) {
-		String[] rows = s.split("\n");
-		StringBuffer sb = new StringBuffer(5000);
-		//System.out.println("removeUnneededColumns");
-		boolean[] keepColumns = pm.getOutputColumns();
-		for(String row: rows) {
-			StringBuffer rowBuffer = new StringBuffer(5000);
-			String[] columns = row.split("\t");
-			for(int column = 0; column<columns.length;column++) {
-				if(keepColumns[column]) {
-					if(rowBuffer.length()>0) {
-						rowBuffer.append("\t");
-					}
-					rowBuffer.append(columns[column]);
-				}
-			}
-			sb.append(rowBuffer);
-			sb.append("\n");
-		}
-		return sb.toString();
-	}
+	
 	/*
 	private String analyzeFileAll(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		StringBuffer sb = new StringBuffer();
@@ -589,6 +643,7 @@ public class GUI implements ActionListener {
 		} catch (Exception e1) {
 			System.out.println(f.getName()+" gives exception");
 			e1.printStackTrace();
+			return f.getName()+" results in exception";
 		}
 		//SymbolList symbols = trace.getSequence();
 		String name = f.getName();
@@ -620,11 +675,14 @@ public class GUI implements ActionListener {
 					return null;
 				}
 				if(leftRightPos < 0) {
-					JOptionPane.showMessageDialog(guiFrame,
-						    "left and right flank cannot be found connected in the fasta file."
-						    + " If you are using two break sites, all is ok",
-						    "left + right found, but not connected",
-						    JOptionPane.WARNING_MESSAGE);
+					Object[] options = { "OK", "Cancel" };
+					int n = JOptionPane.showOptionDialog(null, "left and right flank cannot be found connected in the fasta file."
+						    + " If you are using two break sites, all is ok", "Warning",
+					        JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE,
+					        null, options, options[0]);
+					if (n == JOptionPane.CANCEL_OPTION) {
+						return null;
+					}
 				}
 			}
 		}
@@ -642,7 +700,7 @@ public class GUI implements ActionListener {
 		if(this.maskLowQualityRemove.isSelected()){
 			cs.maskSequenceToHighQualityRemove();
 		}
-		cs.determineFlankPositions();
+		cs.determineFlankPositions(true);
 		cs.setAdditionalSearchString(hmAdditional);
 		//do we want to print it?
 		if(pm.getPropertyBoolean("printCorrectColumnsOnly") && cs.getRemarks().length()>0) {
@@ -756,6 +814,44 @@ public class GUI implements ActionListener {
 		maxError.setValue(e);
 	}
 	private void fillMenuBarOutput() {
+		
+	}
+
+	@Override
+	public void mouseClicked(MouseEvent e) {
+		if(e.getClickCount()== 2) {
+			File f = ((JList<File>)e.getSource()).getSelectedValue();
+			try {
+				Desktop.getDesktop().open(f);
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		}
+		
+	}
+
+	@Override
+	public void mouseEntered(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mouseExited(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mousePressed(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mouseReleased(MouseEvent e) {
+		// TODO Auto-generated method stub
 		
 	}
 }
