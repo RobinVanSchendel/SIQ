@@ -1,0 +1,234 @@
+package utils;
+
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import javax.swing.JButton;
+import javax.swing.JOptionPane;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+
+import org.biojavax.bio.seq.RichSequence;
+import org.jcvi.jillion.core.qual.QualitySequence;
+import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
+import org.jcvi.jillion.trace.chromat.Chromatogram;
+import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
+
+import gui.PropertiesManager;
+
+public class AnalyzedFileController implements Runnable{
+	public File subjectFile;
+	public ArrayList<File> queries;
+	//public ArrayList<Anal>
+	public String left, right;
+	public int current = 0;
+	private double maxError;
+	private boolean maskLowQuality;
+	private boolean maskLowQualityRemove;
+	public ArrayList<CompareSequence> result = new ArrayList<CompareSequence>();
+	private PropertiesManager pm;
+	private boolean runningBlast;
+	private JProgressBar progressBar;
+	private JButton button;
+	
+	public AnalyzedFileController(PropertiesManager pm) {
+		this.pm = pm;
+	}
+	public void setFiles(File[] files) {
+		if(files.length>0) {
+			subjectFile = files[0];
+			queries = new ArrayList<File>();
+			for(int i = 1;i<files.length;i++) {
+				queries.add(files[i]);
+			}
+		}
+	}
+
+	public void setLeft(String text) {
+		this.left = text;
+	}
+
+	public void setRight(String text) {
+		this.right = text;
+	}
+
+	@Override
+	public void run() {
+		button.setEnabled(false);
+		//Get the subject first
+		ArrayList<RichSequence> subjectSequences = Utils.fillArrayListSequences(subjectFile);
+		RichSequence subject = subjectSequences.get(0);
+		JTextArea area = new JTextArea();
+		area.setColumns(30);
+		progressBar.setValue(0);
+		progressBar.setMaximum(nrFiles());
+		for(File f: queries) {
+			System.out.println(f.getName());
+			Chromatogram chromo = null;
+			try {
+				chromo = ChromatogramFactory.create(f);
+			} catch (Exception e1) {
+				System.out.println(f.getName()+" gives exception");
+				e1.printStackTrace();
+			}
+			NucleotideSequence seq = chromo.getNucleotideSequence();
+			QualitySequence quals = chromo.getQualitySequence();
+			
+			KMERLocation kmerl = new KMERLocation(subject.seqString());
+			//kmerl = null;
+			String name = f.getName();
+			CompareSequence cs = new CompareSequence(subject, seq.toString(), quals, left, right, null, f.getParent(), true, name, kmerl);
+			cs.setAndDetermineCorrectRange(maxError);
+			if(maskLowQuality){
+				cs.maskSequenceToHighQuality(left, right);
+			}
+			if(maskLowQualityRemove){
+				cs.maskSequenceToHighQualityRemove();
+			}
+			cs.determineFlankPositions(true);
+			//cs.setAdditionalSearchString(hmAdditional);
+			//do we want to print it?
+			if(pm.getPropertyBoolean("printCorrectColumnsOnly") && cs.getRemarks().length()>0) {
+				
+			}
+			else {
+				result.add(cs);
+			}
+			current++;
+			progressBar.setValue(current);
+		}
+		progressBar.setIndeterminate(true);
+		checkAndPerformBlast();
+		progressBar.setIndeterminate(false);
+		area.setText(removeUnneededColumns(getResultString()));
+		JScrollPane scrollPane = new JScrollPane(area);
+		scrollPane.setPreferredSize( new Dimension( 500, 500 ) );
+		JOptionPane.showMessageDialog(
+				   null, scrollPane, "Result", JOptionPane.PLAIN_MESSAGE);
+		button.setEnabled(true);
+	}
+	private String removeUnneededColumns(String s) {
+		if(s == null) {
+			return null;
+		}
+		String[] rows = s.split("\n");
+		StringBuffer sb = new StringBuffer(5000);
+		//System.out.println("removeUnneededColumns");
+		boolean[] keepColumns = pm.getOutputColumns();
+		for(String row: rows) {
+			StringBuffer rowBuffer = new StringBuffer(5000);
+			String[] columns = row.split("\t");
+			for(int column = 0; column<columns.length;column++) {
+				if(keepColumns[column]) {
+					if(rowBuffer.length()>0) {
+						rowBuffer.append("\t");
+					}
+					rowBuffer.append(columns[column]);
+				}
+			}
+			sb.append(rowBuffer);
+			sb.append("\n");
+		}
+		return sb.toString();
+	}
+	
+	private void checkAndPerformBlast() {
+		String blast = pm.getProperty("blast");
+		String blastDb = pm.getProperty("blastDB");
+		System.out.println("db: "+blastDb);
+		System.out.println("blast"+blast);
+		if(blast == null || blastDb == null) {
+			return;
+		}
+		//System.out.println("Performing Blast");
+		//System.out.println("Performing Blast for real");
+		runningBlast = true;
+		HashMap<String, ArrayList<Blast>> blasts = AnalyzedFileController.getBlastResultDB(result, blastDb, blast);
+		runningBlast = false;
+		for(CompareSequence cs: result) {
+			if(blasts.containsKey(cs.getName())) {
+				cs.addBlastResult(blasts.get(cs.getName()));
+			}
+		}
+	}
+	public int currentFileNr() {
+		//System.out.println("Returning "+current);
+		return current;
+	}
+	public int nrFiles() {
+		return queries.size();
+	}
+	public String getResultString() {
+		StringBuffer sb = new StringBuffer();
+		sb.append(CompareSequence.getOneLineHeader());
+		for(CompareSequence cs: result) {
+			sb.append("\n");
+			sb.append(cs.toStringOneLine());
+		}
+		return sb.toString();
+	}
+
+	public void setMaxError(double value) {
+		this.maxError = value;
+	}
+	public void setMaskLowQuality(boolean maskLowQuality) {
+		this.maskLowQuality = maskLowQuality;
+	}
+	public void setMaskLowQualityRemove(boolean maskLowQualityRemove) {
+		this.maskLowQualityRemove = maskLowQualityRemove;
+	}
+	public static HashMap<String, ArrayList<Blast>> getBlastResultDB(ArrayList<CompareSequence> seqs, String db, String exec){
+		//test for blast
+		try {
+			PrintWriter qWriter = new PrintWriter("query.fa", "UTF-8");
+			for(CompareSequence cs: seqs) {
+				if(cs.getInsertion().length()>=15) {
+					qWriter.println(">"+cs.getName());
+					qWriter.println(cs.getInsertion());
+				}
+			}
+			qWriter.close();
+			//String execTotal = exec +" -query query.fa -db "+db+" -word_size 18 -outfmt \"6 std qseq sseq\"";
+			String execTotal = exec +" -query query.fa -db "+db+" -word_size 15 -ungapped -outfmt \"6 std qseq sseq\"";
+			//System.out.println(execTotal);
+			Process p = Runtime.getRuntime().exec(execTotal);
+			//Process p = Runtime.getRuntime().exec("ping");
+			// any error message?
+            StreamGobbler errorGobbler = new 
+                StreamGobbler(p.getErrorStream(), "ERROR");            
+            
+            // any output?
+            StreamGobbler outputGobbler = new 
+                StreamGobbler(p.getInputStream(), "OUTPUT");
+                
+            // kick them off
+            errorGobbler.start();
+            outputGobbler.start();
+            int exitVal = p.waitFor();
+            return outputGobbler.getBlastResult();
+			
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	public boolean runningBlast() {
+		return this.runningBlast;
+	}
+	public void setProgressBar(JProgressBar progressBar) {
+		this.progressBar = progressBar;
+	}
+	public void setStartButton(JButton analyzeFiles) {
+		this.button = analyzeFiles;
+	}
+}
