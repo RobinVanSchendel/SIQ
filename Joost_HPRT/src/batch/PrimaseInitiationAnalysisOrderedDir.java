@@ -30,8 +30,8 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//extra parameters
 		String analyseDirName = null; //"XF1494";
 		//analyseDirName = "XF1488"; //"XF1494";
-		//analyseDirName = "XF1414";
-		boolean printNonCorrect = true; //false
+		analyseDirName = "XF1662";
+		boolean printNonCorrect = false; //false
 		boolean printXY = true;
 		
 		ArrayList<CompareSequence> al = new ArrayList<CompareSequence>();
