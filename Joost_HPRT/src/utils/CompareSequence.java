@@ -39,6 +39,7 @@ public class CompareSequence {
 	private boolean masked = false;
 	private QualitySequence quals;
 	private InsertionSolverTwoSides is;
+	private ArrayList<Blast> blasts;
 	private boolean leftRightIsOK = false;
 	private boolean leftRightIsFilled = false;
 	private boolean entireQueryUsed = false;
@@ -171,7 +172,7 @@ public class CompareSequence {
 			}
 		}
 	}
-	public void determineFlankPositions(){
+	public void determineFlankPositions(boolean stopIfLeftNotFound){
 		int leftPos = -2;
 		int rightPos = -2;
 		Left flankOne = null;
@@ -211,7 +212,11 @@ public class CompareSequence {
 			String seqRemain = "";
 			if(flankOne == null) {
 				this.setRemarks("Cannot find the Left flank of the event");
-				return;
+				//System.out.println("Cannot find the Left flank of the event");
+				//keep going because of the reverse read which we still need to find
+				if(stopIfLeftNotFound) {
+					return;
+				}
 			}
 			else {
 				seqRemain = query.replace(flankOne.getString(), replacementFlank);
@@ -233,8 +238,17 @@ public class CompareSequence {
 			else {
 				//switched to minimumSizeWithLeftRight //15
 				int replacementIndex = seqRemain.indexOf(replacementFlank);
-				String seqRemainRightPart = seqRemain.substring(replacementIndex);
-				LCS flankTwoLCS = kmerl.getMatchRight(seqRemainRightPart, flankOne.getSubjectEnd(), minimumSizeWithLeftRight, allowJump);
+				//overrrule if we did not find the left flank
+				String seqRemainRightPart = "";
+				LCS flankTwoLCS = null;
+				if(replacementIndex == -1) {
+					seqRemainRightPart = query;
+					flankTwoLCS = kmerl.getMatchRight(seqRemainRightPart, 0, minimumSizeWithLeftRight, allowJump);
+				}
+				else {
+					seqRemainRightPart = seqRemain.substring(replacementIndex);
+					flankTwoLCS = kmerl.getMatchRight(seqRemainRightPart, flankOne.getSubjectEnd(), minimumSizeWithLeftRight, allowJump);
+				}
 				if(flankTwoLCS!= null) {
 					flankTwo = flankTwoLCS.getString();
 					this.jumpedRight = flankTwoLCS.getJumped();
@@ -259,8 +273,12 @@ public class CompareSequence {
 				*/
 			//System.out.println("flankOne"+":"+flankOne+":"+flankOne.length());
 			//System.out.println("flankTwo"+":"+flankTwo+":"+flankTwo.length());
+			if(flankOne == null) {
+				//do nothing, the remark is already set!
+				//this.setRemarks("Cannot find the Left flank of the event");
+			}
 			//check size
-			if(flankTwo == null || flankOne.length()<minimumSizeWithLeftRight || flankTwo.length()<minimumSizeWithLeftRight ){
+			else if(flankTwo == null || flankOne.length()<minimumSizeWithLeftRight || flankTwo.length()<minimumSizeWithLeftRight ){
 				//System.out.println(flankOne.length());
 				//System.out.println(flankOne);
 				//System.out.println(flankTwo.length());
@@ -296,6 +314,12 @@ public class CompareSequence {
 			}
 			if(flankTwo != null) {
 				rightFlank = flankTwo;
+				//sometimes the righFlank does not exten far enough from the cut position
+				int endPosRightFlank = this.getMatchEnd();
+				int rightPosSite = subject.seqString().indexOf(rightSite);
+				if(endPosRightFlank-rightPosSite<minimumSizeWithLeftRight) {
+					this.setRemarks("Query does not extend far enough past right defined site");
+				}
 			}
 		}
 		else{
@@ -349,7 +373,7 @@ public class CompareSequence {
 					}
 					if(flankOne.length()>=minimumSizeWithoutLeftRight && (flankTwo == null || flankTwo.length()<minimumSizeWithoutLeftRight )){
 						this.leftFlank = flankOne;
-						this.setRemarks("2Cannot find the second flank of the event, please do it manually");
+						this.setRemarks("Cannot find the second flank of the event, please do it manually");
 						//System.err.println("Cannot find the second flank of the event, please do it manually");
 					}
 					else if(flankOne.length()<50 && ( flankTwo == null || flankTwo.length()<50 )){
@@ -837,6 +861,7 @@ public class CompareSequence {
 			is.setAdjustedPositionRight(start);
 			is.search(true, true);
 			is.setMaxTriesSolved(maxTries);
+			is.matchBlastHits(blasts, null, -1, false);
 			if(this.additionalSearchSequence != null){
 				is.setTDNA(additionalSearchSequence);
 			}
@@ -1064,14 +1089,16 @@ public class CompareSequence {
 		double maxError = relaxedMaxError;
 		long first = -1;
 		long last = quals.getLength()-1;
+		//System.out.println(last);
 		for(long j = 0;j<quals.getLength();j++){
 			double errorP = quals.get(j).getErrorProbability();
+			//System.out.println(this.getName()+this.getRaw().charAt((int)j)+" "+j+" "+errorP+" "+quals.get(j).getQualityScore());
 			if(first == -1 && errorP <= maxError){
 				first = j;
 			}
 			//break range on the first bad base
 			if(first >= 0 && errorP > maxError){
-				//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
+				//System.out.println(this.getName()+"range is "+first+"-"+last +"("+(last-first+1)+")");
 				if(j-first >= minimalRangeSize){
 					//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
 					ranges.add(Range.of(first, last));
@@ -1089,6 +1116,7 @@ public class CompareSequence {
 	}
 	public void maskSequenceToHighQuality(String left, String right){
 		if(ranges.size()==0){
+			System.out.println("here");
 			this.setRemarks("No high quality range found, unable to mask");
 		}
 		if(ranges.size()>=1){
@@ -1220,7 +1248,7 @@ public class CompareSequence {
 		int start = 250;
 		int end = 350;
 		//if subject is too small, simply return.
-		if(leftFlank == null && subject.seqString().length()<=end) {
+		if(leftFlank == null || subject.seqString().length()<=end) {
 			return null;
 		}
 		int pos = leftFlank.getSubjectEnd();
@@ -1473,5 +1501,11 @@ public class CompareSequence {
 	}
 	public void setAllowJump(boolean allowJump) {
 		this.allowJump = allowJump;
+	}
+	public boolean isMasked() {
+		return this.masked;
+	}
+	public void addBlastResult(ArrayList<Blast> blasts) {
+		this.blasts = blasts;
 	}
 }

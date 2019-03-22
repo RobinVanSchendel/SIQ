@@ -7,26 +7,17 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Vector;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.biojava.bio.seq.DNATools;
-import org.biojava.bio.seq.Sequence;
-import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
-import org.jcvi.jillion.core.datastore.DataStoreException;
 import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
-import org.jcvi.jillion.core.qual.PhredQuality;
 import org.jcvi.jillion.core.qual.QualitySequence;
-import org.jcvi.jillion.core.residue.nt.Nucleotide;
 import org.jcvi.jillion.core.util.iter.StreamingIterator;
 import org.jcvi.jillion.trace.fastq.FastqDataStore;
 import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
 import org.jcvi.jillion.trace.fastq.FastqFileReader;
-import org.jcvi.jillion.trace.fastq.FastqFileReader.Results;
 import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
@@ -52,6 +43,7 @@ public class SequenceFileThread implements Runnable {
 	private String alias = "";
 	private KMERLocation kmerl;
 	private boolean allowJump;
+	private String singleFileF, singleFileR;
 	
 	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, HashMap<String, String> additional){
 		this.f = f;
@@ -89,14 +81,77 @@ public class SequenceFileThread implements Runnable {
 		ArrayList<SetAndPosition> poss = createSetAndPosition();
 		AtomicLong start = new AtomicLong(System.nanoTime());
 		AtomicInteger counter = new AtomicInteger(0);
+		AtomicInteger counterFR = new AtomicInteger(0);
 		AtomicInteger wrong = new AtomicInteger(0);
 		AtomicInteger wrongPosition = new AtomicInteger(0);
-		//AtomicInteger wrongPositionRight = new AtomicInteger(0);
+		AtomicInteger correctPositionFR = new AtomicInteger(0);
+		AtomicInteger correctPositionFRassembled = new AtomicInteger(0);
 		AtomicInteger badQual = new AtomicInteger(0);
 		AtomicInteger correct = new AtomicInteger(0);
 		HashMap<String, Integer> remarks = new HashMap<String, Integer>();
 		
 		try {
+			//first check the non-assembled reads
+			//FastqFileReader reader = new FastqFileReader()
+			if(singleFileF != null && singleFileR != null) {
+				FastqDataStore datastoreF = new FastqFileDataStoreBuilder(new File(singleFileF)).qualityCodec(FastqQualityCodec.SANGER).hint(DataStoreProviderHint.ITERATION_ONLY).build();
+				FastqDataStore datastoreR = new FastqFileDataStoreBuilder(new File(singleFileR)).qualityCodec(FastqQualityCodec.SANGER).hint(DataStoreProviderHint.ITERATION_ONLY).build();
+				StreamingIterator<FastqRecord> itF = datastoreF.iterator();
+				StreamingIterator<FastqRecord> itR = datastoreR.iterator();
+				int count = 0;
+				while(itF.hasNext() && itR.hasNext()) {
+					FastqRecord F = itF.next();
+					FastqRecord R = itR.next();
+					count++;
+					counterFR.getAndIncrement();
+					
+					//Forward
+					boolean checkReverse = false;
+					CompareSequence cs = new CompareSequence(subject, F.getNucleotideSequence().toString(), F.getQualitySequence(), leftFlank, rightFlank, null, f.getParentFile().getName(), checkReverse, F.getId(), kmerl);
+					cs.setAndDetermineCorrectRange(maxError);
+					cs.maskSequenceToHighQualityRemove();
+					//only if masked
+					if(cs.isMasked()) {
+						cs.setAllowJump(this.allowJump);
+						cs.determineFlankPositions(true);
+						boolean leftCorrect = cs.isCorrectPositionLeft(poss);
+						//speedup
+						if(leftCorrect) {
+							//Reverse
+							cs = new CompareSequence(subject, R.getNucleotideSequence().toString(), R.getQualitySequence(), leftFlank, rightFlank, null, f.getParentFile().getName(), checkReverse, R.getId(), kmerl);
+							cs.setAndDetermineCorrectRange(maxError);
+							cs.maskSequenceToHighQualityRemove();
+							cs.setAllowJump(this.allowJump);
+							cs.determineFlankPositions(false);
+							boolean rightCorrect = cs.isCorrectPositionRight(poss);
+							if(leftCorrect && rightCorrect) {
+								correctPositionFR.getAndIncrement();
+								//System.out.println("correct "+Thread.activeCount());
+							}
+							else {
+								//System.out.println("not correct "+leftCorrect+":"+rightCorrect+" - "+Thread.activeCount());
+							}
+						}
+						if(count>=maxReads) {
+							break;
+						}
+						if(count%10000==0 && count>0){
+							long end = System.nanoTime();
+							long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
+							//System.out.println("So far took :"+duration+" milliseconds");
+							start.set(end);
+							System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+count+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get())));
+						}
+					}
+				}
+				System.out.println("CorrectPositions:\t"+correctPositionFR);
+				itF.close();
+				itR.close();
+				datastoreF.close();
+				datastoreR.close();
+			}
+
+			
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
 				QualitySequence quals = fastqRecord.getQualitySequence();
@@ -124,68 +179,77 @@ public class SequenceFileThread implements Runnable {
 				//small speedup
 				boolean leftCorrect = false;
 				boolean rightCorrect = false;
-				if(cs.getRemarks().length()==0) {
-					cs.determineFlankPositions();
+				if(cs.isMasked()) {
+					cs.determineFlankPositions(true);
 					leftCorrect = cs.isCorrectPositionLeft(poss);
 					rightCorrect = cs.isCorrectPositionRight(poss);
+					//System.out.println(leftCorrect+":"+rightCorrect);
 					if(leftCorrect && rightCorrect) {
-						cs.setAdditionalSearchString(hmAdditional);
-						//cs.setCutType(type);
-						cs.setCurrentFile(f.getName());
-						cs.setCurrentAlias(alias, f.getName());
+						correctPositionFRassembled.getAndIncrement();
 					}
 					else {
 						wrongPosition.getAndIncrement();
-						if(cs.getRemarks().length()>0) {
-							String rs = cs.getRemarks();
-							if(remarks.containsKey(rs)) {
-								remarks.put(rs, remarks.get(rs)+1);
-							}
-							else {
-								remarks.put(rs, 1);
-							}
-						}
+						System.out.println(cs.toStringOneLine());
 					}
-				}
-				//only correctly found ones
-				//System.out.println(cs.toStringOneLine());
-				if(cs.getRemarks().length() == 0 && leftCorrect && rightCorrect){
-					correct.getAndIncrement();
-					if(!printOnlyIsParts){
-						if(collapseEvents){
-							String key = cs.getKey(includeStartEnd);
-							if(countEvents.containsKey(key)){
-								countEvents.put(key, countEvents.get(key)+1);
-								//while this works, it might be slow and/or incorrect!
-								//the best would be to give the majority here
-								//replaced not so great sequences with more accurate ones
-								//to be able to filter better later
-								//20180731, added match positions as now sometimes shorter events are selected
-								//which causes problems with filters later
-								if(cs.getNrNs()<csEvents.get(key).getNrNs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
-									csEvents.put(key, cs);
+					if(cs.getRemarks().length()==0) {
+						if(leftCorrect && rightCorrect) {
+							cs.setAdditionalSearchString(hmAdditional);
+							//cs.setCutType(type);
+							cs.setCurrentFile(f.getName());
+							cs.setCurrentAlias(alias, f.getName());
+						}
+						else {
+							if(cs.getRemarks().length()>0) {
+								String rs = cs.getRemarks();
+								if(remarks.containsKey(rs)) {
+									remarks.put(rs, remarks.get(rs)+1);
+								}
+								else {
+									remarks.put(rs, 1);
 								}
 							}
-							else{
-								countEvents.put(key, 1);
-								//save the object instead
-								csEvents.put(key, cs);
-								//actualEvents.put(key, cs.toStringOneLine());
+						}
+					}
+					//only correctly found ones
+					//System.out.println(cs.toStringOneLine());
+					if(cs.getRemarks().length() == 0 && leftCorrect && rightCorrect){
+						correct.getAndIncrement();
+						if(!printOnlyIsParts){
+							if(collapseEvents){
+								String key = cs.getKey(includeStartEnd);
+								if(countEvents.containsKey(key)){
+									countEvents.put(key, countEvents.get(key)+1);
+									//while this works, it might be slow and/or incorrect!
+									//the best would be to give the majority here
+									//replaced not so great sequences with more accurate ones
+									//to be able to filter better later
+									//20180731, added match positions as now sometimes shorter events are selected
+									//which causes problems with filters later
+									if(cs.getNrNs()<csEvents.get(key).getNrNs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
+										csEvents.put(key, cs);
+									}
+								}
+								else{
+									countEvents.put(key, 1);
+									//save the object instead
+									csEvents.put(key, cs);
+									//actualEvents.put(key, cs.toStringOneLine());
+								}
+							}
+						}
+						else{
+							String[] ret = cs.printISParts(colorMap);
+							if(ret != null){
+								for(String s: ret){
+									System.out.println(type+"\t"+f.getName()+"\t"+s);
+								}
 							}
 						}
 					}
-					else{
-						String[] ret = cs.printISParts(colorMap);
-						if(ret != null){
-							for(String s: ret){
-								System.out.println(type+"\t"+f.getName()+"\t"+s);
-							}
-						}
+					else {
+						//System.out.println(cs.toStringOneLine());
+						wrong.getAndIncrement();
 					}
-				}
-				else {
-					//System.err.println(cs.getRemarks());
-					wrong.getAndIncrement();
 				}
 				//System.out.println(cs.toStringOneLine());
 				//no masking
@@ -200,9 +264,12 @@ public class SequenceFileThread implements Runnable {
 					//break;
 				}
 				if(counter.get()>= this.maxReads) {
+					System.out.println(counter.get()+" >= "+this.maxReads);
 					throw new BreakException();
 				}
 			});
+			
+			
 		} catch (IOException | RuntimeException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -238,7 +305,14 @@ public class SequenceFileThread implements Runnable {
 			writerStats.println(f.getName()+"\tcorrect\t"+correct);
 			writerStats.println(f.getName()+"\twrong\t"+wrong);
 			writerStats.println(f.getName()+"\twrongPosition\t"+wrongPosition);
+			if(singleFileF != null && singleFileR != null) {
+				writerStats.println(f.getName()+"\tcorrectPositionFR\t"+correctPositionFR);
+			}
+			writerStats.println(f.getName()+"\tcorrectPositionFRassembled\t"+correctPositionFRassembled);
+			
 			writerStats.println(f.getName()+"\tbadQual\t"+badQual);
+			
+			
 			for(String key: remarks.keySet()) {
 				writerStats.println(f.getName()+"\t"+key+"\t"+remarks.get(key));
 			}
@@ -322,5 +396,13 @@ public class SequenceFileThread implements Runnable {
 
 	public void setAllowJump(boolean allowJump) {
 		this.allowJump = allowJump;
+	}
+
+	public void setFileF(String singleFileF) {
+		this.singleFileF = singleFileF;
+	}
+
+	public void setFileR(String singleFileR2) {
+		this.singleFileR = singleFileR2;
 	}
 }
