@@ -22,7 +22,6 @@ import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
 
-import javassist.bytecode.Descriptor.Iterator;
 
 public class Utils {
 	public static String getMutation(String ref, String alt){
