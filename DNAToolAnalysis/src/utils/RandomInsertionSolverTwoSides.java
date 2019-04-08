@@ -42,6 +42,10 @@ public class RandomInsertionSolverTwoSides {
 		//System.out.println("lookint: "+lookAtInt+" "+sizes.get(lookAtInt));
 		return sizes.get(lookAtInt);
 	}
+	public boolean isNonRandomInsert(double prob, int largestMatch) {
+		int min = this.getMinLength(prob);
+		return min<largestMatch;
+	}
 	public static String shuffle(String input){
         List<Character> characters = new ArrayList<Character>();
         for(char c:input.toCharArray()){
