@@ -64,6 +64,7 @@ public class CompareSequence {
 	private KMERLocation kmerl;
 	//Default = yes!
 	private boolean allowJump = true;
+	private boolean isFlankInsert = false;
 	
 	public CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 		this.queryName = queryName;
@@ -141,35 +142,34 @@ public class CompareSequence {
 		}
 		//take the reverse complement of the query.
 		//sometimes that is not correct, although we don't really know if that is true
-		if(lcs == null || lcs.length() <40) {
-			String revCom = Utils.reverseComplement(queryS);
-			String rc = null;
-			if(kmerl == null) {
-				rc = longestCommonSubstring(revCom, subjectS);
+		//20190523 removed the check
+		String revCom = Utils.reverseComplement(queryS);
+		String rc = null;
+		if(kmerl == null) {
+			rc = longestCommonSubstring(revCom, subjectS);
+		}
+		else {
+			LCS lcsObject = kmerl.getLCS(revCom);
+			if(lcsObject == null) {
+				rc = null;
 			}
 			else {
-				LCS lcsObject = kmerl.getLCS(revCom);
-				if(lcsObject == null) {
-					rc = null;
-				}
-				else {
-					rc = lcsObject.getString();
-				}
+				rc = lcsObject.getString();
 			}
-			//nothing to be done
-			if(rc == null) {
-				return;
+		}
+		//nothing to be done
+		if(rc == null) {
+			return;
+		}
+		int altSize = rc.length();
+		if( lcs == null || altSize>lcs.length()){
+			query = revCom;
+			//also turn around the quality
+			if(quals!= null){
+				QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
+				quals = qsb.reverse().build();
 			}
-			int altSize = rc.length();
-			if( lcs == null || altSize>lcs.length()){
-				query = revCom;
-				//also turn around the quality
-				if(quals!= null){
-					QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
-					quals = qsb.reverse().build();
-				}
-				this.reversed  = true;
-			}
+			this.reversed  = true;
 		}
 	}
 	public void determineFlankPositions(boolean stopIfLeftNotFound){
@@ -684,6 +684,7 @@ public class CompareSequence {
 		ret.append(getSNVMutation()).append(s);
 		ret.append(getType()).append(s);
 		ret.append(getSecondaryType()).append(s);
+		ret.append(this.isFlankInsert).append(s);
 		ret.append(getRangesString()).append(s);
 		ret.append(masked).append(s);
 		ret.append(getLeftSideRemoved()).append(s);
@@ -868,6 +869,20 @@ public class CompareSequence {
 			is.setMinimumMatch(minSizeInsertionSolver, false);
 			is.solveInsertion();
 			this.is = is;
+			//now determine if this is random or not
+			//one peculiar thing is if the flanks overlap it is now quite fair anymore
+			int leftStart = subject.seqString().indexOf(left);
+			int leftEnd = start+left.length();
+			int rightStart = subject.seqString().indexOf(right);
+			if( (leftEnd) > rightStart) {
+				int tooLarge = leftEnd-rightStart;
+				int cut = tooLarge/2;
+				right = right.substring(cut);
+				left = left.substring(0, left.length()-cut);
+			}
+			
+			RandomInsertionSolverTwoSides ris = new RandomInsertionSolverTwoSides(left,right, insert);
+			this.isFlankInsert  = ris.isNonRandomInsert(0.9, is.getLargestMatch());
 		}
 	}
 	private String getCorrectedLeftFlankRelative(int start, int end) {
@@ -1056,7 +1071,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "CutType\tName\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tRanges\tMasked\t"
+		String ret = "CutType\tName\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
 				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tReversed\tSchematic\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight"+s+"entireQueryUsed";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos"+s+"isStartPos"+s+"isEndPos"+s+"isStartPosRel"+s+"isEndPosRel";
@@ -1090,6 +1105,7 @@ public class CompareSequence {
 		long first = -1;
 		long last = quals.getLength()-1;
 		//System.out.println(last);
+		//System.out.println(this.getRaw());
 		for(long j = 0;j<quals.getLength();j++){
 			double errorP = quals.get(j).getErrorProbability();
 			//System.out.println(this.getName()+this.getRaw().charAt((int)j)+" "+j+" "+errorP+" "+quals.get(j).getQualityScore());
@@ -1161,6 +1177,7 @@ public class CompareSequence {
 			Range largestRange = null;
 			long largestRangeLength = -1;
 			for(Range r: ranges){
+				//System.out.println(r);
 				String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
 				String lcsL = longestCommonSubstring(sub, left);
 				String lcsR = longestCommonSubstring(sub, right);
