@@ -222,43 +222,38 @@ public class Utils {
 		return ret;
 	}
 	
-	public static String[] longestCommonSubstringAllowMismatch(String subject, String query, int nrMismatches)
+	public static String[] longestCommonSubstringAllowMismatch(String subject, String query, int nrMismatches, boolean isLeft)
 	{
 	    if(subject == null || query == null){
 	    	return null;
 	    }
-		subject = subject;//.toLowerCase();
-	    query = query;//.toLowerCase();
 		int StartS1 = 0;
 		int StartS2 = 0;
 	    int Max = 0;
 	    int MaxMismatches = 0;
+	    int MaxMatches = 0;
 	    for (int i = 0; i < subject.length(); i++)
 	    {
 	        for (int j = 0; j < query.length(); j++)
 	        {
 	            int x = 0;
 	            int mismatches = 0;
-	            int distanceLastMismatch = 0;
-	            boolean lastIsMismatch = false;
-	            while (subject.charAt(i + x) == query.charAt(j + x) || (x >= 10 && mismatches<nrMismatches && subject.charAt(i + x) != '|' && query.charAt(j + x) != '|' ))
+	            int matches = 0;
+	            while (subject.charAt(i + x) == query.charAt(j + x) || (mismatches<nrMismatches && subject.charAt(i + x) != '|' && query.charAt(j + x) != '|' ))
 	            {
 	                if(subject.charAt(i + x) != query.charAt(j + x)){
 	                	mismatches++;
-	                	lastIsMismatch = true;
-	                	distanceLastMismatch = 0;
-	                	//System.out.println("allowing mismatch");
 	                }
 	                else{
-	                	lastIsMismatch = false;
-	                	distanceLastMismatch++;
+	                	matches++;
 	                }
 	            	x++;
 	                if (((i + x) >= subject.length()) || ((j + x) >= query.length())) break;
 	            }
-	            if (distanceLastMismatch >= 10 && (x > Max || (x==Max && mismatches<MaxMismatches)))
+	            if (matches > MaxMatches || (matches==MaxMatches && mismatches<MaxMismatches))
 	            {
 	                Max = x;
+	                MaxMatches = matches;
 	                StartS1 = i;
 	                StartS2 = j;
 	                MaxMismatches = mismatches;
@@ -267,7 +262,26 @@ public class Utils {
 	    }
 	    String S1temp = subject.substring(StartS1, (StartS1 + Max));
 	    String S2temp = query.substring(StartS2, (StartS2 + Max));
-	    String[] temp = {S1temp,S2temp};
+	    String mismatch = "";
+	    String location = StartS1+"-"+(StartS1 + Max);
+	    if(isLeft) {
+	    	int startLocation = subject.length()-((StartS1 + Max));
+	    	int endLocation = subject.length()-StartS1;
+	    	location = startLocation+"-"+endLocation; 
+	    }
+	    int mismatches = 0;
+	    int matches = 0;
+	    for(int i = 0;i<S1temp.length();i++) {
+	    	if(S1temp.charAt(i) == S2temp.charAt(i)) {
+	    		mismatch+="-";
+	    		matches++;
+	    	}
+	    	else {
+	    		mismatch+="X";
+	    		mismatches++;
+	    	}
+	    }
+	    String[] temp = {S1temp,S2temp, mismatch, location, matches+":"+mismatches};
 	    return temp;
 	}
 	public static String reverseComplement(String dna){

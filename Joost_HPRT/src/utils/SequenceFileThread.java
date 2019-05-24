@@ -150,6 +150,7 @@ public class SequenceFileThread implements Runnable {
 				datastoreF.close();
 				datastoreR.close();
 			}
+			
 
 			
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
@@ -186,10 +187,11 @@ public class SequenceFileThread implements Runnable {
 					//System.out.println(leftCorrect+":"+rightCorrect);
 					if(leftCorrect && rightCorrect) {
 						correctPositionFRassembled.getAndIncrement();
+						//System.out.println("hier");
 					}
 					else {
 						wrongPosition.getAndIncrement();
-						System.out.println(cs.toStringOneLine());
+						//System.out.println(cs.toStringOneLine());
 					}
 					if(cs.getRemarks().length()==0) {
 						if(leftCorrect && rightCorrect) {
