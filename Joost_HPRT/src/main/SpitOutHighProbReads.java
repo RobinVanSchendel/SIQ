@@ -42,7 +42,7 @@ public class SpitOutHighProbReads {
 					FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 					    (id, fastqRecord) -> {
 					    	QualitySequence quals = fastqRecord.getQualitySequence();
-					    	if(quals.getMinQuality().getErrorProbability() <= maxError) {
+					    	if(quals.getMinQuality().get().getErrorProbability() <= maxError) {
 					    		String seq = fastqRecord.getNucleotideSequence().toString();
 					    		int start = hasHindIIIAtStart(fastqRecord, isBS);					    		
 					    		int end = hasHindIIIAtEnd(fastqRecord, isBS);

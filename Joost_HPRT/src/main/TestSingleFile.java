@@ -36,7 +36,9 @@ public class TestSingleFile {
 			//is = new BufferedReader(new FileReader("Z:\\Evelyne\\DNA\\Revertants sequencing\\XF1423_extended.fa.txt"));
 			//is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
 			//is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\XF1280_whole_unc-22_100bp_zone_for_polq.fa"));
-			is = new BufferedReader(new FileReader("E:\\Project_Hartwig\\HPRT-FASTA-CR1.txt"));
+			//is = new BufferedReader(new FileReader("E:\\Project_Hartwig\\HPRT-FASTA-CR1.txt"));
+			is = new BufferedReader(new FileReader("Z:\\Robin\\Project_Primase\\unc-22_reversion_assay\\XF1546_extended.fa"));
+			
 		} catch (FileNotFoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -74,7 +76,8 @@ public class TestSingleFile {
 				//File f = new File("Z:\\Robin\\Project_Primase\\UV_TMP_hus-1-vs-N2\\unc-22_sequencing\\1046088\\33_51_4_2621330-1046088.ab1");
 				//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_HPRT_test\\Cas9N863A_G462ntE2_01_2611422-1045404.ab1");
 				//File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\plate_1C07_2481341-1036656.ab1");
-				File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\Ku80_1_WTcas9_CR1_A23_2538438-1040473.ab1");
+				//File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\Ku80_1_WTcas9_CR1_A23_2538438-1040473.ab1");
+				File f = new File("Z:\\Robin\\Project_Primase\\unc-22_reversion_assay\\XF1546\\1052669\\XF1546_38_2719780-1052669.ab1");
 				
 				
 	
@@ -109,9 +112,9 @@ public class TestSingleFile {
 			//String right = "CCCCCCCCCCCCCCCCCCCCCCCGACTGCTTGCGGA";
 			//String left = "TTGTATACCTAATCATTATG";
 			//String right = "CCGAGGATTTGGAAAAAGTG";
-			String left = "GATTTGTTTTGTATACCTAAT";
-			String right = "TTATGGACAGGTTAGTAAGACCTCGAT";
-    		String query = "attagcgatgatgaaccaggttatgacctagatttgttttgtatacctaatcattatgccgaggatttggaaaaagtgtttattcctcattatgccgaggatttggaaaaagtgtttattcctcatggactgattatggaca";
+			String left = "ggaggcctgatttca";
+			String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATTCAT";
+    		//String query = "attagcgatgatgaaccaggttatgacctagatttgttttgtatacctaatcattatgccgaggatttggaaaaagtgtttattcctcattatgccgaggatttggaaaaagtgtttattcctcatggactgattatggaca";
     		//String query = "attagcgatgatgaaccaggttatgacctagatttgttttgtatacctaatcattatgccgaggatttggaaaaatgaggatttggaaaaagtgtttattcctcatggactgattatggaca";
 			
 			//CompareSequence kmerless1 = new CompareSequence(hprtSeq, query,null, left, right, null, null, true, "", null);
@@ -124,14 +127,16 @@ public class TestSingleFile {
 			CompareSequence kmerWith = new CompareSequence(hprtSeq, chromo.getNucleotideSequence().toString(),chromo.getQualitySequence(), left, right, null, null, true, "", kmerl);
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
-			kmerWith.determineFlankPositions();
+			kmerWith.setAndDetermineCorrectRange(0.05);
+			kmerWith.maskSequenceToHighQualityRemove();
+			kmerWith.determineFlankPositions(false);
 			String outputKMER = kmerWith.toStringOneLine();
 			System.out.println(outputKMER);
 			
 			/*
 			
 			kmerless1 = new CompareSequence(hprtSeq, seq.seqString(),chromo.getQualitySequence(), left,right, null, null, true, seq.getName(), null);
-			kmerless1.setAndDetermineCorrectRange(0.05);
+			mkerless1.setAndDetermineCorrectRange(0.05);
 			//s.setAdditionalSearchString(additional);
 			//s.maskSequenceToHighQuality(left, right);
 			kmerless1.maskSequenceToHighQualityRemove();

@@ -29,7 +29,7 @@ public class Test {
 			AtomicInteger atomicInteger = new AtomicInteger(0);
 			FastqFileReader.forEach(f, FastqQualityCodec.SANGER,
 					(id, record) -> {
-						double qual = record.getAvgQuality();
+						double qual = record.getAvgQuality().getAsDouble();
 						//record.getQualitySequence();
 						//System.out.println(java.lang.Thread.activeCount());
 						atomicInteger.getAndIncrement();
@@ -55,7 +55,7 @@ public class Test {
 			
 			iter.toStream().forEach(s -> {
 				s.getAvgQuality();
-				double qual = s.getAvgQuality();
+				double qual = s.getAvgQuality().getAsDouble();
 				//System.out.println(java.lang.Thread.activeCount());
 			});
 			iter.close();

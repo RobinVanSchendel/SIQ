@@ -131,6 +131,7 @@ public class ReadInResults {
 							e.printStackTrace();
 						}
 					}
+					/*
 					CompareSequence cs = new CompareSequence(subject, null, parts[index.get("Raw")], null, sis.get(tempFile).getLeft(),sis.get(tempFile).getRight(),null, null, true,parts[index.get("Name")]);
 					cs.setCurrentFile(parts[index.get("File")]);
 					cs.setAdditionalSearchString(hmAdditional);
@@ -139,7 +140,9 @@ public class ReadInResults {
 					//for some reason I got empty rows occasionally
 					if(finalLine!= null && finalLine.length()>0) {
 						writer.println(finalLine);
+
 					}
+					*/
 					//System.out.println(line);
 					//System.out.println(cs.toStringOneLine());
 					//System.exit(0);

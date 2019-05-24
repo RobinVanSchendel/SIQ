@@ -54,11 +54,11 @@ public class MainFromStringFiles {
 				String leftFlank = parts[2].trim();
 				String rightFlank = parts[4].trim();
 				String query = leftFlank+parts[3]+rightFlank;
-				CompareSequence cs = new CompareSequence(subject, null, query, null, "", "", null, currentStrain, true, parts[0]);
-				cs.determineFlankPositions();
-				for(int i = 0;i<numberOfOccurences;i++){
-					System.out.println(cs.toStringOneLine());
-				}
+				//CompareSequence cs = new CompareSequence(subject, null, query, null, "", "", null, currentStrain, true, parts[0]);
+				//cs.determineFlankPositions();
+				//for(int i = 0;i<numberOfOccurences;i++){
+				//	System.out.println(cs.toStringOneLine());
+				//}
 			}
 		}
 

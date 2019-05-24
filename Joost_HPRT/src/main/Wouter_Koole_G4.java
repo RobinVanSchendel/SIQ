@@ -40,17 +40,22 @@ public class Wouter_Koole_G4 {
 			String[] parts = line.split("\t");
 			String dna = parts[2]+parts[3]+parts[4];
 			if(!dna.contains("flank")){
+				/*
 				try {
 					//System.out.println(dna);
+					
 					RichSequence s = RichSequence.Tools.createRichSequence(""+index, DNATools.createDNA(dna));
 					CompareSequence cs = new CompareSequence(subject, null, s, null, left, right, null, null, true);
 					cs.setMinimumSizeWithoutLeftRight(10);
 					cs.determineFlankPositions();
 					System.out.println(cs.toStringOneLine());
+					
+					
 				} catch (IllegalSymbolException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+				*/
 			}
 			index++;
 		}

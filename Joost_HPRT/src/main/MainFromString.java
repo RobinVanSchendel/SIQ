@@ -37,9 +37,9 @@ public class MainFromString {
 		String raw = "ttgctcgtatttcttcaggaactatctacagctcctcactctttccaaatcgcgcaccgcccggaagaattttgctgttgaactacaaaattccgggtctacaaacaccggaattctgtccaaggtaaaaaacagcaaacacttgtaacacatctttattcaaccaagtaaacctaagaactg"; 
 				
 		
-		CompareSequence cs = new CompareSequence(subject, null, raw, null, "", "", null, currentStrain, true, name);
-		cs.determineFlankPositions();
-		System.out.println(cs.toStringOneLine());
+		//CompareSequence cs = new CompareSequence(subject, null, raw, null, "", "", null, currentStrain, true, name);
+		//cs.determineFlankPositions();
+		//System.out.println(cs.toStringOneLine());
 
 	}
 
