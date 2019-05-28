@@ -19,6 +19,12 @@ public class PropertiesManager {
 		//create one if it does not exist
 		if(!f.exists()) {
 			System.out.println("Created properties file "+f.getName());
+			try {
+				f.createNewFile();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		else {
 			System.out.println("Found properties file "+f.getName());
