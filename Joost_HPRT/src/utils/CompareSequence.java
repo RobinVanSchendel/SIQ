@@ -27,6 +27,7 @@ public class CompareSequence {
 	private int minimumSizeWithoutLeftRight = 15; // was 30
 	private int minimumSizeWithLeftRight = 15;
 	private int pamSiteLocation;
+	private int rightSideLocation;
 	private final static String replacementFlank = "FLK1";
 	private String leftSite, rightSite;
 	public final static int minimalRangeSize = 40;
@@ -110,8 +111,9 @@ public class CompareSequence {
 				
 				this.leftRightIsOK = true;
 			}
+			//this can now happen
 			else {
-				this.leftRightIsOK = false;
+				this.leftRightIsOK = true;
 			}
 		}
 		if(!leftRightIsOK) {
@@ -163,13 +165,7 @@ public class CompareSequence {
 		}
 		int altSize = rc.length();
 		if( lcs == null || altSize>lcs.length()){
-			query = revCom;
-			//also turn around the quality
-			if(quals!= null){
-				QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
-				quals = qsb.reverse().build();
-			}
-			this.reversed  = true;
+			this.reverseRead();
 		}
 	}
 	public void determineFlankPositions(boolean stopIfLeftNotFound){
@@ -184,6 +180,7 @@ public class CompareSequence {
 			//misuse the pamSiteLocation to make it relative to the left position
 			if(this.pamSiteLocation == 0){
 				this.pamSiteLocation = leftPos;
+				this.rightSideLocation = subject.seqString().indexOf(rightSite);
 			}
 			if(kmerl == null) {
 				flankOne = findLeft(subject.seqString().substring(0, leftPos), query);
@@ -671,6 +668,8 @@ public class CompareSequence {
 		ret.append(getDelEnd()).append(s);
 		ret.append((this.getDelStart()-this.pamSiteLocation)).append(s);
 		ret.append((this.getDelEnd()-this.pamSiteLocation)).append(s);
+		ret.append((this.getDelStart()-this.rightSideLocation)).append(s);
+		ret.append((this.getDelEnd()-this.rightSideLocation)).append(s);
 		ret.append((this.getDelStart()-this.pamSiteLocation)).append(s);
 		ret.append(getRightFlankRelativePos()).append(s);
 		ret.append(getColorHomology()).append(s);
@@ -836,6 +835,14 @@ public class CompareSequence {
 				right--;
 			}
 		}
+		return right;
+	}
+	private int getLeftFlankRelativeRight() {
+		int left = this.getDelStart()-this.rightSideLocation;
+		return left;
+	}
+	private int getRightFlankRelativeRight() {
+		int right = this.getDelEnd()-this.rightSideLocation;
 		return right;
 	}
 	public String getIDPart() {
@@ -1071,7 +1078,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "CutType\tName\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
+		String ret = "CutType\tName\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
 				+ "getLeftSideRemoved\tgetRightSideRemoved\tRemarks\tReversed\tSchematic\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight"+s+"entireQueryUsed";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos"+s+"isStartPos"+s+"isEndPos"+s+"isStartPosRel"+s+"isEndPosRel";
@@ -1524,5 +1531,21 @@ public class CompareSequence {
 	}
 	public void addBlastResult(ArrayList<Blast> blasts) {
 		this.blasts = blasts;
+	}
+	public boolean isReversed() {
+		return this.reversed;
+	}
+	public void reverseRead() {
+		//only do it once
+		if(!reversed) {
+			//System.out.println("reversing");
+			query = Utils.reverseComplement(query);
+			//also turn around the quality
+			if(quals!= null){
+				QualitySequenceBuilder qsb = new QualitySequenceBuilder(quals);
+				quals = qsb.reverse().build();
+			}
+			this.reversed = true;
+		}
 	}
 }

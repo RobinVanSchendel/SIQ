@@ -3,6 +3,7 @@ package utils;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.UnknownHostException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -106,6 +107,17 @@ public class MyOptions {
 	       		}
 	        }
 	        return sb.toString();
+		}
+		return null;
+	}
+	public String getHostName() {
+		java.net.InetAddress localMachine;
+		try {
+			localMachine = java.net.InetAddress.getLocalHost();
+			return localMachine.getHostName();
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return null;
 	}

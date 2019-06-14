@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -44,6 +45,7 @@ public class SequenceFileThread implements Runnable {
 	private KMERLocation kmerl;
 	private boolean allowJump;
 	private String singleFileF, singleFileR;
+	//private boolean takeRC = false;
 	
 	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, HashMap<String, String> additional){
 		this.f = f;
@@ -88,6 +90,7 @@ public class SequenceFileThread implements Runnable {
 		AtomicInteger correctPositionFRassembled = new AtomicInteger(0);
 		AtomicInteger badQual = new AtomicInteger(0);
 		AtomicInteger correct = new AtomicInteger(0);
+		AtomicBoolean takeRc = new AtomicBoolean(false);
 		HashMap<String, Integer> remarks = new HashMap<String, Integer>();
 		
 		try {
@@ -99,6 +102,7 @@ public class SequenceFileThread implements Runnable {
 				StreamingIterator<FastqRecord> itF = datastoreF.iterator();
 				StreamingIterator<FastqRecord> itR = datastoreR.iterator();
 				int count = 0;
+				boolean first = true;
 				while(itF.hasNext() && itR.hasNext()) {
 					FastqRecord F = itF.next();
 					FastqRecord R = itR.next();
@@ -107,7 +111,18 @@ public class SequenceFileThread implements Runnable {
 					
 					//Forward
 					boolean checkReverse = false;
+					if(first) {
+						checkReverse = true;
+						first = false;
+					}
 					CompareSequence cs = new CompareSequence(subject, F.getNucleotideSequence().toString(), F.getQualitySequence(), leftFlank, rightFlank, null, f.getParentFile().getName(), checkReverse, F.getId(), kmerl);
+					if(first && cs.isReversed()) {
+						takeRc.set(true);
+						first = false;
+					}
+					else if(takeRc.get()) {
+						cs.reverseRead();
+					}
 					cs.setAndDetermineCorrectRange(maxError);
 					cs.maskSequenceToHighQualityRemove();
 					//only if masked
@@ -152,7 +167,6 @@ public class SequenceFileThread implements Runnable {
 			}
 			
 
-			
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
 				QualitySequence quals = fastqRecord.getQualitySequence();
@@ -169,7 +183,19 @@ public class SequenceFileThread implements Runnable {
 				
 				//CompareSequence cs = new CompareSequence(subject, null, query, quals, leftFlank, rightFlank, null, seqs.getParentFile().getName());
 				boolean checkReverse = false;
+				if(counter.get()==0) {
+					checkReverse = true;
+				}
+				else {
+					checkReverse = false;
+				}
 				CompareSequence cs = new CompareSequence(subject, fastqRecord.getNucleotideSequence().toString(), quals, leftFlank, rightFlank, null, f.getParentFile().getName(), checkReverse, id, kmerl);
+				if(counter.get()==0 && cs.isReversed()) {
+					takeRc.set(true);
+				}
+				else if(takeRc.get()) {
+					cs.reverseRead();
+				}
 				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemove();
 				cs.setAllowJump(this.allowJump);
@@ -330,13 +356,24 @@ public class SequenceFileThread implements Runnable {
 		int leftPos = subject.seqString().indexOf(leftPrimer);
 		int rightPos = subject.seqString().indexOf(Utils.reverseComplement(rightPrimer));
 		if(leftPos == -1 || rightPos == -1) {
-			System.err.println("Cannot find primers!");
-			System.err.println(subject.seqString());
-			System.err.println(leftPrimer);
-			System.err.println(rightPrimer);
-			System.err.println(leftPos);
-			System.err.println(rightPos);
-			System.exit(1);
+			//swap
+			String primer = leftPrimer;
+			leftPrimer = rightPrimer;
+			rightPrimer = primer;
+			leftPos = subject.seqString().indexOf(leftPrimer);
+			rightPos = subject.seqString().indexOf(Utils.reverseComplement(rightPrimer));
+			System.out.println(leftPos);
+			System.out.println(rightPos);
+			if(leftPos == -1 || rightPos == -1) {
+				System.err.println("Cannot find primers!");
+				System.err.println(subject.seqString());
+				System.err.println(leftPrimer);
+				System.err.println(rightPrimer);
+				System.err.println(leftPos);
+				System.err.println(rightPos);
+				System.exit(0);
+			}
+			//this.takeRC  = true;
 		}
 		//now adjust the rightPosition
 		rightPos += rightPrimer.length();
