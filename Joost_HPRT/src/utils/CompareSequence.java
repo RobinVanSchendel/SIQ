@@ -177,16 +177,17 @@ public class CompareSequence {
 		if(this.leftRightIsFilled){
 			//System.out.println("leftRightIsFilled");
 			leftPos = subject.seqString().indexOf(leftSite)+leftSite.length();
+			rightPos = subject.seqString().indexOf(rightSite);
 			//misuse the pamSiteLocation to make it relative to the left position
 			if(this.pamSiteLocation == 0){
 				this.pamSiteLocation = leftPos;
-				this.rightSideLocation = subject.seqString().indexOf(rightSite);
+				this.rightSideLocation = rightPos;
 			}
 			if(kmerl == null) {
-				flankOne = findLeft(subject.seqString().substring(0, leftPos), query);
+				flankOne = findLeft(subject.seqString().substring(0, rightPos), query);
 			}
 			else {			
-				Left kmerFlankOne = kmerl.getMatchLeft(query, leftPos, allowJump);
+				Left kmerFlankOne = kmerl.getMatchLeft(query, rightPos, allowJump);
 				//System.out.println("leftKMER:"+kmerFlankOne);
 				if(kmerFlankOne != null) {
 					this.jumpedLeft = kmerFlankOne.getJumped();
@@ -801,19 +802,29 @@ public class CompareSequence {
 		//bug, the tandem duplication is not always left
 		//added check
 		if(!leftFlank.getString().endsWith(insert)) {
-			System.out.println(this.getName());
-			System.err.println("The TD is not placed on the left side");
-			System.out.println(leftFlank.getString());
-			System.out.println(rightFlank);
-			System.out.println(insert);
-			System.exit(0);
+			//sometimes the leftFlank is shorter
+			boolean error = true;
+			if(leftFlank.getString().length()<insert.length()) {
+				//although I am not 100% sure if this will not crash the program later
+				if(insert.endsWith(leftFlank.getString())) {
+					error = false;
+				}
+			}
+			if(error) {
+				System.out.println(this.getName());
+				System.err.println("The TD is not placed on the left side");
+				System.out.println(leftFlank.getString());
+				System.out.println(rightFlank);
+				System.out.println(insert);
+				System.exit(0);
+			}
 		}
 		int pos = leftFlank.getSubjectEnd();
 		int newPos = pos - insert.length();
 		String left = subject.seqString().substring(0, pos);
 		String right = subject.seqString().substring(0, newPos);
 		String hom = "";
-		while(left.charAt(left.length()-1)==right.charAt(right.length()-1)){
+		while(left.charAt(left.length()-1)==right.charAt(right.length()-1) && left.length()>0 && right.length()>0){
 			//need the reverse
 			hom = left.charAt(left.length()-1)+hom;
 			left = left.substring(0, left.length()-1);
@@ -877,7 +888,7 @@ public class CompareSequence {
 			is.solveInsertion();
 			this.is = is;
 			//now determine if this is random or not
-			//one peculiar thing is if the flanks overlap it is now quite fair anymore
+			//one peculiar thing is if the flanks overlap it is not quite fair anymore
 			int leftStart = subject.seqString().indexOf(left);
 			int leftEnd = start+left.length();
 			int rightStart = subject.seqString().indexOf(right);
@@ -1008,14 +1019,14 @@ public class CompareSequence {
 			//add other if you can find them
 		}
 		//experimental code for DELINS
-		if(getType() == Type.DELINS) {
+		else if(getType() == Type.DELINS) {
 			if(this.getInsertion().length()<minSizeInsertionSolver) {
 				return "DELINS_<"+minSizeInsertionSolver;
 			}
 			//solving has been tried
 			else {
 				//SOLVED
-				String ret = "FLANKINSERT";
+				String ret = "DELINS_FLANKINSERT";
 				String tDNA = "";
 				String orientation = "";
 				if(is.getType().equals("NOT SOLVED")) {
@@ -1034,7 +1045,39 @@ public class CompareSequence {
 				if(is.getFirstHit().contains("rc")) {
 					orientation="_RC";
 				}
-				
+				if(this.isFlankInsert) {
+					ret = "DELINS_FLANKINSERT(SIGN)";
+				}
+				return ret+tDNA+orientation;
+			}
+		}
+		else if(getType() == Type.INSERTION) {
+			if(this.getInsertion().length()<minSizeInsertionSolver) {
+				return Type.INSERTION+"_<"+minSizeInsertionSolver;
+			}
+			else {
+				String ret = "FLANKINSERT";
+				String tDNA = "";
+				String orientation = "";
+				if(is.getType().equals("NOT SOLVED")) {
+					ret="INSERTION_UNKNOWN";
+				}
+				else if(is.getType().equals("PARTIALLY SOLVED") && is.getLengthS().split(";").length>3) {
+					if(is.getFirstLength()<10 && getInsertion().length()>20) {
+						ret="INSERTION_LOCATION_UNKNOWN";
+					}
+				}
+				if(is.getFirstHitInTDNA()) {
+					tDNA="_OTHERSEQ";
+					//tDNA+=is.getFirstHit();
+					//System.out.println(tDNA);
+				}
+				if(is.getFirstHit().contains("rc")) {
+					orientation="_RC";
+				}
+				if(this.isFlankInsert) {
+					ret = "INSERTION_FLANKINSERT(SIGN)";
+				}
 				return ret+tDNA+orientation;
 			}
 		}
@@ -1437,6 +1480,11 @@ public class CompareSequence {
 		return count;
 	}
 	public boolean isCorrectPositionLeft(ArrayList<SetAndPosition> poss) {
+		//safety
+		if(poss == null) {
+			//if we don't have any position info it must be true
+			return true;
+		}
 		//System.out.println("Compare: "+getMatchStart()+" >= "+poss.get(0).getMin()+" : "+(getMatchStart()>=poss.get(0).getMin()));
 		//System.out.println("Compare: "+getMatchStart()+" <= "+poss.get(1).getMin()+" : " +(getMatchStart()<= poss.get(1).getMin()));
 		boolean firstFilterOKa = false;
@@ -1459,6 +1507,10 @@ public class CompareSequence {
 		return firstFilterOKa && secondFilterOK;
 	}
 	public boolean isCorrectPositionRight(ArrayList<SetAndPosition> poss) {
+		if(poss == null) {
+			//if we don't have any position info it must be true
+			return true;
+		}
 		boolean firstFilterOKb = false;
 		boolean secondFilterOK = false;
 		if(getMatchEnd()>=poss.get(1).getMax() && getMatchEnd()<= poss.get(0).getMax()) {
