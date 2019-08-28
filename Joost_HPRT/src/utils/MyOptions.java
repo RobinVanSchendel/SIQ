@@ -1,13 +1,21 @@
 package utils;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.UnknownHostException;
+import java.util.NoSuchElementException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.ParseException;
+import org.biojava.bio.BioException;
+import org.biojavax.bio.seq.RichSequenceIterator;
+import org.biojavax.bio.seq.RichSequence;
+import org.biojavax.bio.seq.RichSequence.IOTools;
 
 public class MyOptions {
 	//private String File; //in
@@ -55,11 +63,6 @@ public class MyOptions {
 		if(cmd.hasOption('o')) {
 			return cmd.getOptionValue('o');
 		}
-		/*
-		else {
-			System.err.println("No output file was set (-o), see -h for help");
-			System.exit(0);
-		}*/
 		return null;
 	}
 	public long getThreads() {
@@ -88,7 +91,8 @@ public class MyOptions {
 	        Method[] methods = c.getDeclaredMethods();
 	        StringBuffer sb = new StringBuffer();
 	        for(Method m: methods) {
-	       		if(!m.getName().equals("printParameters") && !m.getName().equals("getClass") && !m.getName().equals("hasOptions")) {
+	       		if(!m.getName().equals("printParameters") && !m.getName().equals("getClass") 
+	       				&& !m.getName().equals("hasOptions") && !m.getName().equals("testLeftRight")) {
 	       			try {
 	       				if(m.invoke(this) != null){
 	       					if(sb.length()>0) {
@@ -169,11 +173,17 @@ public class MyOptions {
 	}
 	public String getLeftPrimer() {
 		String ret = cmd.getOptionValue("leftPrimer");
-		return ret.toLowerCase();
+		if(ret!=null) {
+			return ret.toLowerCase();
+		}
+		return null;
 	}
 	public String getRightPrimer() {
 		String ret = cmd.getOptionValue("rightPrimer");
-		return ret.toLowerCase();
+		if(ret!=null) {
+			return ret.toLowerCase();
+		}
+		return null;
 	}
 	public long getMinPassedPrimer() {
 		if(cmd.hasOption("minPassedPrimer")) {
@@ -196,5 +206,29 @@ public class MyOptions {
 	public String[] getAssForwardReverseFiles() {
 		String[] ret = {this.getSingleFile(),this.getSingleFileF(),this.getSingleFileR()}; 
 		return ret;
+	}
+	public void testLeftRight(){
+		File subjectFile = new File(this.getSubject());
+		BufferedReader is;
+		try {
+			is = new BufferedReader(new FileReader(subjectFile));
+			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
+			RichSequence subjectR = si.nextRichSequence();
+			String s = subjectR.seqString().toLowerCase();
+			String left = this.getLeftFlank();
+			String right = this.getRightFlank();
+			if(left != null && left.length()>0 && s.indexOf(left.toLowerCase())<0) {
+				System.err.println("leftFlank cannot be found: "+left);
+			}
+			if(right != null && right.length()>0 && s.indexOf(right.toLowerCase())<0) {
+				System.err.println("leftFlank cannot be found: "+right);
+			}
+			
+		} catch (FileNotFoundException | NoSuchElementException | BioException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
 	}
 }

@@ -95,6 +95,7 @@ public class HPRTFastQ {
 			
 			String fileName = options.getFile();
 			File file = null;
+			options.testLeftRight();
 			if(fileName == null) {
 				sq.readFilesFASTQMultiThreaded(options);
 				//sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
