@@ -19,6 +19,7 @@ import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
+import dnaanalysis.Blast;
 import gui.PropertiesManager;
 
 public class AnalyzedFileController implements Runnable{
@@ -67,6 +68,7 @@ public class AnalyzedFileController implements Runnable{
 		area.setColumns(30);
 		progressBar.setValue(0);
 		progressBar.setMaximum(nrFiles());
+		KMERLocation kmerl = new KMERLocation(subject.seqString());
 		for(File f: queries) {
 			System.out.println(f.getName());
 			Chromatogram chromo = null;
@@ -79,7 +81,6 @@ public class AnalyzedFileController implements Runnable{
 			NucleotideSequence seq = chromo.getNucleotideSequence();
 			QualitySequence quals = chromo.getQualitySequence();
 			
-			KMERLocation kmerl = new KMERLocation(subject.seqString());
 			//kmerl = null;
 			String name = f.getName();
 			CompareSequence cs = new CompareSequence(subject, seq.toString(), quals, left, right, null, f.getParent(), true, name, kmerl);
@@ -198,7 +199,7 @@ public class AnalyzedFileController implements Runnable{
 			//System.out.println(execTotal);
 			Process p = Runtime.getRuntime().exec(execTotal);
 			//Process p = Runtime.getRuntime().exec("ping");
-			// any error message?
+			// any error message?get
             StreamGobbler errorGobbler = new 
                 StreamGobbler(p.getErrorStream(), "ERROR");            
             
