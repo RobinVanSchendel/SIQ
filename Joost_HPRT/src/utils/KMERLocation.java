@@ -420,12 +420,21 @@ public class KMERLocation {
 	private LCS getLCSInternal() {
 		int maxLength = -1;
 		LCS max = null;
+		int hits = 0;
 		for(LCS lcs: lcss) {
 			//System.out.println(m);
 			if(lcs.getString().length()>maxLength) {
 				maxLength = lcs.getString().length();
 				max = lcs;
+				hits = 1;
 			}
+			else if(lcs.getString().length()==maxLength) {
+				System.out.println(lcs.getString()+" ==maxLength");
+				hits++;
+			}
+		}
+		if(hits>1) {
+			max.setMultipleHits(true);
 		}
 		return max;
 	}
