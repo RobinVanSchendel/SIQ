@@ -148,7 +148,6 @@ public class AnalyzedFileController implements Runnable{
 			return;
 		}
 		//System.out.println("Performing Blast");
-		//System.out.println("Performing Blast for real");
 		runningBlast = true;
 		HashMap<String, ArrayList<Blast>> blasts = AnalyzedFileController.getBlastResultDB(result, blastDb, blast);
 		runningBlast = false;

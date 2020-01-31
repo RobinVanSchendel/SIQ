@@ -6,14 +6,10 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.zip.GZIPOutputStream;
 
-import java.util.LinkedHashMap;
-import static java.util.stream.Collectors.*;
 
 import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
 import org.jcvi.jillion.core.util.iter.StreamingIterator;
