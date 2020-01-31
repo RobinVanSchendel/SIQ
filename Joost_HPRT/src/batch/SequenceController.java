@@ -43,12 +43,13 @@ import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
 import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
+import dnaanalysis.Utils;
 import utils.CompareSequence;
 import utils.KMERLocation;
 import utils.MyError;
 import utils.MyOptions;
 import utils.SequenceFileThread;
-import utils.Utils;
+import utils.Subject;
 
 public class SequenceController {
 	private boolean printOnlyIsParts = false;
@@ -105,9 +106,6 @@ public class SequenceController {
 		Vector<File> ab1s = getFASTQFiles(d, containsString);
 		System.out.println("Found "+ab1s.size()+" FASTQ files");
 		int fileNr = 1;
-		Vector<Thread> v = new Vector<Thread>();
-		Vector<Thread> running = new Vector<Thread>();
-		Vector<Integer> toBeRemoved = new Vector<Integer>();
 		SequenceFileThread sft = null;
 		KMERLocation kmerl = new KMERLocation(subject.seqString());
 		//kmerl = null;
@@ -134,46 +132,9 @@ public class SequenceController {
 			}
 			sft.setFileF(options.getSingleFileF());
 			sft.setFileR(options.getSingleFileR());
-			Thread newThread = new Thread(sft);
-			v.add(newThread);
-			//newThread.start();
 			fileNr++;
 		}
-		if(v.size()==0) {
-			System.exit(0);
-		}
-		if(ab1s.size() == 1) {
-			sft.runReal();
-			return;
-		}
-		//int max = Runtime.getRuntime().availableProcessors();
-		long max = options.getThreads();
-		int maxFiles = ab1s.size();
-		System.out.println("Gonna start "+Math.min(max, maxFiles)+" cpus");
-		//let's see if this works
-		while(v.size()>0 || running.size()>0){
-			for(int nr = running.size()-1;nr>=0;nr--){
-				if(!running.get(nr).isAlive()){
-					toBeRemoved.add(nr);
-				}
-			}
-			for(int i: toBeRemoved){
-				running.remove(i);
-			}
-			toBeRemoved.clear();
-			if(running.size()<max && v.size()>0){
-				Thread t = v.remove(0);
-				running.add(t);
-				t.start();
-			}
-			try {
-				//1 second of sleep... ZzZ...
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+		sft.runReal();
 	}
 	private Vector<File> getFASTQFiles(File d, String containsString) {
 		Vector<File> files = new Vector<File>();
@@ -246,7 +207,7 @@ public class SequenceController {
 	}
 	public ArrayList<CompareSequence> readFilesTryToMatch(
 			File dir, RichSequence currentSequence, String leftFlank,
-			String rightFlank, String type, String searchAdditional, boolean printNonCorrect, double quality) {
+			String rightFlank, String type, String searchAdditional, boolean printNonCorrect, double quality, boolean checkLeftRight) {
 		
 		Vector<Sequence> additional = new Vector<Sequence>();
 		HashMap<String, String> hmAdditional = new HashMap<String, String>();
@@ -270,21 +231,34 @@ public class SequenceController {
 		//System.out.println("Found "+ab1s.size()+" ab1 files");
 		//Introduce the KMER
 		KMERLocation kmerl = new KMERLocation(currentSequence.seqString());
+		Subject subjectObject = new Subject(currentSequence);
+		subjectObject.setLeftFlank(leftFlank);
+		subjectObject.setRightFlank(rightFlank);
 		//kmerl = null;
 		for(File seqs: ab1s){
 			RichSequence subject = currentSequence;
 			try {
-				//System.out.println("accessing "+seqs.getName());
+				
+				//System.out.println("accessing "+seqs.getAbsolutePath());
 				Chromatogram chromo = ChromatogramFactory.create(seqs);
+				/*
+				int value = 89;
+				System.out.println(chromo.getChannelGroup().getAChannel().getPositionSequence().get(value).getValue());
+				System.out.println(chromo.getChannelGroup().getTChannel().getPositionSequence().get(value).getValue());
+				System.out.println(chromo.getChannelGroup().getGChannel().getPositionSequence().get(value).getValue());
+				System.out.println(chromo.getChannelGroup().getCChannel().getPositionSequence().get(value).getValue());
+				System.out.println(chromo.getNucleotideSequence());
+				System.out.println(chromo.getPeakSequence().get(value));
+				System.exit(0);
+				*/
 				NucleotideSequence seq = chromo.getNucleotideSequence();
 				QualitySequence quals = chromo.getQualitySequence();
 				//mask
-				CompareSequence cs = new CompareSequence(subject, seq.toString(), quals, leftFlank, rightFlank, null, seqs.getParent(), checkReverse, seqs.getName(), kmerl);
+				CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, null, seqs.getParent(), checkReverse, seqs.getName(), kmerl, checkLeftRight);
 				cs.setAndDetermineCorrectRange(quality);
 				cs.maskSequenceToHighQualityRemove();
 				cs.determineFlankPositions(false);
 				cs.setAdditionalSearchString(hmAdditional);
-				cs.setCutType(type);
 				//only correctly found ones
 				//and filter for events that are the same in ID and class
 				if(printNonCorrect || (cs.getRemarks().length() == 0 && cs.getType() != CompareSequence.Type.WT)){

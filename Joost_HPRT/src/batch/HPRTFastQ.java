@@ -1,12 +1,6 @@
 package batch;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
 
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
@@ -22,7 +16,6 @@ import org.apache.commons.cli.ParseException;
 import gui.GUI;
 import gui.PropertiesManager;
 import main.SV_Analyzer;
-import utils.CompareSequence;
 import utils.MyOptions;
 
 public class HPRTFastQ {
@@ -46,10 +39,6 @@ public class HPRTFastQ {
 			System.exit(0);
 		}
 		
-		if(options.printTemplate()) {
-			printTemplate();
-			System.exit(0);
-		}
 		if(options.startGUI()) {
 			try {
 				UIManager.setLookAndFeel(
@@ -93,106 +82,9 @@ public class HPRTFastQ {
 			
 			sq.setCollapseEvents(options.collapseEvents());
 			
-			String fileName = options.getFile();
-			File file = null;
 			options.testLeftRight();
-			if(fileName == null) {
-				sq.readFilesFASTQMultiThreaded(options);
-				//sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
-				System.exit(0);
-			}
-			else {
-				file = new File(options.getFile());
-			}
-			
-			if(sq.getOutputFile() != null){
-				sq.writeln("Type\t"+CompareSequence.getOneLineHeader());
-			}
-			else{
-				System.out.println("Type\t"+CompareSequence.getOneLineHeader());
-			}
-			
-			Scanner s = null;
-			//final long startTime = System.nanoTime();
-			try {
-				s = new Scanner(file);
-				boolean first = true;
-				int fileColumn = -1;
-				int subjectColumn = -1;
-				int lFColumn = -1;
-				int rFColumn = -1;
-				int typeColumn = -1;
-				int addSearchColumn = -1;
-				while(s.hasNextLine()){
-					String line = s.nextLine();
-					String[] parts = line.split("\t");
-					if(first){
-						int i = 0;
-						for(String str: parts){
-							if(str.equals("Files")){
-								fileColumn = i;
-							}
-							if(str.equals("Subject")){
-								subjectColumn = i;
-							}
-							if(str.equals("LeftFlank")){
-								lFColumn = i;
-							}
-							if(str.equals("RightFlank")){
-								rFColumn = i;
-							}
-							if(str.equals("Type")){
-								typeColumn = i;
-							}
-							if(str.equals("AdditionalSearch")){
-								addSearchColumn = i;
-							}
-							i++;
-						}
-						first = false;
-					}
-					else{
-						String files = parts[fileColumn];
-						String subject = parts[subjectColumn];
-						String leftFlank = parts[lFColumn];
-						String rightFlank = parts[rFColumn];
-						String type = parts[typeColumn];
-						File search = null;
-						if(addSearchColumn>-1 && parts.length>addSearchColumn){
-							search = new File(parts[addSearchColumn]);
-						}
-						sq.readFilesFASTQMultiThreaded(files, subject, leftFlank, rightFlank, type, search, true, containsString, options);
-					}
-				}
-				s.close();
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			//final long duration = (System.nanoTime() - startTime);
-			//long seconds = TimeUnit.NANOSECONDS.toSeconds(duration);
-			//System.out.println("This script took "+seconds+" seconds");
+			sq.readFilesFASTQMultiThreaded(options);
 		}
-	}
-
-	private static void printTemplate() {
-		File template = new File("template.txt");
-		if(template.exists()) {
-			System.err.println("template file: "+template.getAbsolutePath()+" already exists...");
-			System.exit(0);
-		}
-		try {
-			FileWriter fw = new FileWriter(template);
-			BufferedWriter bw = new BufferedWriter(fw);
-			bw.write("Files\tSubject\tLeftFlank\tRightFlank\tType\tAdditionalSearch\n");
-			bw.write("/home/rvanschendel/data/hprt\t/home/rvanschendel/ref/hprt.fasta\tCCGGGGACGGAGCCTGGGCG\tGGCCGAGAGGGCGGGCCGAG\tCRISPR\t/home/rvanschendel/data/vectors/\n");
-			bw.close();
-			fw.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println("Created template file: "+template.getPath());
 	}
 
 	private static Options createOptions() {
@@ -251,12 +143,6 @@ public class HPRTFastQ {
                 .desc("Collapse the same events into one and count the number of occurrences")
                 .build();
 				o.addOption(collapse);
-		
-		Option printFile   = Option.builder( "x" )
-				.longOpt("print_template")
-                .desc("Prints an empty template file to template.txt containing the tab separated file that is required for the 'in' argument")
-                .build();
-				o.addOption(printFile);
 		
 		Option help   = Option.builder( "h" )
 				.longOpt("help")

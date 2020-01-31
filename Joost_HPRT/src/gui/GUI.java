@@ -50,10 +50,11 @@ import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
+import dnaanalysis.Utils;
 import utils.AnalyzedFileController;
 import utils.CompareSequence;
 import utils.KMERLocation;
-import utils.Utils;
+import utils.Subject;
 
 public class GUI implements ActionListener, MouseListener {
 	//JFileChooser chooser = new JFileChooser(new File("C:\\Users\\rvanschendel\\Documents\\Project_Joost"));
@@ -691,8 +692,9 @@ public class GUI implements ActionListener, MouseListener {
 		QualitySequence quals = chromo.getQualitySequence();
 		
 		KMERLocation kmerl = new KMERLocation(subject.seqString());
+		Subject subjectObject = new Subject(subject,left,right);
 		//kmerl = null;
-		CompareSequence cs = new CompareSequence(subject, seq.toString(), quals, left, right, (String)pamChooser.getSelectedItem(), f.getParent(), true, name, kmerl);
+		CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, (String)pamChooser.getSelectedItem(), f.getParent(), true, name, kmerl, false);
 		cs.setAndDetermineCorrectRange((double)maxError.getValue());
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);

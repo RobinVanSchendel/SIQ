@@ -69,6 +69,7 @@ public class AnalyzedFileController implements Runnable{
 		progressBar.setValue(0);
 		progressBar.setMaximum(nrFiles());
 		KMERLocation kmerl = new KMERLocation(subject.seqString());
+		Subject subjectObject = new Subject(subject,left,right);
 		for(File f: queries) {
 			System.out.println(f.getName());
 			Chromatogram chromo = null;
@@ -83,7 +84,7 @@ public class AnalyzedFileController implements Runnable{
 			
 			//kmerl = null;
 			String name = f.getName();
-			CompareSequence cs = new CompareSequence(subject, seq.toString(), quals, left, right, null, f.getParent(), true, name, kmerl);
+			CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, null, f.getParent(), true, name, kmerl, false);
 			cs.setAndDetermineCorrectRange(maxError);
 			if(maskLowQuality){
 				cs.maskSequenceToHighQuality(left, right);

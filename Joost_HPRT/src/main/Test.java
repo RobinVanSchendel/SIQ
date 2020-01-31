@@ -15,14 +15,14 @@ import org.jcvi.jillion.trace.fastq.FastqFileReader;
 import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
+import dnaanalysis.Utils;
 import utils.CompareSequence;
-import utils.Utils;
 
 public class Test {
 	private static HashMap<String, CompareSequence> csEvents = new HashMap<String, CompareSequence>();
 	
 	public static void main(String[] args) {
-		File f = new File("E:\\Project_Hartwig\\414_415_01_S1.assembled.fastq");
+		File f = new File("E:\\temp\\414_415_01_S1.assembled.fastq");
 		int counter = 0;
 		try {
 			long start = System.nanoTime();

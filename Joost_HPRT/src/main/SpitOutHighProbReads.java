@@ -14,7 +14,7 @@ import org.jcvi.jillion.trace.fastq.FastqRecord;
 import org.jcvi.jillion.trace.fastq.FastqWriter;
 import org.jcvi.jillion.trace.fastq.FastqWriterBuilder;
 
-import utils.Utils;
+import dnaanalysis.Utils;
 
 public class SpitOutHighProbReads {
 	public final static double maxError = 0.001;

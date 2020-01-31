@@ -1,6 +1,9 @@
 package utils;
 
 import java.util.*;
+
+import dnaanalysis.Blast;
+
 import java.io.*;
 class StreamGobbler extends Thread
 {

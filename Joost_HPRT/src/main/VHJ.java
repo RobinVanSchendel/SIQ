@@ -4,9 +4,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Scanner;
 
-import utils.InsertionSolverTwoSides;
-import utils.LargestMatchSearcher;
-import utils.Match;
+import dnaanalysis.InsertionSolverTwoSides;
+import dnaanalysis.LargestMatchSearcher;
+import dnaanalysis.Match;
 
 public class VHJ {
 
@@ -18,8 +18,8 @@ public class VHJ {
 			int MotifColumn = -1;
 			boolean first = true;
 			System.out.println(LargestMatchSearcher.getHeader());
-			
-			for(double mmRate =0;mmRate<1.0;mmRate+=0.01) {
+			double mmRate = 0.2;
+			//for(double mmRate =0;mmRate<1.0;mmRate+=0.01) {
 				Scanner s = new Scanner(f);
 				int total = 0;
 				int totalAlongZero = 0;
@@ -62,6 +62,7 @@ public class VHJ {
 							Match m = new Match(motifLower, combined);
 							m.setMismatchRate(mmRate);
 							m.setPrefferedSubjectPosition(leftLower.length());
+							m.setId(parts[0]);
 							LargestMatchSearcher lcs = m.findLCS();
 							//String[] matchR = Utils.longestCommonSubstringAllowMismatch(rightLower, motifLower, mismatches, false);
 							//String[] matchL = Utils.longestCommonSubstringAllowMismatch(leftLower, motifLower, mismatches, true);
@@ -76,7 +77,7 @@ public class VHJ {
 							//System.out.println(combined);
 							//System.out.println(leftLower.length()+":L"+leftLower);
 							//System.out.println(rightLower.length()+":R"+rightLower);
-							//System.out.println(lcs);
+							System.out.println(lcs);
 							if(lcs.getAdjustedPositionStart()<=0 && lcs.getAdjustedPositionEnd()>0) {
 								totalAlongZero++;
 							}
@@ -89,7 +90,7 @@ public class VHJ {
 				double perc = totalAlongZero/(double)total;
 				System.out.println(mmRate+"\t"+perc+"\t"+totalAlongZero+"\t"+total);
 				s.close();
-			}
+			//}
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

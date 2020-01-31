@@ -429,7 +429,7 @@ public class KMERLocation {
 				hits = 1;
 			}
 			else if(lcs.getString().length()==maxLength) {
-				System.out.println(lcs.getString()+" ==maxLength");
+				//System.out.println(lcs.getString()+" ==maxLength");
 				hits++;
 			}
 		}

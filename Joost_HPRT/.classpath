@@ -3,12 +3,12 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="src" path="/DNAToolAnalysis"/>
-	<classpathentry kind="src" path="/TableModify"/>
 	<classpathentry kind="lib" path="libraries/alignment-1.8.1.jar"/>
 	<classpathentry kind="lib" path="libraries/biojava-core-4.0.0.jar"/>
 	<classpathentry kind="lib" path="libraries/bytecode-1.8.1.jar"/>
 	<classpathentry kind="lib" path="libraries/commons-cli-1.4.jar"/>
 	<classpathentry kind="lib" path="libraries/core-1.8.1.jar"/>
 	<classpathentry kind="lib" path="libraries/jillion-5.3-SNAPSHOT.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/TableModify"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

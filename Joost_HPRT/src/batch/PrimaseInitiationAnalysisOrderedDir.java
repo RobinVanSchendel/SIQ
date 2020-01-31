@@ -30,9 +30,11 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//extra parameters
 		String analyseDirName = null; //"XF1494";
 		//analyseDirName = "XF1488"; //"XF1494";
-		analyseDirName = "XF1662";
+		analyseDirName = "XF1717";
 		boolean printNonCorrect = false; //false
 		boolean printXY = true;
+		boolean checkLeftRight = true;
+		
 		
 		ArrayList<CompareSequence> al = new ArrayList<CompareSequence>();
 		File leftRightFlankFile = new File(leftRightFlank);
@@ -63,7 +65,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 			}
 			//get Left and RightFlanks
 			String[] flanks = obtainLeftRightFlank(leftRightFlankFile, tempDir.getName());
-			al.addAll(sq.readFilesTryToMatch(tempDir, currentSequence, flanks[0], flanks[1], null, null, printNonCorrect,quality));
+			al.addAll(sq.readFilesTryToMatch(tempDir, currentSequence, flanks[0], flanks[1], null, null, printNonCorrect,quality, checkLeftRight));
 			//System.out.println(CompareSequence.getOneLineHeader());
 			for(CompareSequence cs: al) {
 				
@@ -217,7 +219,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 				}
 			}
 			if(!found){
-				System.err.println("No fasta for "+name+" could be found");
+				System.err.println("No fasta for directory "+name+" could be found");
 				missing = true;
 			}
 		}

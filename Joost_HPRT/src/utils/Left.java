@@ -1,5 +1,7 @@
 package utils;
 
+import dnaanalysis.Utils;
+
 public class Left {
 	
 	private static final int ALLLOWEDJUMPDISTANCE = 1;

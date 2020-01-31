@@ -79,9 +79,6 @@ public class MyOptions {
 	public boolean overwrite() {
 		return cmd.hasOption('f');
 	}
-	public boolean printTemplate() {
-		return cmd.hasOption('x');
-	}
 	public boolean collapseEvents() {
 		return cmd.hasOption('c');
 	}
@@ -221,7 +218,7 @@ public class MyOptions {
 				System.err.println("leftFlank cannot be found: "+left);
 			}
 			if(right != null && right.length()>0 && s.indexOf(right.toLowerCase())<0) {
-				System.err.println("leftFlank cannot be found: "+right);
+				System.err.println("rightFlank cannot be found: "+right);
 			}
 			
 		} catch (FileNotFoundException | NoSuchElementException | BioException e) {
