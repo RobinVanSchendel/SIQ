@@ -69,7 +69,6 @@ public class GUI implements ActionListener, MouseListener {
 	//JTextField right = new JTextField("cagtggtgtaaatgctggtccatggct");
 	//JTextField right = new JTextField("CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT");
 	JTextField right = new JTextField("");
-	JComboBox<String> pamChooser;
 	JCheckBox maskLowQuality = new JCheckBox("maskLowQuality");
 	JCheckBox maskLowQualityRemove = new JCheckBox("maskLowQualityRemove");
 	private MenuBarCustom mbc;
@@ -160,7 +159,6 @@ public class GUI implements ActionListener, MouseListener {
         comboPanel.add(fileChooser);
         
         //turn off the PAM chooser for now
-        pamChooser = new JComboBox<String>();
         //comboPanel.add(new JLabel("select PAM site:"));
         //comboPanel.add(pamChooser);
         
@@ -458,8 +456,6 @@ public class GUI implements ActionListener, MouseListener {
 				if(si.hasNext()){
 					try {
 						Sequence s = si.nextSequence();
-						System.out.println(s.getName());
-						fillInPamSite(s.seqString().toString());
 						subject = chooser.getSelectedFile();
 						model.insertElementAt(subject, 0);
 						if(si.hasNext()) {// && !mbc.tryToMatchFasta()){
@@ -603,29 +599,6 @@ public class GUI implements ActionListener, MouseListener {
 	}
 	*/
 
-	private void fillInPamSite(String string) {
-		if(pamChooser != null) {
-			pamChooser.removeAll();
-			//find all pamSites
-			Pattern p = Pattern.compile("[acgt]{21}gg");  // insert your pattern here
-			//string = string.toLowerCase();
-			Matcher m = p.matcher(string);
-			int lastIndex = 0;
-			while (m.find(lastIndex)) {
-				pamChooser.addItem(m.group()+":"+(m.start()));
-				lastIndex = m.start()+1;
-			}
-			p = Pattern.compile("cc[acgt]{21}");  // insert your pattern here
-			m = p.matcher(string);
-			lastIndex = 0;
-			while (m.find(lastIndex)) {
-				pamChooser.addItem(m.group()+":"+(m.end()));
-				lastIndex = m.start()+1;
-			}
-			pamChooser.setSelectedItem(null);
-		}
-	}
-
 	private String analyzeFile(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		//get a SequenceDB of all sequences in the file
 		RichSequence subject = null;
@@ -694,7 +667,7 @@ public class GUI implements ActionListener, MouseListener {
 		KMERLocation kmerl = new KMERLocation(subject.seqString());
 		Subject subjectObject = new Subject(subject,left,right);
 		//kmerl = null;
-		CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, (String)pamChooser.getSelectedItem(), f.getParent(), true, name, kmerl, false);
+		CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, f.getParent(), true, name, kmerl);
 		cs.setAndDetermineCorrectRange((double)maxError.getValue());
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);

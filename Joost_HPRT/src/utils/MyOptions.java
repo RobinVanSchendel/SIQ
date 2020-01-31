@@ -204,28 +204,4 @@ public class MyOptions {
 		String[] ret = {this.getSingleFile(),this.getSingleFileF(),this.getSingleFileR()}; 
 		return ret;
 	}
-	public void testLeftRight(){
-		File subjectFile = new File(this.getSubject());
-		BufferedReader is;
-		try {
-			is = new BufferedReader(new FileReader(subjectFile));
-			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
-			RichSequence subjectR = si.nextRichSequence();
-			String s = subjectR.seqString().toLowerCase();
-			String left = this.getLeftFlank();
-			String right = this.getRightFlank();
-			if(left != null && left.length()>0 && s.indexOf(left.toLowerCase())<0) {
-				System.err.println("leftFlank cannot be found: "+left);
-			}
-			if(right != null && right.length()>0 && s.indexOf(right.toLowerCase())<0) {
-				System.err.println("rightFlank cannot be found: "+right);
-			}
-			
-		} catch (FileNotFoundException | NoSuchElementException | BioException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		
-	}
 }

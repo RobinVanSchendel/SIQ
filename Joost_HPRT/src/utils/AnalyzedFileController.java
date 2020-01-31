@@ -84,7 +84,7 @@ public class AnalyzedFileController implements Runnable{
 			
 			//kmerl = null;
 			String name = f.getName();
-			CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, null, f.getParent(), true, name, kmerl, false);
+			CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, f.getParent(), true, name, kmerl);
 			cs.setAndDetermineCorrectRange(maxError);
 			if(maskLowQuality){
 				cs.maskSequenceToHighQuality(left, right);

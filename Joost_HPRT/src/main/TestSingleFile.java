@@ -20,6 +20,7 @@ import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
 import utils.CompareSequence;
 import utils.KMERLocation;
+import utils.Subject;
 
 public class TestSingleFile {
 
@@ -124,7 +125,9 @@ public class TestSingleFile {
 			//String outputKMERless = kmerless1.toStringOneLine();
 			//System.out.println(outputKMERless);
 			KMERLocation kmerl = new KMERLocation(hprtSeq.seqString());
-			CompareSequence kmerWith = new CompareSequence(hprtSeq, chromo.getNucleotideSequence().toString(),chromo.getQualitySequence(), left, right, null, null, true, "", kmerl, true);
+			Subject subjectObject = new Subject(hprtSeq, left, right);
+			
+			CompareSequence kmerWith = new CompareSequence(subjectObject, chromo.getNucleotideSequence().toString(),chromo.getQualitySequence(), null, true, "", kmerl);
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
 			kmerWith.setAndDetermineCorrectRange(0.05);

@@ -69,8 +69,6 @@ public class HPRTFastQ {
 				System.err.println("Either remove this argument or set collapse to true");
 				System.exit(0);
 			}
-			String containsString = null; //".assembled"; //null
-			
 			//set the output file
 			File output = new File(options.getOutput());
 			if(output.exists() && !options.overwrite()) {
@@ -82,7 +80,6 @@ public class HPRTFastQ {
 			
 			sq.setCollapseEvents(options.collapseEvents());
 			
-			options.testLeftRight();
 			sq.readFilesFASTQMultiThreaded(options);
 		}
 	}

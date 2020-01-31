@@ -23,12 +23,11 @@ public class CompareSequence {
 
 	private String query;
 	private final String queryName;
-	private String rightFlank = "", del = "", insert = "", remarks = "";
+	private String rightFlank = "", del = "", insert = "";
+	private StringBuffer remarks = new StringBuffer();
 	private Left leftFlank;
 	private int minimumSizeWithoutLeftRight = 15; // was 30
 	private int minimumSizeWithLeftRight = 15;
-	private int pamSiteLocation;
-	private int rightSideLocation;
 	private final static String replacementFlank = "FLK1";
 	public final static int minimalRangeSize = 40;
 	private final static double maxMismatchRate = 0.1;
@@ -41,9 +40,7 @@ public class CompareSequence {
 	private QualitySequence quals;
 	private InsertionSolverTwoSides is;
 	private ArrayList<Blast> blasts;
-	private boolean leftRightIsOK = false;
 	private boolean entireQueryUsed = false;
-	
 	
 	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI};
 	public String dir;
@@ -67,62 +64,20 @@ public class CompareSequence {
 	private Subject subjectObject;
 	
 	
-	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl, boolean checkLeftRight) {
+	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 		this.queryName = queryName;
 		this.query = query.toLowerCase();
 		this.dir = dir;
-		
 		this.quals = quals;
-		
 		this.subjectObject = subjectObject;
-		
-		if(checkLeftRight) {
-			checkLeftRight();
-		}
 		this.kmerl = kmerl;
-		if(pamSite != null){
-			this.pamSiteLocation = Integer.parseInt(pamSite.substring(pamSite.indexOf(":")+1));
-		}
-		else{
-			this.pamSiteLocation = 0;
-		}
 		if(checkReverse) {
 			checkAndPossibleReverse();
 		}
 		
 	}
-	private void checkLeftRight() {
-		if(!subjectObject.hasLeftRight()) {
-			this.leftRightIsOK = true;
-		}
-		else{
-			int indexLeft = subjectObject.getEndOfLeftFlank();
-			int indexRight = subjectObject.getStartOfRightFlank();
-			if(indexLeft==indexRight) {
-				this.leftRightIsOK = true;
-			}
-			else if(indexRight > indexLeft) {
-				
-				this.leftRightIsOK = true;
-			}
-			//this can now happen
-			else {
-				this.leftRightIsOK = true;
-			}
-		}
-		if(!leftRightIsOK) {
-			System.err.println("Something wrong with left or right "+subjectObject.getLeftFlank()+":"+subjectObject.getRightFlank());
-			this.setRemarks("Something wrong with left or right");
-			//System.exit(0);
-		}
-	}
-	private String longestCommonSubstring(String s1, String s2) {
-		return Utils.longestCommonSubstring(s1,s2);
-		
-	}
 	private void checkAndPossibleReverse() {
 		String queryS = query;
-		String subjectS = subjectObject.getString();
 		String lcs = "";
 		LCS lcsObject = kmerl.getLCS(queryS);
 		if(lcsObject == null) {
@@ -159,19 +114,10 @@ public class CompareSequence {
 		String flankTwo = "";
 
 		if(subjectObject.hasLeftRight()){
-			//System.out.println("leftRightIsFilled");
-			//leftPos = subject.seqString().indexOf(leftSite)+leftSite.length();
-			//rightPos = subject.seqString().indexOf(rightSite);
 			
 			leftPos = subjectObject.getEndOfLeftFlank();
 			rightPos = subjectObject.getStartOfRightFlank();
 			
-			//misuse the pamSiteLocation to make it relative to the left position
-			if(this.pamSiteLocation == 0){
-				this.pamSiteLocation = leftPos;
-				this.rightSideLocation = rightPos;
-			}
-
 			Left kmerFlankOne = kmerl.getMatchLeft(query, rightPos, allowJump);
 			if(kmerFlankOne != null) {
 				this.jumpedLeft = kmerFlankOne.getJumped();
@@ -257,9 +203,6 @@ public class CompareSequence {
 				String querySub = query.substring(0, flankOne.getQueryEnd());
 				//replace the entire query part, otherwise right can lie before left
 				String seqRemain = query.replace(querySub, replacementFlank);
-				String seqRemainSubject = subjectObject.getString().replace(flankOne.getString(), replacementFlank);
-				int pos = seqRemainSubject.indexOf(replacementFlank);
-				String seqRemainSubjectRest = seqRemainSubject.substring(pos);
 				//start searching after the leftFlank
 				if(flankOne!=null) {
 					LCS flankTwoLCS = kmerl.getMatchRight(seqRemain, flankOne.getSubjectEnd(), minimumSizeWithoutLeftRight, allowJump);
@@ -361,7 +304,7 @@ public class CompareSequence {
 		int maxLengthMatch = 10;
 		//only check if long enough
 		if(del!= null && insert != null && del.length()>maxLengthMatch && insert.length()>maxLengthMatch) {
-			String insertDelCommon =  longestCommonSubstring(del, insert);
+			String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
 			//TODO: I became unsure if this is really a good idea. 
 			if(insertDelCommon.length()>maxLengthMatch){
 				//if we masked, then probably this check is not correct
@@ -490,11 +433,11 @@ public class CompareSequence {
 		ret.append(getInsertion()).append(s);
 		ret.append(getDelStart()).append(s);
 		ret.append(getDelEnd()).append(s);
-		ret.append((this.getDelStart()-this.pamSiteLocation)).append(s);
-		ret.append((this.getDelEnd()-this.pamSiteLocation)).append(s);
-		ret.append((this.getDelStart()-this.rightSideLocation)).append(s);
-		ret.append((this.getDelEnd()-this.rightSideLocation)).append(s);
-		ret.append((this.getDelStart()-this.pamSiteLocation)).append(s);
+		ret.append((this.getDelStart()-subjectObject.getEndOfLeftFlank())).append(s);
+		ret.append((this.getDelEnd()-subjectObject.getEndOfLeftFlank())).append(s);
+		ret.append((this.getDelStart()-subjectObject.getStartOfRightFlank())).append(s);
+		ret.append((this.getDelEnd()-subjectObject.getStartOfRightFlank())).append(s);
+		ret.append((this.getDelStart()-subjectObject.getEndOfLeftFlank())).append(s);
 		ret.append(getRightFlankRelativePos()).append(s);
 		ret.append(getColorHomology()).append(s);
 		ret.append(homology).append(s);
@@ -524,8 +467,8 @@ public class CompareSequence {
 		if(is != null){
 			int isStartPos = getIsStartPos();
 			int isEndPos = getIsEndPos();
-			int isStartPosRel = isStartPos-this.pamSiteLocation;
-			int isEndPosRel = isEndPos-this.pamSiteLocation;
+			int isStartPosRel = isStartPos-subjectObject.getEndOfLeftFlank();
+			int isEndPosRel = isEndPos-subjectObject.getEndOfLeftFlank();
 			ret.append(is.getLargestMatch()).append(s);
 			ret.append(is.getLargestMatchString()).append(s);
 			ret.append(is.getSubS()).append(s);
@@ -653,7 +596,7 @@ public class CompareSequence {
 		return hom;
 	}
 	private int getRightFlankRelativePos(){
-		int right = this.getDelEnd()-this.pamSiteLocation;
+		int right = this.getDelEnd()-subjectObject.getEndOfLeftFlank();
 		//check if we have overlap
 		if(this.getInsertion() != null){
 			String insertTemp = this.getInsertion();
@@ -701,7 +644,6 @@ public class CompareSequence {
 			this.is = is;
 			//now determine if this is random or not
 			//one peculiar thing is if the flanks overlap it is not quite fair anymore
-			int leftStart = subjectObject.getString().indexOf(left);
 			int leftEnd = start+left.length();
 			int rightStart = subjectObject.getString().indexOf(right);
 			if( (leftEnd) > rightStart) {
@@ -903,13 +845,13 @@ public class CompareSequence {
 		return ret;
 	}
 	public String getRemarks() {
-		return remarks;
+		return remarks.toString();
 	}
 	private void setRemarks(String remark) {
-		if(this.remarks.length()>0){
-			remarks += ":";
+		if(remarks.length()>0){
+			remarks.append(":");
 		}
-		this.remarks += remark;
+		this.remarks.append(remark);
 	}
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
@@ -1020,8 +962,8 @@ public class CompareSequence {
 			for(Range r: ranges){
 				//System.out.println(r);
 				String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
-				String lcsL = longestCommonSubstring(sub, subjectObject.getLeftFlank());
-				String lcsR = longestCommonSubstring(sub, subjectObject.getRightFlank());
+				String lcsL = Utils.longestCommonSubstring(sub, subjectObject.getLeftFlank());
+				String lcsR = Utils.longestCommonSubstring(sub, subjectObject.getRightFlank());
 				if(largestCommon == null || (lcsL.length()+lcsR.length()) >largestCommon.length()){
 					largestCommon = lcsL+"_"+lcsR;
 					rangeContainingLargest = r;
@@ -1112,7 +1054,7 @@ public class CompareSequence {
 		if(this.getInsertion().length()==1){
 			insert = this.getInsertion();
 		}
-		String ret = this.getType()+s+this.getDelStart()+s+this.getDelEnd()+s+insert;
+		String ret = this.getName()+s+this.getType()+s+this.getDelStart()+s+this.getDelEnd()+s+insert;
 		return ret;
 	}
 	public void flagPossibleDouble(boolean b) {
@@ -1203,85 +1145,37 @@ public class CompareSequence {
 		return ret.toString();
 	}
 	public int getRelativeDelEnd(){
-		return this.getDelEnd()-this.pamSiteLocation;
+		return this.getDelEnd()-subjectObject.getEndOfLeftFlank();
 	}
 	public long getNrNs() {
 		//changed to X
 		long count = query.chars().filter(ch -> ch == 'X').count();
 		return count;
 	}
-	public boolean isCorrectPositionLeft(ArrayList<SetAndPosition> poss) {
+	public boolean isCorrectPositionLeft() {
 		//safety
-		if(poss == null) {
+		if(!subjectObject.hasPrimers()) {
 			//if we don't have any position info it must be true
 			return true;
 		}
-		//System.out.println("Compare: "+getMatchStart()+" >= "+poss.get(0).getMin()+" : "+(getMatchStart()>=poss.get(0).getMin()));
-		//System.out.println("Compare: "+getMatchStart()+" <= "+poss.get(1).getMin()+" : " +(getMatchStart()<= poss.get(1).getMin()));
-		boolean firstFilterOKa = false;
-		boolean secondFilterOK = false;
-		if(getMatchStart()>=poss.get(0).getMin() && getMatchStart()<= poss.get(1).getMin()) {
-			firstFilterOKa = true;
+		if(subjectObject.seqStartsWithinLeftPrimer(getMatchStart()) &&
+				subjectObject.evenStartsBehindPrimer(getDelStart())){
+			return true;
 		}
-		//System.out.println("Result firstFilterOKa "+firstFilterOKa);
-		//if(!firstFilterOKa) {
-			//System.out.println(query);
-			//System.out.println(getLeftFlank(0));
-		//}
-		if(poss.get(2) != null && getDelStart() >= poss.get(2).getMin()) {
-			secondFilterOK = true;
-		}
-		//if filter is disabled.
-		else if(poss.get(2) == null) {
-			secondFilterOK = true;
-		}
-		return firstFilterOKa && secondFilterOK;
+		return false;
 	}
-	public boolean isCorrectPositionRight(ArrayList<SetAndPosition> poss) {
-		if(poss == null) {
+	public boolean isCorrectPositionRight() {
+		//safety
+		if(!subjectObject.hasPrimers()) {
 			//if we don't have any position info it must be true
 			return true;
 		}
-		boolean firstFilterOKb = false;
-		boolean secondFilterOK = false;
-		if(getMatchEnd()>=poss.get(1).getMax() && getMatchEnd()<= poss.get(0).getMax()) {
-			firstFilterOKb = true;
+		if(subjectObject.seqStartsWithinRightPrimer(getMatchEnd()) &&
+				subjectObject.evenEndsBeforePrimer(getDelEnd())){
+			return true;
+			
 		}
-		if(poss.get(2) != null && getDelEnd() <= poss.get(2).getMax()) {
-			secondFilterOK = true;
-		}
-		//if filter is disabled
-		else if(poss.get(2) == null) {
-			secondFilterOK = true;
-		}
-		return firstFilterOKb && secondFilterOK;
-	}
-	public boolean isCorrectPosition(ArrayList<SetAndPosition> poss) {
-		//does matchStart begin within the primer?
-		boolean firstFilterOKa = false;
-		boolean firstFilterOKb = false;
-		boolean secondFilterOK = false;
-		//System.out.println("match: "+getMatchStart()+" "+this.getMatchEnd());
-		//System.out.println(getDelStart()+" "+this.getDelEnd());
-		 
-		if(getMatchStart()>=poss.get(0).getMin() && getMatchStart()<= poss.get(1).getMin()) {
-			firstFilterOKa = true;
-		}
-		if(getMatchEnd()>=poss.get(1).getMax() && getMatchEnd()<= poss.get(0).getMax()) {
-			firstFilterOKb = true;
-		}
-		if(poss.get(2).positionsBounded(getDelStart(), getDelEnd())) {
-			secondFilterOK = true;
-		}
-		//System.out.println(firstFilterOKa);
-		//System.out.println(firstFilterOKb);
-		//System.out.println(secondFilterOK);
-		boolean ret = firstFilterOKa && firstFilterOKb && secondFilterOK;
-		if(ret == false) {
-			this.setRemarks("Position problem");
-		}
-		return ret;
-		
+		return false;
 	}
 	public String getRaw() {
 		return this.query;

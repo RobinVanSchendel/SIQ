@@ -30,7 +30,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//extra parameters
 		String analyseDirName = null; //"XF1494";
 		//analyseDirName = "XF1488"; //"XF1494";
-		analyseDirName = "XF1717";
+		//analyseDirName = "XF1717";
 		boolean printNonCorrect = false; //false
 		boolean printXY = true;
 		boolean checkLeftRight = true;
@@ -68,7 +68,6 @@ public class PrimaseInitiationAnalysisOrderedDir {
 			al.addAll(sq.readFilesTryToMatch(tempDir, currentSequence, flanks[0], flanks[1], null, null, printNonCorrect,quality, checkLeftRight));
 			//System.out.println(CompareSequence.getOneLineHeader());
 			for(CompareSequence cs: al) {
-				
 				//System.out.println(cs.toStringOneLine());
 			}
 			System.out.println("We now have "+al.size()+" sequences");

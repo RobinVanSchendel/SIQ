@@ -231,30 +231,15 @@ public class SequenceController {
 		//System.out.println("Found "+ab1s.size()+" ab1 files");
 		//Introduce the KMER
 		KMERLocation kmerl = new KMERLocation(currentSequence.seqString());
-		Subject subjectObject = new Subject(currentSequence);
-		subjectObject.setLeftFlank(leftFlank);
-		subjectObject.setRightFlank(rightFlank);
-		//kmerl = null;
+		Subject subjectObject = new Subject(currentSequence, leftFlank, rightFlank);
 		for(File seqs: ab1s){
-			RichSequence subject = currentSequence;
 			try {
-				
 				//System.out.println("accessing "+seqs.getAbsolutePath());
 				Chromatogram chromo = ChromatogramFactory.create(seqs);
-				/*
-				int value = 89;
-				System.out.println(chromo.getChannelGroup().getAChannel().getPositionSequence().get(value).getValue());
-				System.out.println(chromo.getChannelGroup().getTChannel().getPositionSequence().get(value).getValue());
-				System.out.println(chromo.getChannelGroup().getGChannel().getPositionSequence().get(value).getValue());
-				System.out.println(chromo.getChannelGroup().getCChannel().getPositionSequence().get(value).getValue());
-				System.out.println(chromo.getNucleotideSequence());
-				System.out.println(chromo.getPeakSequence().get(value));
-				System.exit(0);
-				*/
 				NucleotideSequence seq = chromo.getNucleotideSequence();
 				QualitySequence quals = chromo.getQualitySequence();
 				//mask
-				CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, null, seqs.getParent(), checkReverse, seqs.getName(), kmerl, checkLeftRight);
+				CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, seqs.getParent(), checkReverse, seqs.getName(), kmerl);
 				cs.setAndDetermineCorrectRange(quality);
 				cs.maskSequenceToHighQualityRemove();
 				cs.determineFlankPositions(false);

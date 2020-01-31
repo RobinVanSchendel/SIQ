@@ -50,6 +50,8 @@ public class SequenceFileThread implements Runnable {
 	private boolean checkReverseOverwrite = false;
 	
 	private HashMap<String, String> lookupDone = new HashMap<String, String>();
+	private HashMap<String, Integer> lookupDoneCounter = new HashMap<String, Integer>();
+	
 	//private boolean takeRC = false;
 	
 	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, HashMap<String, String> additional){
@@ -88,10 +90,10 @@ public class SequenceFileThread implements Runnable {
 			} 
 		}
 		long realStart = System.nanoTime();
-		ArrayList<SetAndPosition> poss = createSetAndPosition();
-		if(poss == null) {
-			setCheckReverseOverwrite();
-		}
+		//ArrayList<SetAndPosition> poss = createSetAndPosition();
+		//if(poss == null) {
+		//	setCheckReverseOverwrite();
+		//}
 		AtomicLong start = new AtomicLong(System.nanoTime());
 		AtomicInteger counter = new AtomicInteger(0);
 		AtomicInteger counterFR = new AtomicInteger(0);
@@ -105,13 +107,11 @@ public class SequenceFileThread implements Runnable {
 		AtomicBoolean takeRc = new AtomicBoolean(false);
 		HashMap<String, Integer> remarks = new HashMap<String, Integer>();
 		
-		boolean checkLeftRight = false;
-		
 		//Initialize Subject object
-		Subject subjectObject = new Subject(subject);
-		subjectObject.setLeftFlank(this.leftFlank);
-		subjectObject.setRightFlank(this.rightFlank);
-		
+		Subject subjectObject = new Subject(subject, leftFlank, rightFlank);
+		subjectObject.setLeftPrimer(leftPrimer);
+		subjectObject.setRightPrimer(rightPrimer);
+		subjectObject.setMinPassedPrimer(this.minPassedPrimer);
 		
 		try {
 			//first check the non-assembled reads
@@ -138,7 +138,7 @@ public class SequenceFileThread implements Runnable {
 					if(checkReverseOverwrite) {
 						checkReverse = true;
 					}
-					CompareSequence cs = new CompareSequence(subjectObject, F.getNucleotideSequence().toString(), F.getQualitySequence(), null, f.getParentFile().getName(), checkReverse, F.getId(), kmerl, checkLeftRight);
+					CompareSequence cs = new CompareSequence(subjectObject, F.getNucleotideSequence().toString(), F.getQualitySequence(), f.getParentFile().getName(), checkReverse, F.getId(), kmerl);
 					if(first && cs.isReversed()) {
 						takeRc.set(true);
 						first = false;
@@ -152,16 +152,16 @@ public class SequenceFileThread implements Runnable {
 					if(cs.isMasked()) {
 						cs.setAllowJump(this.allowJump);
 						cs.determineFlankPositions(true);
-						boolean leftCorrect = cs.isCorrectPositionLeft(poss);
+						boolean leftCorrect = cs.isCorrectPositionLeft();
 						//speedup
 						if(leftCorrect) {
 							//Reverse
-							cs = new CompareSequence(subjectObject, R.getNucleotideSequence().toString(), R.getQualitySequence(), null, f.getParentFile().getName(), checkReverse, R.getId(), kmerl, checkLeftRight);
+							cs = new CompareSequence(subjectObject, R.getNucleotideSequence().toString(), R.getQualitySequence(), f.getParentFile().getName(), checkReverse, R.getId(), kmerl);
 							cs.setAndDetermineCorrectRange(maxError);
 							cs.maskSequenceToHighQualityRemove();
 							cs.setAllowJump(this.allowJump);
 							cs.determineFlankPositions(false);
-							boolean rightCorrect = cs.isCorrectPositionRight(poss);
+							boolean rightCorrect = cs.isCorrectPositionRight();
 							if(leftCorrect && rightCorrect) {
 								correctPositionFR.getAndIncrement();
 								//System.out.println("correct "+Thread.activeCount());
@@ -205,7 +205,7 @@ public class SequenceFileThread implements Runnable {
 				if(checkReverseOverwrite) {
 					checkReverse = true;
 				}
-				CompareSequence cs = new CompareSequence(subjectObject, fastqRecord.getNucleotideSequence().toString(), quals, null, f.getParentFile().getName(), checkReverse, id, kmerl, checkLeftRight);
+				CompareSequence cs = new CompareSequence(subjectObject, fastqRecord.getNucleotideSequence().toString(), quals, f.getParentFile().getName(), checkReverse, id, kmerl);
 				//System.out.println(fastqRecord.getNucleotideSequence().toString());
 				if(counter.get()==0 && cs.isReversed()) {
 					takeRc.set(true);
@@ -233,8 +233,8 @@ public class SequenceFileThread implements Runnable {
 					}
 					else {
 						cs.determineFlankPositions(true);
-						leftCorrect = cs.isCorrectPositionLeft(poss);
-						rightCorrect = cs.isCorrectPositionRight(poss);
+						leftCorrect = cs.isCorrectPositionLeft();
+						rightCorrect = cs.isCorrectPositionRight();
 						//System.out.println(leftCorrect+":"+rightCorrect);
 						if(leftCorrect && rightCorrect) {
 							correctPositionFRassembled.getAndIncrement();
@@ -270,6 +270,13 @@ public class SequenceFileThread implements Runnable {
 							if(!printOnlyIsParts){
 								if(collapseEvents){
 									String key = cs.getKey(includeStartEnd);
+									lookupDone.put(cs.getQuery(),key);
+									if(lookupDoneCounter.containsKey(cs.getQuery())) {
+										lookupDoneCounter.put(cs.getQuery(), lookupDoneCounter.get(cs.getQuery()+1));
+									}
+									else {
+										lookupDoneCounter.put(cs.getQuery(), 1);
+									}
 									if(countEvents.containsKey(key)){
 										countEvents.put(key, countEvents.get(key)+1);
 										//while this works, it might be slow and/or incorrect!
@@ -286,7 +293,7 @@ public class SequenceFileThread implements Runnable {
 										countEvents.put(key, 1);
 										//save the object instead
 										csEvents.put(key, cs);
-										lookupDone.put(cs.getQuery(),key);
+										//lookupDone.put(cs.getQuery(),key);
 										//actualEvents.put(key, cs.toStringOneLine());
 									}
 								}
@@ -312,11 +319,13 @@ public class SequenceFileThread implements Runnable {
 				if(counter.get()%10000==0){
 					long end = System.nanoTime();
 					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
-					//System.out.println("So far took :"+duration+" milliseconds");
 					start.set(end);
 					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
-					//iter.close();
-					//break;
+					if(lookupDoneCounter.size()>10000) {
+						System.out.println("Clearing cache");
+						lookupDone.clear();
+						lookupDoneCounter.clear();
+					}
 				}
 				if(counter.get()>= this.maxReads) {
 					System.out.println(counter.get()+" >= "+this.maxReads);
