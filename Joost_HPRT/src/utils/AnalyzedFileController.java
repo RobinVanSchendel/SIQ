@@ -6,14 +6,20 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Vector;
 
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 
 import org.biojavax.bio.seq.RichSequence;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Text;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
@@ -21,6 +27,7 @@ import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
 import dnaanalysis.Blast;
 import gui.PropertiesManager;
+import gui.ReportPanel;
 
 public class AnalyzedFileController implements Runnable{
 	public File subjectFile;
@@ -36,6 +43,7 @@ public class AnalyzedFileController implements Runnable{
 	private boolean runningBlast;
 	private JProgressBar progressBar;
 	private JButton button;
+	private JFileChooser jfc;
 	
 	public AnalyzedFileController(PropertiesManager pm) {
 		this.pm = pm;
@@ -104,16 +112,27 @@ public class AnalyzedFileController implements Runnable{
 			current++;
 			progressBar.setValue(current);
 		}
-		progressBar.setIndeterminate(true);
-		checkAndPerformBlast();
-		progressBar.setIndeterminate(false);
+		//progressBar.setIndeterminate(true);
+		//checkAndPerformBlast();
+		//progressBar.setIndeterminate(false);
 		area.setText(removeUnneededColumns(getResultString()));
-		JScrollPane scrollPane = new JScrollPane(area);
-		scrollPane.setPreferredSize( new Dimension( 500, 500 ) );
-		JOptionPane.showMessageDialog(
-				   null, scrollPane, "Result", JOptionPane.PLAIN_MESSAGE);
+		
+		//JScrollPane scrollPane = new JScrollPane(area);
+		
+		ReportPanel rp = new ReportPanel(subjectFile.getName());
+		rp.setLeftFlank(left);
+		rp.setRightFlank(right);
+		rp.setFileChooser(jfc);
+		rp.setMasked(maskLowQualityRemove);
+		rp.setErrorRate(maxError);
+		//should be last
+		rp.setup(result);
+		
+		//JOptionPane.showMessageDialog(
+			//	   null, area, "Result", JOptionPane.PLAIN_MESSAGE);
 		button.setEnabled(true);
 	}
+	
 	private String removeUnneededColumns(String s) {
 		if(s == null) {
 			return null;
@@ -230,5 +249,8 @@ public class AnalyzedFileController implements Runnable{
 	}
 	public void setStartButton(JButton analyzeFiles) {
 		this.button = analyzeFiles;
+	}
+	public void setFileChooser(JFileChooser jfc) {
+		this.jfc = jfc;
 	}
 }

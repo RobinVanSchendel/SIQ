@@ -10,5 +10,26 @@
 	<classpathentry kind="lib" path="libraries/core-1.8.1.jar"/>
 	<classpathentry kind="lib" path="libraries/jillion-5.3-SNAPSHOT.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/TableModify"/>
+	<classpathentry kind="lib" path="C:/Users/rvanschendel/.p2/pool/plugins/org.eclipse.swt.win32.win32.x86_64_3.110.0.v20190305-0602.jar" sourcepath="C:/Users/rvanschendel/.p2/pool/plugins/org.eclipse.swt.win32.win32.x86_64_3.110.0.v20190305-0602.jar"/>
+	<classpathentry kind="lib" path="libraries/commons-collections4-4.4.jar"/>
+	<classpathentry kind="lib" path="libraries/commons-compress-1.19.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-examples-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-excelant-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-ooxml-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-ooxml-schemas-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-scratchpad-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/activation-1.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/commons-codec-1.13.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/commons-collections4-4.4.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/commons-compress-1.19.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/commons-logging-1.2.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/commons-math3-3.6.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/jaxb-api-2.3.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/jaxb-core-2.3.0.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/jaxb-impl-2.3.2.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/junit-4.12.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/lib/log4j-1.2.17.jar"/>
+	<classpathentry kind="lib" path="libraries/xmlbeans-3.1.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

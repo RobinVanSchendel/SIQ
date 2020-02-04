@@ -1,11 +1,14 @@
 package gui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -18,9 +21,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
+import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -34,17 +40,21 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.table.TableColumnModel;
 
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.seq.SequenceIterator;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Label;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
@@ -71,7 +81,7 @@ public class GUI implements ActionListener, MouseListener {
 	JTextField right = new JTextField("");
 	JCheckBox maskLowQuality = new JCheckBox("maskLowQuality");
 	JCheckBox maskLowQualityRemove = new JCheckBox("maskLowQualityRemove");
-	private MenuBarCustom mbc;
+	JCheckBox removeRemarkRows = new JCheckBox("Remove sequences with remarks");
 	private ArrayList<RichSequence> sequences;
 	JProgressBar progressBar;
 	JLabel maxE = new JLabel("maxError:");
@@ -80,40 +90,155 @@ public class GUI implements ActionListener, MouseListener {
 	private PropertiesManager pm;
 	private ArrayList<JCheckBox> outputs = new ArrayList<JCheckBox>();
 	private JButton analyzeFiles;
+	private boolean ab1Perspective = true;
+	private String version;
+	private JTable ngs;
+	private NGSTableModel ngsModel;
 	
 	
+	@SuppressWarnings("serial")
 	public GUI(String version, PropertiesManager pm)
     {
-        //make sure the program exits when the frame closes
+		this.version = version;
+		this.pm = pm;
+		switchToAB1(true);
+		return;
+		/*
+		//make sure the program exits when the frame closes
         guiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         guiFrame.setTitle("Sanger Sequence Analyzer "+version+" - Tijsterman Lab");
-        guiFrame.setSize(1200,600);
+        guiFrame.setSize(1000,600);
       
         //This will center the JFrame in the middle of the screen
         guiFrame.setLocationRelativeTo(null);
+        guiFrame.setLayout(null);
         
         //The first JPanel contains a JLabel and JCombobox
-        final JPanel comboPanel = new JPanel();
-        JLabel comboLbl = new JLabel("Subject:");
-        JButton chooseSubject = new JButton("Seq (Fasta)");
+        //comboPanel.setLayout(new GridLayout(0,4));
+        //JLabel comboLbl = new JLabel("Select subject:");
+        JLabel lblSubject = new JLabel();
+		lblSubject.setBounds(91, 1, 55, 15);
+		lblSubject.setText("Subject");
+		guiFrame.add(lblSubject);
+		
+		JLabel lblQuery = new JLabel();
+		lblQuery.setText("Query");
+		lblQuery.setBounds(275, 1, 55, 15);
+		guiFrame.add(lblQuery);
+		
+		JLabel lblOptions = new JLabel();
+		lblOptions.setBounds(600, 1, 55, 15);
+		lblOptions.setText("Options");
+		guiFrame.add(lblOptions);
+        
+        JButton chooseSubject = new JButton("Select subject (.fa)");
         chooseSubject.setActionCommand("chooseSubject");
         chooseSubject.addActionListener(this);
+        chooseSubject.setBounds(54, 35, 140, 25);
+        guiFrame.add(chooseSubject);
         this.pm = pm;
         
-        comboPanel.add(comboLbl);
+        JButton dirChooser = new JButton("Select directory");
+        dirChooser.setActionCommand("dirChooser");
+        dirChooser.addActionListener(this);
+        dirChooser.setBounds(212, 22, 174, 25);
+        guiFrame.add(dirChooser);
         
-        comboPanel.add(chooseSubject);
-        JPanel test = new JPanel();
-        left.setPreferredSize(new Dimension(100,20));
-        right.setPreferredSize(new Dimension(100,20));
-        test.add(new JLabel("leftFlank"));
-        test.add(left);
-        test.add(new JLabel("rightFlank"));
-        test.add(right);
-        comboPanel.add(test);
+         
+        JButton fileChooser = new JButton("Select files");
+        fileChooser.setActionCommand("fileChooser");
+        fileChooser.addActionListener(this);
+        fileChooser.setBounds(212, 53, 174, 25);
+        guiFrame.add(fileChooser);
         
-        comboPanel.add(new JLabel("Query:"));
         
+        
+        JLabel leftFlank = new JLabel("leftFlank:");
+        leftFlank.setBounds(448, 22, 55, 15);
+        left.setBounds(509, 22, 150, 21);
+        guiFrame.add(leftFlank);
+        guiFrame.add(left);
+        JLabel rightFlank = new JLabel("rightFlank:");
+        rightFlank.setBounds(448, 53, 55, 15);
+        guiFrame.add(rightFlank);
+        right.setBounds(509, 53, 150, 21);
+        guiFrame.add(right);
+        
+        maskLowQualityRemove.setBounds(680, 22, 142, 16);
+        maskLowQualityRemove.setSelected(true);
+        guiFrame.add(maskLowQualityRemove);
+        
+        removeRemarkRows.setBounds(680,62,200,16);
+        removeRemarkRows.addActionListener(this);
+        if(pm.getPropertyBoolean("printCorrectColumnsOnly")) {
+        	removeRemarkRows.setSelected(pm.getPropertyBoolean("printCorrectColumnsOnly"));
+        }
+        guiFrame.add(removeRemarkRows);
+        
+        
+        SpinnerModel model = new SpinnerNumberModel(0.05, 0, 1.0, 0.01);
+        maxError = new JSpinner(model);
+        maxError.setPreferredSize(new Dimension(50,20));
+        maxError.setBounds(684, 40, 47, 22);
+        guiFrame.add(maxError);
+        
+        JLabel lblMaxError = new JLabel();
+		lblMaxError.setBounds(735, 42, 100, 15);
+		lblMaxError.setText("max error (fraction)");
+		guiFrame.add(lblMaxError);
+		
+		jFiles.addMouseListener(this);
+		JScrollPane jsFile = new JScrollPane(jFiles);
+		jsFile.setBounds(55, 90, 330, 400);
+        guiFrame.add(jsFile);
+        
+        analyzeFiles = new JButton( "Start analysis");
+        analyzeFiles.setActionCommand("Start");
+        analyzeFiles.addActionListener(this);
+        analyzeFiles.setBounds(55, 500, 100, 20);
+        guiFrame.add(analyzeFiles);
+        
+        progressBar = new JProgressBar(0, 500);
+        progressBar.setValue(0);
+        progressBar.setStringPainted(true);
+        progressBar.setVisible(true);
+        progressBar.setBounds(55, 525, 330, 20);
+        guiFrame.add(progressBar);
+        
+        guiFrame.add(createOutputPanel());
+        
+        //JButton switchNGS = new JButton("Switch to FASTQ analysis");
+        //switchNGS.setBounds(500, 525, 120, 20);
+        //guiFrame.add(switchNGS);
+        
+		
+        guiFrame.setVisible(true);
+        
+        jFiles.setCellRenderer(new DefaultListCellRenderer(){
+     	   @Override
+     	   public Component getListCellRendererComponent(JList<?> list,
+     	         Object value, int index, boolean isSelected, boolean cellHasFocus) {
+     	      if (value != null) {
+     	         value = ((File)value).getName();
+     	      }
+     	      
+     	      Component c = super.getListCellRendererComponent(list, value, index, isSelected,
+     	            cellHasFocus);
+     	      if(index == 0) {
+     	    	c.setForeground(Color.blue);  
+     	      }
+     	      else {
+     	    	  c.setForeground(Color.black);
+     	      }
+     	      return c;
+     	   }
+     	});
+        
+        if(pm.getProperty("lastDir") != null) {
+        	File f = new File(pm.getProperty("lastDir"));
+        	this.chooser.setCurrentDirectory(f);
+        }
+        /*
         
         //Create the second JPanel. Add a JLabel and JList and
         //make use the JPanel is not visible.
@@ -124,15 +249,17 @@ public class GUI implements ActionListener, MouseListener {
         analyzeFiles.setActionCommand("Start");
         analyzeFiles.addActionListener(this);
         
-        final JPanel buttonPanel = new JPanel();
-        buttonPanel.setSize(guiFrame.getWidth(), 400);
-        buttonPanel.setLayout(new BorderLayout());
-        buttonPanel.add(analyzeFiles);
+        //final JPanel buttonPanel = new JPanel();
+        //buttonPanel.setSize(guiFrame.getWidth(), 400);
+        //buttonPanel.setLayout(new BorderLayout());
+        guiFrame.add(analyzeFiles);
+        //buttonPanel.add(analyzeFiles);
         progressBar = new JProgressBar(0, 500);
         progressBar.setValue(0);
         progressBar.setStringPainted(true);
         progressBar.setVisible(true);
-        buttonPanel.add(progressBar, BorderLayout.CENTER);
+        //buttonPanel.add(progressBar, BorderLayout.CENTER);
+        guiFrame.add(progressBar);
         Thread t = new Thread(new Runnable() {
             public void run() {
             	guiFrame.setVisible(true);
@@ -144,19 +271,23 @@ public class GUI implements ActionListener, MouseListener {
         //analyzeFiles = new JButton( "Start analysis Print Comparison");
         //analyzeFiles.setActionCommand("Start Comparison");
         //analyzeFiles.addActionListener(this);
-        buttonPanel.add(analyzeFiles, BorderLayout.NORTH);
+        //buttonPanel.add(analyzeFiles, BorderLayout.NORTH);
         
         
-        JButton dirChooser = new JButton("Dir with .ab1 files");
+        JButton dirChooser = new JButton("Select directory with .ab1 files");
         dirChooser.setActionCommand("dirChooser");
         dirChooser.addActionListener(this);
-        comboPanel.add(dirChooser);
+        JPanel jpanel = new JPanel();
+        jpanel.setLayout(new GridLayout(2,0));
+        jpanel.add(dirChooser);
         
-        comboPanel.add(new JLabel("or")); 
-        JButton fileChooser = new JButton(".ab1 files");
+         
+        JButton fileChooser = new JButton("Select .ab1 files");
         fileChooser.setActionCommand("fileChooser");
         fileChooser.addActionListener(this);
-        comboPanel.add(fileChooser);
+        jpanel.add(fileChooser);
+        //comboPanel.add(jpanel);
+        //comboPanel.add(test);
         
         //turn off the PAM chooser for now
         //comboPanel.add(new JLabel("select PAM site:"));
@@ -167,37 +298,62 @@ public class GUI implements ActionListener, MouseListener {
         //comboPanel.add(maskLowQuality);
         
         maskLowQualityRemove.setSelected(true); 
-        comboPanel.add(maskLowQualityRemove);
+        //comboPanel.add(maskLowQualityRemove);
         
         SpinnerModel model = new SpinnerNumberModel(0.05, 0, 1.0, 0.01);
         maxError = new JSpinner(model);
         maxError.setPreferredSize(new Dimension(50,20));
-        comboPanel.add(maxE);
-        comboPanel.add(maxError);
+        //comboPanel.add(maxE);
+        //comboPanel.add(maxError);
         
         //The JFrame uses the BorderLayout layout manager.
         //Put the two JPanels and JButton in different areas.
-        guiFrame.add(comboPanel, BorderLayout.NORTH);
+        //JScrollPane top = new JScrollPane(comboPanel);
+        //top.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        //guiFrame.add(top, BorderLayout.NORTH);
         //guiFrame.add(listPanel, BorderLayout.CENTER);
-        guiFrame.add(buttonPanel,BorderLayout.SOUTH);
-        
-        guiFrame.add(createOutputPanel(), BorderLayout.EAST);
+        //guiFrame.add(buttonPanel,BorderLayout.SOUTH);
         
         
-        jFiles.addMouseListener(this);
-        guiFrame.add(new JScrollPane(jFiles), BorderLayout.CENTER);
+        
+        
+        
         mbc = new MenuBarCustom(pm);
         guiFrame.setJMenuBar(mbc.getMenuBar());
         
         //make sure the JFrame is visible
         
-        guiFrame.setExtendedState(guiFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
+        //guiFrame.setExtendedState(guiFrame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
+        guiFrame.setVisible(true);
+        
+        
+        jFiles.setCellRenderer(new DefaultListCellRenderer(){
+        	   @Override
+        	   public Component getListCellRendererComponent(JList<?> list,
+        	         Object value, int index, boolean isSelected, boolean cellHasFocus) {
+        	      if (value != null) {
+        	         value = ((File)value).getName();
+        	      }
+        	      
+        	      Component c = super.getListCellRendererComponent(list, value, index, isSelected,
+        	            cellHasFocus);
+        	      if(index == 0) {
+        	    	c.setForeground(Color.blue);  
+        	      }
+        	      else {
+        	    	  c.setForeground(Color.black);
+        	      }
+        	      return c;
+        	   }
+        	});
+        
         
         //File tempFile = new File("C:/Users/rvanschendel/Documents/Project_Primase");
         if(pm.getProperty("lastDir") != null) {
         	File f = new File(pm.getProperty("lastDir"));
         	this.chooser.setCurrentDirectory(f);
         }
+        */
        	
     }
 
@@ -206,12 +362,21 @@ public class GUI implements ActionListener, MouseListener {
 		//jpanel.setSize(30, 800);
 		jpanel.setLayout(new GridLayout(0,1));
 		String[] columns = CompareSequence.getOneLineHeaderArray();
+		JLabel label = new JLabel("Select output columns");
+		label.setBounds(450, 90, 130, 20);
+		guiFrame.add(label);
 		JButton selectAll = new JButton("Select All");
 		selectAll.addActionListener(this);
+		selectAll.setBounds(450, 110, 100, 20);
+		guiFrame.add(selectAll);
 		JButton deselectAll = new JButton("Deselect All");
 		deselectAll.addActionListener(this);
-		jpanel.add(selectAll);
-		jpanel.add(deselectAll);
+		deselectAll.setBounds(450, 130, 100, 20);
+		guiFrame.add(deselectAll);
+		
+		
+		//jpanel.add(selectAll);
+		//jpanel.add(deselectAll);
 		String[] mandatory = CompareSequence.mandatoryColumns();
 		for(String column: columns) {
 			JCheckBox item = new JCheckBox(column);
@@ -231,6 +396,8 @@ public class GUI implements ActionListener, MouseListener {
 		}
 		JScrollPane jsp = new JScrollPane(jpanel);
 		jsp.setPreferredSize( new Dimension( 200, 500 ) );
+		//jsFile.setBounds(55, 90, 330, 400);
+		jsp.setBounds(450, 150, 200, 340);
 		return jsp;
 	}
 
@@ -290,6 +457,7 @@ public class GUI implements ActionListener, MouseListener {
 			progressBar.setValue(0);
 			left.setText(left.getText().trim());
 			right.setText(right.getText().trim());
+			saveFlanks(left.getText(), right.getText());
 			
 			//sequences = Utils.fillArrayListSequences(subject);
 			//hmAdditional = Utils.fillHashWithAddSequences(sequences);
@@ -306,6 +474,7 @@ public class GUI implements ActionListener, MouseListener {
 			afc.setMaskLowQuality(maskLowQuality.isSelected());
 			afc.setMaskLowQualityRemove(maskLowQualityRemove.isSelected());
 			afc.setProgressBar(progressBar);
+			afc.setFileChooser(chooser);
 			afc.setStartButton(analyzeFiles);
 			Thread newThread = new Thread(afc);
 			newThread.start();
@@ -357,7 +526,24 @@ public class GUI implements ActionListener, MouseListener {
 						
 					}
 				}
+				if(pm.getProperty(subject.getAbsolutePath()+"_left")!= null) {
+					left.setText(pm.getProperty(subject.getAbsolutePath()+"_left"));
+				}
+				if(pm.getProperty(subject.getAbsolutePath()+"_right")!= null) {
+					right.setText(pm.getProperty(subject.getAbsolutePath()+"_right"));
+				}
 			}
+		}
+		else if(e.getActionCommand().contentEquals("Remove sequences with remarks")) {
+			pm.setProperty("printCorrectColumnsOnly", ""+removeRemarkRows.isSelected());
+			
+		}
+		else if(e.getActionCommand().contentEquals("Validate")) {
+			System.out.println("Validate");
+			validateNGS();
+		}
+		else if(e.getActionCommand().contentEquals("Run")) {
+			System.out.println("Run");
 		}
 	}
 
@@ -477,6 +663,33 @@ public class GUI implements ActionListener, MouseListener {
 		return sb.toString();
 	}
 	*/
+
+	private void validateNGS() {
+		/*
+		for(int row=0;row<ngs.getRowCount();row++) {
+			for(int column=0;column<ngs.getColumnCount();column++) {
+				String name = ngs.getColumnName(column);
+				if(name.contentEquals("File")) {
+					String file = (String) ngs.getModel().getValueAt(row, column);
+					File f = new File(file);
+					if(f.exists()) {
+						
+					}
+					else {
+						
+					}
+					//iterate 
+				}
+				//other fields
+			}
+		}
+		*/
+	}
+
+	private void saveFlanks(String left, String right) {
+		pm.setProperty(subject.getAbsolutePath()+"_left", left);
+		pm.setProperty(subject.getAbsolutePath()+"_right", right);
+	}
 
 	private String analyzeFile(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
 		//get a SequenceDB of all sequences in the file
@@ -633,11 +846,18 @@ public class GUI implements ActionListener, MouseListener {
 		if(subject != null){
 			model.addElement(subject);
 		}
+		boolean ngs = false;
+		boolean ab1 = false;
 		if(chooser.getSelectedFile().isDirectory()){
 			for(File chosenFile: chooser.getSelectedFiles()) {
 				for(File file: chosenFile.listFiles()){
 					if(file.getName().endsWith(".ab1")){
 						model.addElement(file);
+						ab1 = true;
+					}
+					else if(file.getName().endsWith(".fastq") || file.getName().endsWith(".fastq.gz")){
+						model.addElement(file);
+						ngs = true;
 					}
 					else if(file.isDirectory()){
 						fillTable(file);
@@ -646,10 +866,263 @@ public class GUI implements ActionListener, MouseListener {
 			}
 		}
 		else{
-			for(File f: chooser.getSelectedFiles()){
-				model.addElement(f);
+			for(File file: chooser.getSelectedFiles()){
+				if(file.getName().endsWith(".ab1")){
+					model.addElement(file);
+					ab1 = true;
+				}
+				else if(file.getName().endsWith(".fastq") || file.getName().endsWith(".fastq.gz")){
+					model.addElement(file);
+					ngs = true;
+				}
 			}
 		}
+		if(ab1 && ngs) {
+			JOptionPane.showMessageDialog(guiFrame, "You cannot select .ab1 files and .fastq (or .fastq.gz) files simultaneously");
+		}
+		if(ngs) {
+			switchToNGS();
+		}
+		else if(ab1) {
+			switchToAB1(false);
+		}
+	}
+
+	private void switchToAB1(boolean force) {
+		if(!force && ab1Perspective) {
+			return;
+		}
+		System.out.println("Switch to AB1! "+force);
+		guiFrame.getContentPane().removeAll();
+		guiFrame.setVisible(false);
+		//switch to AB1
+		//make sure the program exits when the frame closes
+        guiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        guiFrame.setTitle("Sanger Sequence Analyzer "+version+" - Tijsterman Lab");
+        guiFrame.setSize(1000,600);
+      
+        //This will center the JFrame in the middle of the screen
+        guiFrame.setLocationRelativeTo(null);
+        guiFrame.setLayout(null);
+        
+        //The first JPanel contains a JLabel and JCombobox
+        //comboPanel.setLayout(new GridLayout(0,4));
+        //JLabel comboLbl = new JLabel("Select subject:");
+        JLabel lblSubject = new JLabel();
+		lblSubject.setBounds(91, 1, 55, 15);
+		lblSubject.setText("Subject");
+		guiFrame.add(lblSubject);
+		
+		JLabel lblQuery = new JLabel();
+		lblQuery.setText("Query");
+		lblQuery.setBounds(275, 1, 55, 15);
+		guiFrame.add(lblQuery);
+		
+		JLabel lblOptions = new JLabel();
+		lblOptions.setBounds(600, 1, 55, 15);
+		lblOptions.setText("Options");
+		guiFrame.add(lblOptions);
+        
+        JButton chooseSubject = new JButton("Select subject (.fa)");
+        chooseSubject.setActionCommand("chooseSubject");
+        chooseSubject.addActionListener(this);
+        chooseSubject.setBounds(54, 35, 140, 25);
+        guiFrame.add(chooseSubject);
+        
+        JButton dirChooser = new JButton("Select directory");
+        dirChooser.setActionCommand("dirChooser");
+        dirChooser.addActionListener(this);
+        dirChooser.setBounds(212, 22, 174, 25);
+        guiFrame.add(dirChooser);
+        
+         
+        JButton fileChooser = new JButton("Select files");
+        fileChooser.setActionCommand("fileChooser");
+        fileChooser.addActionListener(this);
+        fileChooser.setBounds(212, 53, 174, 25);
+        guiFrame.add(fileChooser);
+        
+        
+        
+        JLabel leftFlank = new JLabel("leftFlank:");
+        leftFlank.setBounds(448, 22, 55, 15);
+        left.setBounds(509, 22, 150, 21);
+        guiFrame.add(leftFlank);
+        guiFrame.add(left);
+        JLabel rightFlank = new JLabel("rightFlank:");
+        rightFlank.setBounds(448, 53, 55, 15);
+        guiFrame.add(rightFlank);
+        right.setBounds(509, 53, 150, 21);
+        guiFrame.add(right);
+        
+        maskLowQualityRemove.setBounds(680, 22, 142, 16);
+        maskLowQualityRemove.setSelected(true);
+        guiFrame.add(maskLowQualityRemove);
+        
+        removeRemarkRows.setBounds(680,62,200,16);
+        removeRemarkRows.addActionListener(this);
+        if(pm.getPropertyBoolean("printCorrectColumnsOnly")) {
+        	removeRemarkRows.setSelected(pm.getPropertyBoolean("printCorrectColumnsOnly"));
+        }
+        guiFrame.add(removeRemarkRows);
+        
+        
+        SpinnerModel model = new SpinnerNumberModel(0.05, 0, 1.0, 0.01);
+        maxError = new JSpinner(model);
+        maxError.setPreferredSize(new Dimension(50,20));
+        maxError.setBounds(684, 40, 47, 22);
+        guiFrame.add(maxError);
+        
+        JLabel lblMaxError = new JLabel();
+		lblMaxError.setBounds(735, 42, 100, 15);
+		lblMaxError.setText("max error (fraction)");
+		guiFrame.add(lblMaxError);
+		
+		jFiles.addMouseListener(this);
+		JScrollPane jsFile = new JScrollPane(jFiles);
+		jsFile.setBounds(55, 90, 330, 400);
+        guiFrame.add(jsFile);
+        
+        analyzeFiles = new JButton( "Start analysis");
+        analyzeFiles.setActionCommand("Start");
+        analyzeFiles.addActionListener(this);
+        analyzeFiles.setBounds(55, 500, 100, 20);
+        guiFrame.add(analyzeFiles);
+        
+        progressBar = new JProgressBar(0, 500);
+        progressBar.setValue(0);
+        progressBar.setStringPainted(true);
+        progressBar.setVisible(true);
+        progressBar.setBounds(55, 525, 330, 20);
+        guiFrame.add(progressBar);
+        
+        guiFrame.add(createOutputPanel());
+        
+        //JButton switchNGS = new JButton("Switch to FASTQ analysis");
+        //switchNGS.setBounds(500, 525, 120, 20);
+        //guiFrame.add(switchNGS);
+        
+		
+        guiFrame.setVisible(true);
+        
+        jFiles.setCellRenderer(new DefaultListCellRenderer(){
+     	   @Override
+     	   public Component getListCellRendererComponent(JList<?> list,
+     	         Object value, int index, boolean isSelected, boolean cellHasFocus) {
+     	      if (value != null) {
+     	         value = ((File)value).getName();
+     	      }
+     	      
+     	      Component c = super.getListCellRendererComponent(list, value, index, isSelected,
+     	            cellHasFocus);
+     	      if(index == 0) {
+     	    	c.setForeground(Color.blue);  
+     	      }
+     	      else {
+     	    	  c.setForeground(Color.black);
+     	      }
+     	      return c;
+     	   }
+     	});
+        
+        if(pm.getProperty("lastDir") != null) {
+        	File f = new File(pm.getProperty("lastDir"));
+        	this.chooser.setCurrentDirectory(f);
+        }
+        this.ab1Perspective = true;
+	}
+
+	private void switchToNGS() {
+		if(!ab1Perspective) {
+			return;
+		}
+		System.out.println("Switch to NGS!");
+		//switch to NGS
+		guiFrame.getContentPane().removeAll();
+		guiFrame.setVisible(false);
+		
+		JLabel lblQuery = new JLabel();
+		lblQuery.setText("Query");
+		lblQuery.setBounds(275, 1, 55, 15);
+		guiFrame.add(lblQuery);
+		
+        JButton dirChooser = new JButton("Select directory");
+        dirChooser.setActionCommand("dirChooser");
+        dirChooser.addActionListener(this);
+        dirChooser.setBounds(212, 22, 174, 25);
+        guiFrame.add(dirChooser);
+         
+        JButton fileChooser = new JButton("Select files");
+        fileChooser.setActionCommand("fileChooser");
+        fileChooser.addActionListener(this);
+        fileChooser.setBounds(212, 53, 174, 25);
+        guiFrame.add(fileChooser);
+        
+        addJTableNGS();
+        
+        JButton validate = new JButton("Validate input");
+        validate.setActionCommand("Validate");
+        validate.setBounds(20,500,120,20);
+        validate.addActionListener(this);
+        guiFrame.add(validate);
+        
+        JButton run = new JButton("Run");
+        run.setActionCommand("Run");
+        run.setBounds(20,520,120,20);
+        run.addActionListener(this);
+        guiFrame.add(run);
+        
+        guiFrame.setVisible(true);
+        
+        this.ab1Perspective = false;
+	}
+
+	private void addJTableNGS() {
+		ngsModel = new NGSTableModel();
+		ngs = new JTable(ngsModel);
+		for (int i =0; i<ngsModel.getColumnCount();i++) {
+			ngs.setDefaultRenderer(ngs.getColumnClass(i), new NGSCellRenderer());
+	    }
+		JScrollPane scrollPane = new JScrollPane(ngs);
+		ngs.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
+		ngs.setAutoCreateRowSorter(true);
+		ngs.setCellSelectionEnabled(true);
+		scrollPane.setPreferredSize( new Dimension( 800, 400 ) );
+		scrollPane.setBounds(20, 100, 800, 400);
+		guiFrame.add(scrollPane);
+		ExcelAdapter myAd = new ExcelAdapter(ngs);
+		addFilesToNGSModel();
+	}
+
+	private void addFilesToNGSModel() {
+		for(File f: chooser.getSelectedFiles()) {
+			NGS ngs = new NGS(f);
+			ngsModel.addNGS(ngs);
+		}
+		
+	}
+
+	private Vector<Vector<String>> getFileVector() {
+		Vector<Vector<String>> v = new Vector<Vector<String>>();
+		for(File f: chooser.getSelectedFiles()) {
+			Vector<String> w = new Vector<String>();
+			w.add(f.getAbsolutePath());
+			v.add(w);
+		}
+		return v;
+	}
+
+	private Vector<String> getNGSHeader() {
+		Vector<String> v = new Vector<String>();
+		v.add("File");
+		v.add("Subject");
+		v.add("Alias");
+		v.add("leftFlank");
+		v.add("rightFlank");
+		v.add("leftPrimer");
+		v.add("rightPrimer");
+		v.add("minPassedPrimer");
+		return v;
 	}
 
 	private void fillTable(File dir) {
@@ -666,9 +1139,6 @@ public class GUI implements ActionListener, MouseListener {
 	}
 	public void setMaxError(double e) {
 		maxError.setValue(e);
-	}
-	private void fillMenuBarOutput() {
-		
 	}
 
 	@Override
