@@ -64,11 +64,6 @@ public class HPRTFastQ {
 			System.out.println(options.printParameters());
 			
 			SequenceController sq = new SequenceController();
-			if(options.getMinNumber()>0 && !options.collapseEvents()) {
-				System.err.println("You specified a minimalCount to only output events that have been seen ["+options.getMinNumber()+"] times, but this does not work if you do not set the collapse to true");
-				System.err.println("Either remove this argument or set collapse to true");
-				System.exit(0);
-			}
 			//set the output file
 			File output = new File(options.getOutput());
 			if(output.exists() && !options.overwrite()) {
@@ -77,8 +72,6 @@ public class HPRTFastQ {
 				System.exit(0);
 			}
 			sq.setOutputFile(output);
-			
-			sq.setCollapseEvents(options.collapseEvents());
 			
 			sq.readFilesFASTQMultiThreaded(options);
 		}

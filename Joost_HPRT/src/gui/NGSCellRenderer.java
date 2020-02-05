@@ -7,7 +7,7 @@ import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 
 public class NGSCellRenderer extends DefaultTableCellRenderer {
-	private Color problem = new Color(204,0,0);
+	private Color problem = new Color(255,102,102);
 	private Color ok = new Color(102,255,102);
 	public Component getTableCellRendererComponent(
             JTable table, Object value, boolean isSelected,
@@ -78,7 +78,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
       
       else {
          setBackground(Color.white);
-         System.out.println("white");
+         //System.out.println("white");
       }
   
       return super.getTableCellRendererComponent(table, value, isSelected,

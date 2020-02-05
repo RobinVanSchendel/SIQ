@@ -28,9 +28,11 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Hyperlink;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -254,11 +256,15 @@ public class ReportPanel extends JFrame implements ActionListener {
         Row row = sheet.createRow(rowCount++);
     	int columnCount = 0;
     	int remarkColumn = -1;
+    	int fileColumn = -1;
         for(Object o: v) {
         	Cell cell = row.createCell(columnCount++);
         	if(o instanceof String) {
         		if(o.toString().contentEquals("Remarks")) {
         			remarkColumn = columnCount-1;
+        		}
+        		else if(o.toString().contentEquals("File")) {
+        			fileColumn = columnCount-1;
         		}
         		cell.setCellValue((String)o);
         	}
@@ -272,22 +278,33 @@ public class ReportPanel extends JFrame implements ActionListener {
         	columnCount = 0;
         	boolean remarkRow = rowV.get(remarkColumn).toString().length()>0;
         	for(Object o: rowV){
-        		Cell cell = row.createCell(columnCount++);
-            	if(o instanceof String) {
-            		cell.setCellValue((String)o+"should be red");
-            	}
-            	else if(o instanceof Integer) {
-            		cell.setCellValue((Integer)o);
-            	}
-            	else if(o instanceof Boolean) {
-            		cell.setCellValue((Boolean)o);
-            	}
-            	if(remarkRow) {
-            		cell.setCellStyle(remarkStyle);
-            	}
-            	else {
-            		cell.setCellStyle(backgroundStyle);
-            	}
+        		Cell cell = row.createCell(columnCount);
+        		if(columnCount == fileColumn) {
+        			Hyperlink href = workbook.getCreationHelper().createHyperlink(HyperlinkType.FILE);
+        			File f = new File((String)o);
+        			href.setAddress(f.toURI().toString());
+        			cell.setHyperlink(href);
+        			
+        			cell.setCellValue(f.getName());
+        		}
+        		else {
+	            	if(o instanceof String) {
+	            		cell.setCellValue((String)o);
+	            	}
+	            	else if(o instanceof Integer) {
+	            		cell.setCellValue((Integer)o);
+	            	}
+	            	else if(o instanceof Boolean) {
+	            		cell.setCellValue((Boolean)o);
+	            	}
+	            	if(remarkRow) {
+	            		cell.setCellStyle(remarkStyle);
+	            	}
+	            	else {
+	            		cell.setCellStyle(backgroundStyle);
+	            	}
+        		}
+            	columnCount++;
         	}
         }
         

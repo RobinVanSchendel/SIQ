@@ -1,9 +1,12 @@
 package utils;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,46 +26,45 @@ import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
 import dnaanalysis.Utils;
+import gui.NGS;
+import gui.NGSTableModel;
 
 public class SequenceFileThread implements Runnable {
 
 	private File f, output, outputStats;
 	private boolean writeToOutput;
-	private RichSequence subject;
-	private String leftFlank, rightFlank;
+	private Subject subject;
 	private HashMap<String, Integer> countEvents = new HashMap<String, Integer>();
 	private HashMap<String, String> actualEvents = new HashMap<String, String>();
 	private HashMap<String, CompareSequence> csEvents = new HashMap<String, CompareSequence>();
 	private HashMap<String, String> colorMap;
-	private boolean collapse;
+	private boolean collapse = true;;
 	private double maxError;
 	private HashMap<String, String> hmAdditional;
 	private long minimalCount;
 	private boolean includeStartEnd;
 	private long maxReads;
-	private boolean printHeader = false;
-	private long minPassedPrimer;
-	private String leftPrimer, rightPrimer;
+	private boolean printHeader = true;
 	private String alias = "";
 	private KMERLocation kmerl;
 	private boolean allowJump;
+	private File statsOutput;
 	private String singleFileF, singleFileR;
 	private boolean checkReverseOverwrite = false;
+	private NGS ngs;
 	
 	private HashMap<String, String> lookupDone = new HashMap<String, String>();
 	private HashMap<String, Integer> lookupDoneCounter = new HashMap<String, Integer>();
+	private NGSTableModel tableModel;
 	
 	//private boolean takeRC = false;
 	
-	public SequenceFileThread(File f, boolean writeToOutput, RichSequence subject, String leftFlank, String rightFlank, File output, boolean collapse, double maxError, HashMap<String, String> additional){
+	public SequenceFileThread(File f, boolean writeToOutput, Subject subject, File output, File statsOutput, double maxError, HashMap<String, String> additional){
 		this.f = f;
 		this.writeToOutput = writeToOutput;
 		this.subject = subject;
-		this.leftFlank = leftFlank;
-		this.rightFlank = rightFlank;
 		this.output = output;
-		this.outputStats = new File(output.getAbsolutePath()+".stats.txt");
-		this.collapse = collapse;
+		this.outputStats = statsOutput;
 		this.maxError = maxError;
 		this.hmAdditional = additional;
 	}
@@ -107,12 +109,6 @@ public class SequenceFileThread implements Runnable {
 		AtomicBoolean takeRc = new AtomicBoolean(false);
 		HashMap<String, Integer> remarks = new HashMap<String, Integer>();
 		
-		//Initialize Subject object
-		Subject subjectObject = new Subject(subject, leftFlank, rightFlank);
-		subjectObject.setLeftPrimer(leftPrimer);
-		subjectObject.setRightPrimer(rightPrimer);
-		subjectObject.setMinPassedPrimer(this.minPassedPrimer);
-		
 		try {
 			//first check the non-assembled reads
 			//FastqFileReader reader = new FastqFileReader()
@@ -138,7 +134,7 @@ public class SequenceFileThread implements Runnable {
 					if(checkReverseOverwrite) {
 						checkReverse = true;
 					}
-					CompareSequence cs = new CompareSequence(subjectObject, F.getNucleotideSequence().toString(), F.getQualitySequence(), f.getParentFile().getName(), checkReverse, F.getId(), kmerl);
+					CompareSequence cs = new CompareSequence(subject, F.getNucleotideSequence().toString(), F.getQualitySequence(), f.getParentFile().getName(), checkReverse, F.getId(), kmerl);
 					if(first && cs.isReversed()) {
 						takeRc.set(true);
 						first = false;
@@ -156,7 +152,7 @@ public class SequenceFileThread implements Runnable {
 						//speedup
 						if(leftCorrect) {
 							//Reverse
-							cs = new CompareSequence(subjectObject, R.getNucleotideSequence().toString(), R.getQualitySequence(), f.getParentFile().getName(), checkReverse, R.getId(), kmerl);
+							cs = new CompareSequence(subject, R.getNucleotideSequence().toString(), R.getQualitySequence(), f.getParentFile().getName(), checkReverse, R.getId(), kmerl);
 							cs.setAndDetermineCorrectRange(maxError);
 							cs.maskSequenceToHighQualityRemove();
 							cs.setAllowJump(this.allowJump);
@@ -188,7 +184,10 @@ public class SequenceFileThread implements Runnable {
 				datastoreF.close();
 				datastoreR.close();
 			}
-			
+			AtomicInteger totalReads = new AtomicInteger(0);
+			if(this.tableModel!= null) {
+				totalReads.set(countLinesNew(f)/4);
+			}
 			
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
@@ -205,7 +204,7 @@ public class SequenceFileThread implements Runnable {
 				if(checkReverseOverwrite) {
 					checkReverse = true;
 				}
-				CompareSequence cs = new CompareSequence(subjectObject, fastqRecord.getNucleotideSequence().toString(), quals, f.getParentFile().getName(), checkReverse, id, kmerl);
+				CompareSequence cs = new CompareSequence(subject, fastqRecord.getNucleotideSequence().toString(), quals, f.getParentFile().getName(), checkReverse, id, kmerl);
 				//System.out.println(fastqRecord.getNucleotideSequence().toString());
 				if(counter.get()==0 && cs.isReversed()) {
 					takeRc.set(true);
@@ -217,7 +216,7 @@ public class SequenceFileThread implements Runnable {
 				cs.maskSequenceToHighQualityRemoveSingleRange();
 				cs.setAllowJump(this.allowJump);
 				
-				if(cs.getRemarks().length()!=0) {
+				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
 				}
 				//small speedup
@@ -244,11 +243,11 @@ public class SequenceFileThread implements Runnable {
 							wrongPosition.getAndIncrement();
 							//System.out.println(cs.toStringOneLine());
 						}
-						if(cs.getRemarks().length()==0) {
+						if(cs.getRemarks().isEmpty()) {
 							if(leftCorrect && rightCorrect) {
 								cs.setAdditionalSearchString(hmAdditional);
 								//cs.setCutType(type);
-								cs.setCurrentFile(f.getName());
+								cs.setCurrentFile(f);
 								cs.setCurrentAlias(alias, f.getName());
 							}
 							else {
@@ -265,7 +264,7 @@ public class SequenceFileThread implements Runnable {
 						}
 						//only correctly found ones
 						//System.out.println(cs.toStringOneLine());
-						if(cs.getRemarks().length() == 0 && leftCorrect && rightCorrect){
+						if(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect){
 							correct.getAndIncrement();
 							if(!printOnlyIsParts){
 								if(collapseEvents){
@@ -326,12 +325,28 @@ public class SequenceFileThread implements Runnable {
 						lookupDone.clear();
 						lookupDoneCounter.clear();
 					}
+					if(this.tableModel!= null) {
+						float perc = counter.get()/(float)totalReads.get();
+						this.tableModel.setStatus(ngs, perc);
+						this.tableModel.setTotal(ngs, counter.get());
+						this.tableModel.setCorrect(ngs, correct.get());
+						this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
+						
+					}
 				}
-				if(counter.get()>= this.maxReads) {
+				if(maxReads>0 && counter.get()>= this.maxReads) {
 					System.out.println(counter.get()+" >= "+this.maxReads);
 					throw new BreakException();
 				}
 			});
+			//final update
+			if(this.tableModel!= null) {
+				float perc = counter.get()/(float)totalReads.get();
+				this.tableModel.setStatus(ngs, perc);
+				this.tableModel.setTotal(ngs, counter.get());
+				this.tableModel.setCorrect(ngs, correct.get());
+				this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
+			}
 			
 			
 		} catch (IOException | RuntimeException e) {
@@ -362,7 +377,7 @@ public class SequenceFileThread implements Runnable {
 					//only output if we saw it minimalCount times
 					if(countEvents.get(key)>=minimalCount) {
 						double fraction = countEvents.get(key)/total;
-						writer.println(countEvents.get(key)+"\t"+fraction+"\t"+csEvents.get(key).toStringOneLine());
+						writer.println(countEvents.get(key)+"\t"+fraction+"\t"+csEvents.get(key).toStringOneLine().replace("\n", "_"));
 						count++;
 					}
 				}
@@ -395,7 +410,7 @@ public class SequenceFileThread implements Runnable {
 		long duration = TimeUnit.SECONDS.convert((end-realStart), TimeUnit.NANOSECONDS);
 		System.out.println("duration "+duration);
 	}
-
+	/*
 	private ArrayList<SetAndPosition> createSetAndPosition() {
 		if(leftPrimer == null || leftPrimer.length()==0) {
 			return null;
@@ -446,6 +461,7 @@ public class SequenceFileThread implements Runnable {
 		System.out.println(sptwo);
 		return al;
 	}
+	*/
 
 	public void setMinimalCount(long minimalCount) {
 		this.minimalCount = minimalCount;
@@ -455,8 +471,8 @@ public class SequenceFileThread implements Runnable {
 	}
 
 	public void setMaximumReads(long maxReads) {
+		System.out.println("Setting maxReads to "+maxReads);
 		this.maxReads = maxReads;
-		
 	}
 
 	public void printHeader() {
@@ -464,18 +480,6 @@ public class SequenceFileThread implements Runnable {
 		
 	}
 
-	public void setLeftPrimer(String leftPrimer) {
-		this.leftPrimer = leftPrimer;
-	}
-
-	public void setRightPrimer(String rightPrimer) {
-		this.rightPrimer = rightPrimer;
-	}
-
-	public void setMinPassedPrimer(long minPassedPrimer) {
-		this.minPassedPrimer = minPassedPrimer;
-	}
-	
 	public void setAlias(String alias) {
 		this.alias = alias;
 	}
@@ -493,5 +497,50 @@ public class SequenceFileThread implements Runnable {
 
 	public void setFileR(String singleFileR2) {
 		this.singleFileR = singleFileR2;
+	}
+	public void setTableModel(NGSTableModel m) {
+		this.tableModel = m;
+		
+	}
+	public static int countLinesNew(File f2) throws IOException {
+	    InputStream is = new BufferedInputStream(new FileInputStream(f2));
+	    try {
+	        byte[] c = new byte[1024];
+
+	        int readChars = is.read(c);
+	        if (readChars == -1) {
+	            // bail out if nothing to read
+	            return 0;
+	        }
+
+	        // make it easy for the optimizer to tune this loop
+	        int count = 0;
+	        while (readChars == 1024) {
+	            for (int i=0; i<1024;) {
+	                if (c[i++] == '\n') {
+	                    ++count;
+	                }
+	            }
+	            readChars = is.read(c);
+	        }
+
+	        // count remaining characters
+	        while (readChars != -1) {
+	            System.out.println(readChars);
+	            for (int i=0; i<readChars; ++i) {
+	                if (c[i] == '\n') {
+	                    ++count;
+	                }
+	            }
+	            readChars = is.read(c);
+	        }
+	        //System.out.println("CountLines is: "+count);
+	        return count == 0 ? 1 : count;
+	    } finally {
+	        is.close();
+	    }
+	}
+	public void setNGS(NGS n) {
+		this.ngs = n;
 	}
 }

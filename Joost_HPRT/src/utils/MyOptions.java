@@ -79,9 +79,6 @@ public class MyOptions {
 	public boolean overwrite() {
 		return cmd.hasOption('f');
 	}
-	public boolean collapseEvents() {
-		return cmd.hasOption('c');
-	}
 	public String printParameters() {
 		if(cmd!= null) {
 			Class<?> c = this.getClass();

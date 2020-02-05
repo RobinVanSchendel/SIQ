@@ -16,11 +16,13 @@ import java.awt.event.MouseListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
+import java.util.Scanner;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,8 +48,13 @@ import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.seq.SequenceIterator;
@@ -60,6 +67,8 @@ import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
+import batch.SequenceController;
+import batch.SequenceControllerThread;
 import dnaanalysis.Utils;
 import utils.AnalyzedFileController;
 import utils.CompareSequence;
@@ -94,6 +103,9 @@ public class GUI implements ActionListener, MouseListener {
 	private String version;
 	private JTable ngs;
 	private NGSTableModel ngsModel;
+	private JButton run;
+	private JSpinner maxReads;
+	private JButton excelNGS;
 	
 	
 	@SuppressWarnings("serial")
@@ -432,6 +444,10 @@ public class GUI implements ActionListener, MouseListener {
 			chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 			chooser.setMultiSelectionEnabled(true);
 			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+				File dir = chooser.getSelectedFile();
+				if(dir.isDirectory()) {
+					pm.setProperty("lastDir", dir.getAbsolutePath());
+				}
 				fillTable();
 			}
 			chooser.setMultiSelectionEnabled(false);
@@ -538,12 +554,39 @@ public class GUI implements ActionListener, MouseListener {
 			pm.setProperty("printCorrectColumnsOnly", ""+removeRemarkRows.isSelected());
 			
 		}
-		else if(e.getActionCommand().contentEquals("Validate")) {
-			System.out.println("Validate");
-			validateNGS();
-		}
 		else if(e.getActionCommand().contentEquals("Run")) {
 			System.out.println("Run");
+			
+			//still need to make sure that all rows are ok
+			Vector<NGS> v = ngsModel.getData();
+			SequenceControllerThread sct = new SequenceControllerThread();
+			int maxReadsInt = ((Double)maxReads.getValue()).intValue();
+			sct.setNGSfromGUI(v, ngsModel, run, excelNGS, maxReadsInt);
+			Thread newThread = new Thread(sct);
+			newThread.start();
+			/*
+			File[] files = new File[model.getSize()];
+			for(int i = 0;i<model.getSize();i++) {
+				files[i] = model.getElementAt(i);
+				//System.out.println("adding "+i +" "+model.getElementAt(i));
+			}
+			afc.setFiles(files);
+			afc.setLeft(left.getText());
+			afc.setRight(right.getText());
+			afc.setMaxError((double)maxError.getValue());
+			afc.setMaskLowQuality(maskLowQuality.isSelected());
+			afc.setMaskLowQualityRemove(maskLowQualityRemove.isSelected());
+			afc.setProgressBar(progressBar);
+			afc.setFileChooser(chooser);
+			afc.setStartButton(analyzeFiles);
+			Thread newThread = new Thread(afc);
+			newThread.start();
+			*/
+		}
+		else if(e.getActionCommand().contentEquals("ExcelNGS")) {
+			System.out.println("Export to Excel");
+			exportToExcel();
+			//still implement
 		}
 	}
 
@@ -664,26 +707,132 @@ public class GUI implements ActionListener, MouseListener {
 	}
 	*/
 
-	private void validateNGS() {
-		/*
-		for(int row=0;row<ngs.getRowCount();row++) {
-			for(int column=0;column<ngs.getColumnCount();column++) {
-				String name = ngs.getColumnName(column);
-				if(name.contentEquals("File")) {
-					String file = (String) ngs.getModel().getValueAt(row, column);
-					File f = new File(file);
-					if(f.exists()) {
-						
+	private void exportToExcel() {
+		chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+		chooser.setMultiSelectionEnabled(false);
+		if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+			File f = chooser.getSelectedFile();
+			//make sure it is an .xlsx file
+			System.out.println("File "+f);
+			if(!f.getName().endsWith(".xlsx")) {
+				f = new File(f.getAbsolutePath()+".xlsx");
+				System.out.println("File "+f);
+				
+			}
+			/*
+			if(!f.renameTo(f)) {
+				JOptionPane.showMessageDialog(guiFrame,"Excel file is in use, please close it and try again!");
+				return;
+			}
+			*/
+			
+			exportToExcel(f);
+			
+			//open it in Excel
+			try {
+				Desktop.getDesktop().open(f);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
+	}
+
+	private void exportToExcel(File outputFile) {
+		// TODO Auto-generated method stub
+		Vector<NGS> v = ngsModel.getData();
+		boolean firstFile = true;
+		int totalRow = 0;
+		XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("RawData");
+		for(NGS n: v) {
+			File tempInput = n.getOutput();
+			int index = 0;
+			try {
+				Scanner s = new Scanner(tempInput);
+				while(s.hasNext()) {
+					String line = s.nextLine();
+					if(index == 0) {
+						if(firstFile) {
+							printLineToExcel(sheet, line, totalRow);
+							totalRow++;
+						}
 					}
 					else {
-						
+						printLineToExcel(sheet, line, totalRow);
+						totalRow++;
 					}
-					//iterate 
+					index++;
 				}
-				//other fields
+				s.close();
+				
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			firstFile = false;
+		}
+		//write stats
+		sheet = workbook.createSheet("Information");
+		totalRow=0;
+		printLineToExcel(sheet,"File\tType\t#Reads",totalRow++);
+		for(NGS n: v) {
+			
+			File tempInput = n.getOutputStats();
+			try {
+				Scanner s = new Scanner(tempInput);
+				while(s.hasNext()) {
+					String line = s.nextLine();
+					printLineToExcel(sheet, line, totalRow++);
+				}
+				s.close();
+				
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
-		*/
+		try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
+            workbook.write(outputStream);
+        } catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        try {
+			workbook.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+
+	private void printLineToExcel(XSSFSheet sheet, String line, int rowNr) {
+		 Row row = sheet.createRow(rowNr);
+		 String[] parts = line.split("\t");
+		 int columnCount = 0;
+		 System.out.println("rowNr: "+rowNr);
+		 for(String o: parts) {
+	        	Cell cell = row.createCell(columnCount++);
+	        	//obviously not the best method!
+	        	try {
+	        		int nr = Integer.parseInt(o);
+	        		cell.setCellValue(nr);
+	        	}
+	        	catch(Exception e) {
+	        		try{
+	        			double nr = Double.parseDouble(o);
+	        			cell.setCellValue(nr);
+	        		}
+	        		catch(Exception el) {
+	        			cell.setCellValue(o);
+	        		}
+	        	}
+	        }
 	}
 
 	private void saveFlanks(String left, String right) {
@@ -849,6 +998,7 @@ public class GUI implements ActionListener, MouseListener {
 		boolean ngs = false;
 		boolean ab1 = false;
 		if(chooser.getSelectedFile().isDirectory()){
+			System.out.println("Dir!");
 			for(File chosenFile: chooser.getSelectedFiles()) {
 				for(File file: chosenFile.listFiles()){
 					if(file.getName().endsWith(".ab1")){
@@ -856,6 +1006,7 @@ public class GUI implements ActionListener, MouseListener {
 						ab1 = true;
 					}
 					else if(file.getName().endsWith(".fastq") || file.getName().endsWith(".fastq.gz")){
+						System.out.println("adding "+file.getName());
 						model.addElement(file);
 						ngs = true;
 					}
@@ -872,6 +1023,7 @@ public class GUI implements ActionListener, MouseListener {
 					ab1 = true;
 				}
 				else if(file.getName().endsWith(".fastq") || file.getName().endsWith(".fastq.gz")){
+					System.out.println("adding .fastq");
 					model.addElement(file);
 					ngs = true;
 				}
@@ -898,7 +1050,7 @@ public class GUI implements ActionListener, MouseListener {
 		//switch to AB1
 		//make sure the program exits when the frame closes
         guiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        guiFrame.setTitle("Sanger Sequence Analyzer "+version+" - Tijsterman Lab");
+        guiFrame.setTitle("Tijsterman lab - SATL "+version+" "+getMode());
         guiFrame.setSize(1000,600);
       
         //This will center the JFrame in the middle of the screen
@@ -924,12 +1076,14 @@ public class GUI implements ActionListener, MouseListener {
 		guiFrame.add(lblOptions);
         
         JButton chooseSubject = new JButton("Select subject (.fa)");
+        chooseSubject.setToolTipText("Click this button to select a valid fasta file. Only the first fasta sequence will be used as a reference.");
         chooseSubject.setActionCommand("chooseSubject");
         chooseSubject.addActionListener(this);
         chooseSubject.setBounds(54, 35, 140, 25);
         guiFrame.add(chooseSubject);
         
         JButton dirChooser = new JButton("Select directory");
+        dirChooser.setToolTipText("Select a directory that contains either .ab1 or .fastq(.gz) files. Upon selection of .fastq(.gz) files, the program will switch to NGS mode. Directories will be searched recursively.");
         dirChooser.setActionCommand("dirChooser");
         dirChooser.addActionListener(this);
         dirChooser.setBounds(212, 22, 174, 25);
@@ -937,6 +1091,7 @@ public class GUI implements ActionListener, MouseListener {
         
          
         JButton fileChooser = new JButton("Select files");
+        fileChooser.setToolTipText("Select one or more .ab1 or .fastq(.gz) files. Upon selection of .fastq(.gz) files, the program will switch to NGS mode.");
         fileChooser.setActionCommand("fileChooser");
         fileChooser.addActionListener(this);
         fileChooser.setBounds(212, 53, 174, 25);
@@ -1032,6 +1187,15 @@ public class GUI implements ActionListener, MouseListener {
         this.ab1Perspective = true;
 	}
 
+	private String getMode() {
+		if(this.ab1Perspective) {
+			return "Sanger mode";
+		}
+		else {
+			return "NGS mode"; 
+		}
+	}
+
 	private void switchToNGS() {
 		if(!ab1Perspective) {
 			return;
@@ -1040,6 +1204,8 @@ public class GUI implements ActionListener, MouseListener {
 		//switch to NGS
 		guiFrame.getContentPane().removeAll();
 		guiFrame.setVisible(false);
+		System.out.println("ModeNGS "+getMode());
+		
 		
 		JLabel lblQuery = new JLabel();
 		lblQuery.setText("Query");
@@ -1058,23 +1224,34 @@ public class GUI implements ActionListener, MouseListener {
         fileChooser.setBounds(212, 53, 174, 25);
         guiFrame.add(fileChooser);
         
+        JLabel maxReadsL = new JLabel("Max reads to analyze");
+        maxReadsL.setBounds(510, 22, 120, 25);
+        guiFrame.add(maxReadsL);
+        
+        SpinnerModel model = new SpinnerNumberModel(100000, 0, Double.MAX_VALUE, 100000);
+        maxReads = new JSpinner(model);
+        maxReads.setBounds(400, 22, 100, 25);
+        guiFrame.add(maxReads);
+        
+        
         addJTableNGS();
         
-        JButton validate = new JButton("Validate input");
-        validate.setActionCommand("Validate");
-        validate.setBounds(20,500,120,20);
-        validate.addActionListener(this);
-        guiFrame.add(validate);
-        
-        JButton run = new JButton("Run");
+        run = new JButton("Run");
         run.setActionCommand("Run");
-        run.setBounds(20,520,120,20);
+        run.setBounds(20,500,120,20);
         run.addActionListener(this);
         guiFrame.add(run);
         
-        guiFrame.setVisible(true);
+        excelNGS = new JButton("Export to Excel");
+        excelNGS.setActionCommand("ExcelNGS");
+        excelNGS.setBounds(150,500,120,20);
+        excelNGS.addActionListener(this);
+        excelNGS.setEnabled(false);
+        guiFrame.add(excelNGS);
         
         this.ab1Perspective = false;
+        guiFrame.setTitle("Tijsterman lab - SATL "+version+" "+getMode());
+        guiFrame.setVisible(true);
 	}
 
 	private void addJTableNGS() {
@@ -1083,12 +1260,16 @@ public class GUI implements ActionListener, MouseListener {
 		for (int i =0; i<ngsModel.getColumnCount();i++) {
 			ngs.setDefaultRenderer(ngs.getColumnClass(i), new NGSCellRenderer());
 	    }
+		TableCellRenderer jpb = new ProgressCellRender();
+		ngs.setDefaultRenderer(ngs.getColumnClass(8), jpb);
 		JScrollPane scrollPane = new JScrollPane(ngs);
 		ngs.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
-		ngs.setAutoCreateRowSorter(true);
+		//ngs.setAutoCreateRowSorter(true);
 		ngs.setCellSelectionEnabled(true);
-		scrollPane.setPreferredSize( new Dimension( 800, 400 ) );
-		scrollPane.setBounds(20, 100, 800, 400);
+		//scrollPane.setPreferredSize( new Dimension( 800, 400 ) );
+		scrollPane.setBounds(20, 100, 950, 400);
+		scrollPane.setVerticalScrollBarPolicy(
+		        JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 		guiFrame.add(scrollPane);
 		ExcelAdapter myAd = new ExcelAdapter(ngs);
 		addFilesToNGSModel();
@@ -1096,8 +1277,18 @@ public class GUI implements ActionListener, MouseListener {
 
 	private void addFilesToNGSModel() {
 		for(File f: chooser.getSelectedFiles()) {
-			NGS ngs = new NGS(f);
-			ngsModel.addNGS(ngs);
+			if(f.isDirectory()) {
+				for(File file: f.listFiles()) {
+					if(file.getName().endsWith(".fastq") || file.getName().endsWith(".fastq.gz")) {
+						NGS ngs = new NGS(file);
+						ngsModel.addNGS(ngs);
+					}
+				}
+			}
+			else if(f.getName().endsWith(".fastq") || f.getName().endsWith(".fastq.gz")) {
+				NGS ngs = new NGS(f);
+				ngsModel.addNGS(ngs);
+			}
 		}
 		
 	}
@@ -1129,6 +1320,9 @@ public class GUI implements ActionListener, MouseListener {
 		if(dir.isDirectory()){
 			for(File file: dir.listFiles()){
 				if(file.getName().endsWith(".ab1")){
+					model.addElement(file);
+				}
+				else if(file.getName().endsWith(".fastq") || file.getName().endsWith(".fastq.gz")){
 					model.addElement(file);
 				}
 				else if(file.isDirectory()){

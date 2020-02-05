@@ -72,8 +72,6 @@ public class AnalyzedFileController implements Runnable{
 		//Get the subject first
 		ArrayList<RichSequence> subjectSequences = Utils.fillArrayListSequences(subjectFile);
 		RichSequence subject = subjectSequences.get(0);
-		JTextArea area = new JTextArea();
-		area.setColumns(30);
 		progressBar.setValue(0);
 		progressBar.setMaximum(nrFiles());
 		KMERLocation kmerl = new KMERLocation(subject.seqString());
@@ -93,6 +91,7 @@ public class AnalyzedFileController implements Runnable{
 			//kmerl = null;
 			String name = f.getName();
 			CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, f.getParent(), true, name, kmerl);
+			cs.setCurrentFile(f);
 			cs.setAndDetermineCorrectRange(maxError);
 			if(maskLowQuality){
 				cs.maskSequenceToHighQuality(left, right);
@@ -115,9 +114,6 @@ public class AnalyzedFileController implements Runnable{
 		//progressBar.setIndeterminate(true);
 		//checkAndPerformBlast();
 		//progressBar.setIndeterminate(false);
-		area.setText(removeUnneededColumns(getResultString()));
-		
-		//JScrollPane scrollPane = new JScrollPane(area);
 		
 		ReportPanel rp = new ReportPanel(subjectFile.getName());
 		rp.setLeftFlank(left);

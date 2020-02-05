@@ -44,6 +44,8 @@ import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
 import dnaanalysis.Utils;
+import gui.NGS;
+import gui.NGSTableModel;
 import utils.CompareSequence;
 import utils.KMERLocation;
 import utils.MyError;
@@ -57,7 +59,6 @@ public class SequenceController {
 	private File outputFile;
 	private HashMap<String, Integer> countEvents = new HashMap<String, Integer>();
 	private HashMap<String, String> actualEvents = new HashMap<String, String>();
-	private boolean collapseEvents = false;
 	private ArrayList<CompareSequence> sequences;
 	private HashMap<String, ArrayList<CompareSequence>> hash = new HashMap<String, ArrayList<CompareSequence>>();
 	private boolean includeStartEnd = false;
@@ -107,6 +108,12 @@ public class SequenceController {
 		System.out.println("Found "+ab1s.size()+" FASTQ files");
 		int fileNr = 1;
 		SequenceFileThread sft = null;
+		Subject subjectObject = new Subject(subject,options.getLeftFlank(),options.getRightFlank());
+		subjectObject.setLeftPrimer(options.getLeftPrimer());
+		subjectObject.setRightPrimer(options.getRightPrimer());
+		subjectObject.setMinPassedPrimer(options.getMinPassedPrimer());
+		
+		
 		KMERLocation kmerl = new KMERLocation(subject.seqString());
 		//kmerl = null;
 		for(File seqs: ab1s){
@@ -117,13 +124,11 @@ public class SequenceController {
 				System.err.println("File "+output.getAbsolutePath()+" already exists, skipping!");
 				continue;
 			}
-			sft = new SequenceFileThread(seqs, true, subject, leftFlank, rightFlank,output, options.collapseEvents(), options.getMaxError(), hmAdditional);
+			File stats = new File(output.getAbsoluteFile()+"_stats.txt");
+			sft = new SequenceFileThread(seqs, true, subjectObject, output, stats, options.getMaxError(), hmAdditional);
 			sft.setMinimalCount(options.getMinNumber());
 			sft.setCollapseStartEnd(includeStartEnd);
 			sft.setMaximumReads(options.getMaxReads());
-			sft.setLeftPrimer(options.getLeftPrimer());
-			sft.setRightPrimer(options.getRightPrimer());
-			sft.setMinPassedPrimer(options.getMinPassedPrimer());
 			sft.setAlias(options.getAlias());
 			sft.setKMERLocation(kmerl);
 			sft.setAllowJump(options.allowJump());
@@ -201,9 +206,6 @@ public class SequenceController {
 				e.printStackTrace();
 			}
 		}
-	}
-	public void setCollapseEvents(boolean collapse){
-		this.collapseEvents = collapse;
 	}
 	public ArrayList<CompareSequence> readFilesTryToMatch(
 			File dir, RichSequence currentSequence, String leftFlank,

@@ -96,6 +96,20 @@ sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
              {
                 rowstring=st1.nextToken();
                 StringTokenizer st2=new StringTokenizer(rowstring,"\t");
+                //maybe we need to insert a new row
+                if(startRow+i>=jTable1.getRowCount()) {
+             	   NGSTableModel ngsTM = (NGSTableModel) jTable1.getModel();
+             	   String file = st2.nextToken();
+             	   String subject = st2.nextToken();
+             	   String alias = st2.nextToken();
+             	   String leftFlank = st2.nextToken();
+             	   String rightFlank = st2.nextToken();
+             	   String leftPrimer = st2.nextToken();
+             	   String rightPrimer = st2.nextToken();
+             	   int minPassedPrimer = Integer.parseInt(st2.nextToken());
+             	   NGS ngs = new NGS(file, subject, alias, leftFlank,rightFlank,leftPrimer,rightPrimer, minPassedPrimer);
+             	   ngsTM.addNGS(ngs);
+                }
                 for(int j=0;st2.hasMoreTokens();j++)
                 {
                    value=(String)st2.nextToken();
@@ -105,6 +119,9 @@ sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
                 	   //System.out.println(jTable1.getModel());
                       jTable1.setValueAt(value,startRow+i,startCol+j);
                       //System.out.println("Putting "+ value+" at row="+startRow+i+" column="+startCol+j);
+                   }
+                   else if(startRow+1> jTable1.getRowCount()) {
+                	  
                    }
                }
             }

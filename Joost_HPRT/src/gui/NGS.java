@@ -20,8 +20,17 @@ public class NGS {
 	private String leftPrimer, rightPrimer;
 	private int minPassedPrimer;
 	private Subject subjectObject;
-	public NGS(String File, String Subject, String leftFlank, String rightFlank,
-			String alias, String leftPrimer, String rightPrimer, int minPassedPrimer) {
+	//fixed for now
+	private double maxError = 0.05;
+	private float status = 0.0f;
+	private int rowNr;
+	private int totalReads;
+	private int correctReads;
+	private float percentage;
+	
+	
+	public NGS(String File, String Subject, String alias, String leftFlank, String rightFlank
+			, String leftPrimer, String rightPrimer, int minPassedPrimer) {
 		this.file = File;
 		this.subject = Subject;
 		this.leftFlank = leftFlank;
@@ -80,6 +89,9 @@ public class NGS {
 		this.rightPrimer = rightPrimer.trim();
 	}
 	public int getMinPassedPrimer() {
+		if(this.subjectObject != null) {
+			subjectObject.setMinPassedPrimer(minPassedPrimer);
+		}
 		return minPassedPrimer;
 	}
 	public void setMinPassedPrimer(int minPassedPrimer) {
@@ -124,7 +136,7 @@ public class NGS {
 		}
 		return false;
 	}
-	private Subject getSubjectObject() {
+	public Subject getSubjectObject() {
 		if(this.subjectObject != null) {
 			return subjectObject;
 		}
@@ -186,5 +198,46 @@ public class NGS {
 		}
 		return false;
 	}
+	public double getMaxError() {
+		return maxError;
+	}
+	//output needs to be unique, so add the rowNumber. Shitty solution, but ok
+	public File getOutput() {
+		return new File(this.getFile()+"_"+this.getRowNumber()+"_output.txt");
+	}
+	public File getOutputStats() {
+		return new File(this.getFile()+"_"+this.getRowNumber()+"_stats_output.txt");
+	}
 	
+	public float getStatus() {
+		return status;
+	}
+	public void setStatus(float status) {
+		this.status = status;
+	}
+	public void setRowNumber(int i) {
+		this.rowNr = i;
+	}
+	public int getRowNumber() {
+		return rowNr;
+	}
+	public int getTotalReads() {
+		return this.totalReads;
+	}
+	public void setTotalReads(int total) {
+		this.totalReads = total;
+	}
+	public int getCorrectReads() {
+		return correctReads;
+	}
+	public void setCorrectReads(int correctReads) {
+		this.correctReads = correctReads;
+	}
+	public float getCorrectPercentage() {
+		return percentage;
+	}
+	public void setPercentage(float correct) {
+		this.percentage = correct;
+		
+	}
 }

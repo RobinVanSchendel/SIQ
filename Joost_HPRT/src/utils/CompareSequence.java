@@ -1,4 +1,5 @@
 package utils;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
@@ -52,7 +53,6 @@ public class CompareSequence {
 	//changed to 6!
 	private final int minSizeInsertionSolver = 6;
 	
-	private String fileName;
 	private boolean reversed = false;
 	private boolean jumpedRight = false;
 	private boolean jumpedLeft = false;
@@ -62,6 +62,7 @@ public class CompareSequence {
 	private boolean allowJump = true;
 	private boolean isFlankInsert = false;
 	private Subject subjectObject;
+	private File file;
 	
 	
 	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
@@ -410,8 +411,8 @@ public class CompareSequence {
 		//}
 		ret.append(getName()).append(s);
 		ret.append(dir).append(s);
-		if(fileName != null) {
-			ret.append(fileName).append(s);
+		if(file != null) {
+			ret.append(file.getAbsolutePath()).append(s);
 		}
 		else {
 			ret.append(getName()).append(s);
@@ -1125,14 +1126,15 @@ public class CompareSequence {
 		}
 		return null;
 	}
-	public void setCurrentFile(String name) {
-		this.fileName = name;
+	public void setCurrentFile(File f) {
+		this.file = f;
 	}
 	public String getKey(boolean appendStartEnd) {
 		//left, right, del, insert
 		//added match Left and Right
 		String s = "_";
-		StringBuffer ret = new StringBuffer(fileName).append(s);
+		//name of file should be enough
+		StringBuffer ret = new StringBuffer(file.getName()).append(s);
 		ret.append(getDelStart()).append(s);
 		ret.append(getDelEnd()).append(s);
 		ret.append(del).append(s);
