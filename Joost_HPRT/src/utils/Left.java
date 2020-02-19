@@ -6,6 +6,7 @@ public class Left {
 	
 	private static final int ALLLOWEDJUMPDISTANCE = 1;
 	//this introduces possible problems... I am aware of this 'feature' missing SNVs 30bp away from flanks
+	//if jumping is allowed
 	private static final int MINIMUMSECONDSIZE = 30;
 	
 	private int subjectStart, subjectEnd, queryStart, queryEnd;
