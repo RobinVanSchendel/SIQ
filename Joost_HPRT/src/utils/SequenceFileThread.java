@@ -22,9 +22,11 @@ import org.jcvi.jillion.core.util.iter.StreamingIterator;
 import org.jcvi.jillion.trace.fastq.FastqDataStore;
 import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
 import org.jcvi.jillion.trace.fastq.FastqFileReader;
+import org.jcvi.jillion.trace.fastq.FastqFileReader.Results;
 import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
+import dnaanalysis.Blast;
 import dnaanalysis.Utils;
 import gui.NGS;
 import gui.NGSTableModel;
@@ -49,13 +51,15 @@ public class SequenceFileThread implements Runnable {
 	private KMERLocation kmerl;
 	private boolean allowJump;
 	private File statsOutput;
-	private String singleFileF, singleFileR;
+	private File singleFileF, singleFileR;
 	private boolean checkReverseOverwrite = false;
 	private NGS ngs;
 	
 	private HashMap<String, String> lookupDone = new HashMap<String, String>();
 	private HashMap<String, Integer> lookupDoneCounter = new HashMap<String, Integer>();
 	private NGSTableModel tableModel;
+	private String flashExec;
+	private int cpus = 1;
 	
 	//private boolean takeRC = false;
 	
@@ -77,11 +81,21 @@ public class SequenceFileThread implements Runnable {
 		runReal();
 	}
 	public void runReal() {
-		Thread.currentThread().setName(f.getName());
+		Thread.currentThread().setName(alias);
 		boolean printOnlyIsParts = false;
 		boolean collapseEvents = collapse;
 		PrintWriter writer = null, writerStats = null;
 		String type = "";
+		//Check if you need to assemble anything
+		if(!f.exists()) {
+			if(ngs!=null) {
+				System.out.println("Assembling the file via R1 R2");
+				tableModel.setStatus(ngs,-1);
+				assembleFile();
+				tableModel.setStatus(ngs, 0);
+			}
+		}
+		
 		if(writeToOutput){
 			try {
 				writer = new PrintWriter(new FileOutputStream(output,false));
@@ -113,8 +127,8 @@ public class SequenceFileThread implements Runnable {
 			//first check the non-assembled reads
 			//FastqFileReader reader = new FastqFileReader()
 			if(singleFileF != null && singleFileR != null) {
-				FastqDataStore datastoreF = new FastqFileDataStoreBuilder(new File(singleFileF)).qualityCodec(FastqQualityCodec.SANGER).hint(DataStoreProviderHint.ITERATION_ONLY).build();
-				FastqDataStore datastoreR = new FastqFileDataStoreBuilder(new File(singleFileR)).qualityCodec(FastqQualityCodec.SANGER).hint(DataStoreProviderHint.ITERATION_ONLY).build();
+				FastqDataStore datastoreF = new FastqFileDataStoreBuilder(singleFileF).qualityCodec(FastqQualityCodec.SANGER).hint(DataStoreProviderHint.ITERATION_ONLY).build();
+				FastqDataStore datastoreR = new FastqFileDataStoreBuilder(singleFileR).qualityCodec(FastqQualityCodec.SANGER).hint(DataStoreProviderHint.ITERATION_ONLY).build();
 				StreamingIterator<FastqRecord> itF = datastoreF.iterator();
 				StreamingIterator<FastqRecord> itR = datastoreR.iterator();
 				int count = 0;
@@ -186,9 +200,17 @@ public class SequenceFileThread implements Runnable {
 			}
 			AtomicInteger totalReads = new AtomicInteger(0);
 			if(this.tableModel!= null) {
-				totalReads.set(countLinesNew(f)/4);
+				//might be a bit expensive, but it is convenient to have
+				FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
+				        (id, fastqRecord) -> {
+				        	totalReads.getAndIncrement();
+				        });
+				//System.out.println("total sequences "+totalReads.get());
+				if(this.maxReads>0) {
+					int min = (int) Math.min(totalReads.get(), this.maxReads);
+					totalReads.set(min);
+				}
 			}
-			
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
 				QualitySequence quals = fastqRecord.getQualitySequence();
@@ -325,13 +347,13 @@ public class SequenceFileThread implements Runnable {
 						lookupDone.clear();
 						lookupDoneCounter.clear();
 					}
+					//update GUI stuff
 					if(this.tableModel!= null) {
 						float perc = counter.get()/(float)totalReads.get();
 						this.tableModel.setStatus(ngs, perc);
 						this.tableModel.setTotal(ngs, counter.get());
 						this.tableModel.setCorrect(ngs, correct.get());
 						this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
-						
 					}
 				}
 				if(maxReads>0 && counter.get()>= this.maxReads) {
@@ -491,11 +513,11 @@ public class SequenceFileThread implements Runnable {
 		this.allowJump = allowJump;
 	}
 
-	public void setFileF(String singleFileF) {
+	public void setFileF(File singleFileF) {
 		this.singleFileF = singleFileF;
 	}
 
-	public void setFileR(String singleFileR2) {
+	public void setFileR(File singleFileR2) {
 		this.singleFileR = singleFileR2;
 	}
 	public void setTableModel(NGSTableModel m) {
@@ -542,5 +564,75 @@ public class SequenceFileThread implements Runnable {
 	}
 	public void setNGS(NGS n) {
 		this.ngs = n;
+	}
+	private void assembleFile() {
+		runFlash();
+	}
+	private void runFlash(){
+		//test for blast
+		try {
+			
+			//String execTotal = exec +" -query query.fa -db "+db+" -word_size 18 -outfmt \"6 std qseq sseq\"";
+			String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -M 5000 -O -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
+			System.out.println(execTotal);
+			Process p = Runtime.getRuntime().exec(execTotal);
+			//Process p = Runtime.getRuntime().exec("ping");
+			// any error message?get
+            StreamGobbler errorGobbler = new 
+                StreamGobbler(p.getErrorStream(), "ERROR", false);            
+            
+            // any output?
+            StreamGobbler outputGobbler = new 
+                StreamGobbler(p.getInputStream(), "OUTPUT", false);
+                
+            // kick them off
+            errorGobbler.start();
+            outputGobbler.start();
+            int exitVal = p.waitFor();
+            //flash outputs in a strange file
+            String currentDir = System.getProperty("user.dir");
+            File flashOutput = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".extendedFrags.fastq.gz");
+            File flashOutputunassF = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".notCombined_1.fastq.gz");
+            File flashOutputunassR = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".notCombined_2.fastq.gz");
+            System.out.println("File "+flashOutput.getAbsolutePath());
+            System.out.println(flashOutput.exists());
+            if(flashOutput.exists()) {
+            	flashOutput.renameTo(ngs.getAssembledFileDerived());
+            }
+            else {
+            	System.err.println("Something went wrong with the assembly");
+            }
+            if(flashOutputunassF.exists()) {
+            	flashOutputunassF.renameTo(ngs.getUnassembledFFileDerived());
+            }
+            else {
+            	System.err.println("Something went wrong with the assembly "+flashOutputunassF.getName());
+            	System.err.println(flashOutputunassF.getAbsolutePath());
+            }
+            if(flashOutputunassR.exists()) {
+            	flashOutputunassR.renameTo(ngs.getUnassembledRFileDerived());
+            }
+            else {
+            	System.err.println("Something went wrong with the assembly "+flashOutputunassR.getName());
+            	System.err.println(flashOutputunassR.getAbsolutePath());
+            }
+            
+            
+            
+            //System.exit(0);
+            //return outputGobbler.getBlastResult();
+			
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	public void setFlash(String flashExec, int cpus) {
+		this.flashExec = flashExec;
+		this.cpus = cpus;
+		
 	}
 }

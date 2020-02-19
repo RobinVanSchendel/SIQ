@@ -1,9 +1,12 @@
 package batch;
 
+import java.awt.Component;
 import java.io.File;
 import java.util.Vector;
 
 import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
 import gui.NGS;
 import gui.NGSTableModel;
@@ -14,19 +17,65 @@ import utils.Subject;
 public class SequenceControllerThread implements Runnable{
 	private Vector<Thread> vThreads = new Vector<Thread>();
 	private boolean includeStartEnd = false;
-	private JButton runButton, excelNGS;
+	private JFrame GUI;
+	private String flashExec;
+	private int cpus;
 	
-	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, JButton runButton, JButton excelNGS, int maxReads) {
-		this.runButton = runButton;
-		this.excelNGS = excelNGS;
+	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, JFrame GUI, int maxReads, String flashExec) {
+		this.GUI = GUI;
+		this.flashExec = flashExec;
+		Vector<NGS> notOK = new Vector<NGS>();
+		for(NGS n: v) {
+			if(!n.allOK()) {
+				notOK.add(n);
+			}
+		}
+		if(notOK.size()>0) {
+			//add info message
+			JOptionPane.showMessageDialog(null, notOK.size()+" NGS entries have the correct info, please correct the red cells in the table", "A problem was found with your input", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		//this can als be a user defined maximum
+		int cores = Runtime.getRuntime().availableProcessors();
+		if(v.size()>=cores) {
+			this.cpus = 1;
+		}
+		else {
+			this.cpus = cores/v.size();
+			if(this.cpus<1) {
+				this.cpus = 1;
+			}
+		}
 		
 		for(NGS n: v) {
 			Subject subject = n.getSubjectObject();
 			System.out.println(subject);
 			System.out.println("Primers: " +subject.hasPrimers());
-			System.out.println("Flanks: " +subject.hasPrimers());
+			System.out.println("Flanks: " +subject.hasLeftRight());
 			//for now no additional sequences to search (final null argument)
-			SequenceFileThread sft = new SequenceFileThread(new File(n.getFile()), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
+			//SequenceFileThread sft = new SequenceFileThread(n.getR1(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
+			SequenceFileThread sft = null;
+			//should we get the assembled
+			if(n.assembledOK()) {
+				System.out.println("Starting assembled");
+				sft = new SequenceFileThread(n.getAssembledFile(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
+			}
+			else {
+				System.out.println("Starting assembled derived");
+				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
+			}
+			if(n.unAssembledFOK()) {
+				sft.setFileF(n.getUnassembledFileF());
+			}
+			else {
+				sft.setFileF(n.getUnassembledFFileDerived());
+			}
+			if(n.unAssembledROK()) {
+				sft.setFileR(n.getUnassembledFileR());
+			}
+			else {
+				sft.setFileR(n.getUnassembledRFileDerived());
+			}
 			sft.setMinimalCount(2);
 			sft.setNGS(n);
 			sft.setCollapseStartEnd(includeStartEnd);
@@ -37,6 +86,7 @@ public class SequenceControllerThread implements Runnable{
 			sft.setAllowJump(false);
 			sft.setTableModel(m);
 			sft.setMaximumReads(maxReads);
+			sft.setFlash(flashExec,cpus);
 			Thread newThread = new Thread(sft);
 			vThreads.add(newThread);
 		}
@@ -45,8 +95,7 @@ public class SequenceControllerThread implements Runnable{
 	
 	@Override
 	public void run() {
-		runButton.setEnabled(false);
-		excelNGS.setEnabled(false);
+		enableButtons(false);
 		int cores = Runtime.getRuntime().availableProcessors();
 		int maxFiles = vThreads.size();
 		System.out.println("Gonna start "+Math.min(cores, maxFiles)+" cpus");
@@ -76,10 +125,19 @@ public class SequenceControllerThread implements Runnable{
 				e.printStackTrace();
 			}
 		}
-		runButton.setEnabled(true);
-		excelNGS.setEnabled(true);
+		enableButtons(true);
 		//add button to export stuff to Combined file
-		
+	}
+
+
+	private void enableButtons(boolean b) {
+		if(GUI!=null) {
+			for(Component c: GUI.getContentPane().getComponents()) {
+				if(c instanceof JButton) {
+					c.setEnabled(b);
+				}
+			}
+		}
 		
 	}
 }

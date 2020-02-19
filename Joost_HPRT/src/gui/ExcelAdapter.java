@@ -2,6 +2,8 @@ package gui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+
 import javax.swing.*;
 import java.awt.datatransfer.*;
 import java.util.*;
@@ -84,7 +86,7 @@ sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
       }
       if (e.getActionCommand().compareTo("Paste")==0)
       {
-          //System.out.println("Trying to Paste");
+          System.out.println("Trying to Paste");
           int startRow=(jTable1.getSelectedRows())[0];
           int startCol=(jTable1.getSelectedColumns())[0];
           try
@@ -95,24 +97,16 @@ sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
              for(int i=0;st1.hasMoreTokens();i++)
              {
                 rowstring=st1.nextToken();
-                StringTokenizer st2=new StringTokenizer(rowstring,"\t");
+                String[] parts = rowstring.split("\t");
                 //maybe we need to insert a new row
                 if(startRow+i>=jTable1.getRowCount()) {
              	   NGSTableModel ngsTM = (NGSTableModel) jTable1.getModel();
-             	   String file = st2.nextToken();
-             	   String subject = st2.nextToken();
-             	   String alias = st2.nextToken();
-             	   String leftFlank = st2.nextToken();
-             	   String rightFlank = st2.nextToken();
-             	   String leftPrimer = st2.nextToken();
-             	   String rightPrimer = st2.nextToken();
-             	   int minPassedPrimer = Integer.parseInt(st2.nextToken());
-             	   NGS ngs = new NGS(file, subject, alias, leftFlank,rightFlank,leftPrimer,rightPrimer, minPassedPrimer);
+             	   NGS ngs = new NGS();
              	   ngsTM.addNGS(ngs);
                 }
-                for(int j=0;st2.hasMoreTokens();j++)
+                for(int j=0;j<parts.length;j++)
                 {
-                   value=(String)st2.nextToken();
+                   value=parts[j];
                    if (startRow+i< jTable1.getRowCount()  &&
                        startCol+j< jTable1.getColumnCount()) {
                 	   //jTable1.getModel().setValueAt(aValue, rowIndex, columnIndex);

@@ -14,11 +14,12 @@ import org.biojavax.bio.seq.RichSequence.IOTools;
 import utils.Subject;
 
 public class NGS {
-	private String file, subject;
+	private File R1, R2, assembled = null, unassF = null, unassR = null;
+	private String subject;
 	private String leftFlank, rightFlank;
 	private String alias;
 	private String leftPrimer, rightPrimer;
-	private int minPassedPrimer;
+	private int minPassedPrimer = 5;
 	private Subject subjectObject;
 	//fixed for now
 	private double maxError = 0.05;
@@ -29,9 +30,10 @@ public class NGS {
 	private float percentage;
 	
 	
-	public NGS(String File, String Subject, String alias, String leftFlank, String rightFlank
+	public NGS(File R1, File R2, String Subject, String alias, String leftFlank, String rightFlank
 			, String leftPrimer, String rightPrimer, int minPassedPrimer) {
-		this.file = File;
+		this.R1 = R1;
+		this.R2 = R2;
 		this.subject = Subject;
 		this.leftFlank = leftFlank;
 		this.rightFlank = rightFlank;
@@ -40,14 +42,27 @@ public class NGS {
 		this.alias = alias;
 		this.minPassedPrimer = minPassedPrimer;
 	   }
-	public NGS(File f) {
-		this.file = f.getAbsolutePath();
+	public NGS(File R1, File R2, File ass, File unassF, File unassR, String Subject, String alias, String leftFlank, String rightFlank
+			, String leftPrimer, String rightPrimer, int minPassedPrimer) {
+		this.R1 = R1;
+		this.R2 = R2;
+		this.assembled = ass;
+		this.unassF = unassF;
+		this.unassR = unassR;
+		this.subject = Subject;
+		this.leftFlank = leftFlank;
+		this.rightFlank = rightFlank;
+		this.leftPrimer = leftPrimer;
+		this.rightPrimer = rightPrimer;
+		this.alias = alias;
+		this.minPassedPrimer = minPassedPrimer;
+	   }
+	public NGS() {
+		
 	}
-	public String getFile() {
-		return file;
-	}
-	public void setFile(String file) {
-		this.file = file;
+	public NGS(File R1, File R2) {
+		this.R1 = R1;
+		this.R2 = R2;
 	}
 	public String getSubject() {
 		return subject;
@@ -62,13 +77,19 @@ public class NGS {
 		return leftFlank;
 	}
 	public void setLeftFlank(String leftFlank) {
-		this.leftFlank = leftFlank.trim();
+		this.leftFlank = leftFlank;
+		if(leftFlank !=null) {
+			this.leftFlank = leftFlank.trim();
+		}
 	}
 	public String getRightFlank() {
 		return rightFlank;
 	}
 	public void setRightFlank(String rightFlank) {
-		this.rightFlank = rightFlank.trim();
+		this.rightFlank = rightFlank;
+		if(rightFlank !=null) {
+			this.rightFlank = rightFlank.trim();
+		}
 	}
 	public String getAlias() {
 		return alias;
@@ -80,13 +101,19 @@ public class NGS {
 		return leftPrimer;
 	}
 	public void setLeftPrimer(String leftPrimer) {
-		this.leftPrimer = leftPrimer.trim();
+		this.leftPrimer = leftPrimer;
+		if(leftPrimer !=null) {
+			this.leftPrimer = leftPrimer.trim();
+		}
 	}
 	public String getRightPrimer() {
 		return rightPrimer;
 	}
 	public void setRightPrimer(String rightPrimer) {
-		this.rightPrimer = rightPrimer.trim();
+		this.rightPrimer = rightPrimer;
+		if(rightPrimer !=null) {
+			this.rightPrimer = rightPrimer.trim();
+		}
 	}
 	public int getMinPassedPrimer() {
 		if(this.subjectObject != null) {
@@ -111,13 +138,25 @@ public class NGS {
 			}
 		}
 	}
-	public boolean FileOK() {
-		if(this.file==null) {
+	public boolean R1OK() {
+		if(this.R1==null) {
 			return false;
 		}
 		else {
-			File f = new File(this.file);
-			if(f.exists()) {
+			if(R1.exists()) {
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+	}
+	public boolean R2OK() {
+		if(this.R2==null) {
+			return false;
+		}
+		else {
+			if(R2.exists()) {
 				return true;
 			}
 			else {
@@ -141,6 +180,10 @@ public class NGS {
 			return subjectObject;
 		}
 		if(subject == null) {
+			return null;
+		}
+		File subjectFile = new File(subject);
+		if(!subjectFile.exists()) {
 			return null;
 		}
 		
@@ -201,12 +244,55 @@ public class NGS {
 	public double getMaxError() {
 		return maxError;
 	}
+	public File getAssembledFile() {
+		//TODO I broke the FLASH thingy now
+		//if(this.assembledOK()) {
+		return this.assembled;
+		//}
+		//
+	}
+	public File getAssembledFileDerived() {
+		if(this.assembled != null) {
+			return this.assembled;
+		}
+		return new File(R1.getAbsolutePath()+"_"+this.getRowNumber()+"_assembled.fastq.gz");
+	}
+	public File getUnassembledFFileDerived() {
+		if(this.unassF != null) {
+			return this.unassF;
+		}
+		if(R1 != null) {
+			return new File(R1.getAbsolutePath()+"_"+this.getRowNumber()+"_unassembledF.fastq.gz");
+		}
+		return null;
+	}
+	public File getUnassembledRFileDerived() {
+		if(this.unassR != null) {
+			return this.unassR;
+		}
+		if(R1 != null) {
+			return new File(R1.getAbsolutePath()+"_"+this.getRowNumber()+"_unassembledR.fastq.gz");
+		}
+		return null;
+	}
+	public boolean assembledOK() {
+		if(this.assembled == null) {
+			return false;
+		}
+		else {
+			if(this.assembled.exists()) {
+				return true;
+			}
+			System.out.println("assembled["+this.assembled+"]");
+		}
+		return false;
+	}
 	//output needs to be unique, so add the rowNumber. Shitty solution, but ok
 	public File getOutput() {
-		return new File(this.getFile()+"_"+this.getRowNumber()+"_output.txt");
+		return new File(getAssembledFile()+"_"+this.getRowNumber()+"_output.txt");
 	}
 	public File getOutputStats() {
-		return new File(this.getFile()+"_"+this.getRowNumber()+"_stats_output.txt");
+		return new File(getAssembledFile()+"_"+this.getRowNumber()+"_stats_output.txt");
 	}
 	
 	public float getStatus() {
@@ -239,5 +325,75 @@ public class NGS {
 	public void setPercentage(float correct) {
 		this.percentage = correct;
 		
+	}
+	public static NGS getDummy() {
+		NGS ngs = new NGS();
+		return ngs;
+	}
+	public boolean filesOK() {
+		if(R1OK() && R2OK()) {
+			return true;
+		}
+		else if(this.assembledOK()) {
+			return true;
+		}
+		return false;
+	}
+	public boolean allOK() {
+		return filesOK()
+				&& this.getSubjectOK()
+				&& this.leftFlankOK() 
+				&& this.rightFlankOK()
+				&& this.leftPrimerOK()
+				&& this.rightPrimerOK();
+	}
+	public File getR1() {
+		return R1;
+	}
+	public File getR2() {
+		return R2;
+	}
+	public void setR1(File file) {
+		this.R1 = file;
+	}
+	public void setR2(File file) {
+		this.R2 = file;
+	}
+	public boolean unAssembledFOK() {
+		if(this.unassF == null) {
+			return false;
+		}
+		else {
+			if(this.unassF.exists()) {
+				return true;
+			}
+		}
+		return false;
+	}
+	public boolean unAssembledROK() {
+		if(this.unassR == null) {
+			return false;
+		}
+		else {
+			if(this.unassR.exists()) {
+				return true;
+			}
+		}
+		return false;
+	}
+	public File getUnassembledFileF() {
+		return this.unassF;
+	}
+	public File getUnassembledFileR() {
+		return this.unassR;
+	}
+	public void setAssembled(File aValue) {
+		this.assembled = aValue;
+	}
+	public void setUnassembledF(File aValue) {
+		this.unassF = aValue;
+	}
+	public void setUnassembledR(File aValue) {
+		this.unassR = aValue;
 	}
 }

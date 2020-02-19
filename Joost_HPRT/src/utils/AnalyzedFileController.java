@@ -82,8 +82,10 @@ public class AnalyzedFileController implements Runnable{
 			try {
 				chromo = ChromatogramFactory.create(f);
 			} catch (Exception e1) {
+				//cannot handle that currently
 				System.out.println(f.getName()+" gives exception");
 				e1.printStackTrace();
+				continue;
 			}
 			NucleotideSequence seq = chromo.getNucleotideSequence();
 			QualitySequence quals = chromo.getQualitySequence();
@@ -172,6 +174,7 @@ public class AnalyzedFileController implements Runnable{
 			}
 		}
 	}
+	
 	public int currentFileNr() {
 		//System.out.println("Returning "+current);
 		return current;
@@ -216,11 +219,11 @@ public class AnalyzedFileController implements Runnable{
 			//Process p = Runtime.getRuntime().exec("ping");
 			// any error message?get
             StreamGobbler errorGobbler = new 
-                StreamGobbler(p.getErrorStream(), "ERROR");            
+                StreamGobbler(p.getErrorStream(), "ERROR", true);            
             
             // any output?
             StreamGobbler outputGobbler = new 
-                StreamGobbler(p.getInputStream(), "OUTPUT");
+                StreamGobbler(p.getInputStream(), "OUTPUT", true);
                 
             // kick them off
             errorGobbler.start();
@@ -248,5 +251,23 @@ public class AnalyzedFileController implements Runnable{
 	}
 	public void setFileChooser(JFileChooser jfc) {
 		this.jfc = jfc;
+	}
+	public boolean rightOK() {
+		if(right==null || right.length()==0) {
+			return true;
+		}
+		ArrayList<RichSequence> subjectSequences = Utils.fillArrayListSequences(subjectFile);
+		RichSequence subject = subjectSequences.get(0);
+		Subject subjectObject = new Subject(subject,left,right);
+		return subjectObject.hasRight();
+	}
+	public boolean leftOK() {
+		if(left==null || left.length()==0) {
+			return true;
+		}
+		ArrayList<RichSequence> subjectSequences = Utils.fillArrayListSequences(subjectFile);
+		RichSequence subject = subjectSequences.get(0);
+		Subject subjectObject = new Subject(subject,left,right);
+		return subjectObject.hasLeft();
 	}
 }

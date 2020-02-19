@@ -142,11 +142,11 @@ public class MyOptions {
 	public String getSingleFile() {
 		return cmd.getOptionValue("infile");
 	}
-	public String getSingleFileF() {
-		return cmd.getOptionValue("infileF");
+	public File getSingleFileF() {
+		return new File(cmd.getOptionValue("infileF"));
 	}
-	public String getSingleFileR() {
-		return cmd.getOptionValue("infileR");
+	public File getSingleFileR() {
+		return new File(cmd.getOptionValue("infileR"));
 	}
 	public String getSubject() {
 		return cmd.getOptionValue("subject");
@@ -196,9 +196,5 @@ public class MyOptions {
 	//at the moment we don't allow jumps for NGS analysis
 	public boolean allowJump() {
 		return false;
-	}
-	public String[] getAssForwardReverseFiles() {
-		String[] ret = {this.getSingleFile(),this.getSingleFileF(),this.getSingleFileR()}; 
-		return ret;
 	}
 }

@@ -7,78 +7,116 @@ import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 
 public class NGSCellRenderer extends DefaultTableCellRenderer {
-	private Color problem = new Color(255,102,102);
-	private Color ok = new Color(102,255,102);
+	public static Color problem = new Color(255,102,102);
+	public static Color ok = new Color(102,255,102);
+	public static Color optional = new Color(255,204,51);
+	public static Color greenFont = new Color(0,102,51);
 	public Component getTableCellRendererComponent(
             JTable table, Object value, boolean isSelected,
             boolean hasFocus, int row, int column)
    {
-	   NGSTableModel wtm = (NGSTableModel) table.getModel();
+	  NGSTableModel wtm = (NGSTableModel) table.getModel();
       NGS wine = (NGS) wtm.getValueAtRow(row);
       //System.out.println("hier Render!"+row+" c: "+column);
-      if (column == 1) {
-    	  if(wine.getSubjectOK()) {
-    		  setBackground(ok);
+      //R1
+      if (column == 0) {
+    	  if(wine.R1OK()) {
+    		  setForeground(greenFont);
     	  }
     	  else {
-    		  setBackground(problem);
+    		  setForeground(optional);
     	  }
       }
-      else if (column == 0) {
-    	  if(wine.FileOK()) {
-    		  setBackground(ok);
+      //R2
+      else if (column == 1) {
+    	  if(wine.R2OK()) {
+    		  setForeground(greenFont);
     	  }
     	  else {
-    		  setBackground(problem);
+    		  setForeground(optional);
     	  }
       }
+      //ass
       else if (column == 2) {
-    	  setBackground(ok);
+    	  if(wine.assembledOK()) {
+    		  setForeground(greenFont);
+    	  }
+    	  else {
+    		  setForeground(optional);
+    	  }
       }
+      //unassF
       else if (column == 3) {
-    	  if(wine.leftFlankOK()) {
-    		  setBackground(ok);
+    	  if(wine.unAssembledFOK()) {
+    		  setForeground(greenFont);
     	  }
     	  else {
-    		  setBackground(problem);
+    		  setForeground(optional);
     	  }
       }
+      ////unassF
       else if (column == 4) {
-    	  if(wine.rightFlankOK()) {
-    		  setBackground(ok);
+    	  if(wine.unAssembledROK()) {
+    		  setForeground(greenFont);
     	  }
     	  else {
-    		  setBackground(problem);
+    		  setForeground(optional);
     	  }
       }
       else if (column == 5) {
-    	  if(wine.leftPrimerOK()) {
-    		  setBackground(ok);
+    	  if(wine.getSubjectOK()) {
+    		  setForeground(greenFont);
     	  }
     	  else {
-    		  setBackground(problem);
+    		  setForeground(problem);
     	  }
       }
       else if (column == 6) {
-    	  if(wine.rightPrimerOK()) {
-    		  setBackground(ok);
-    	  }
-    	  else {
-    		  setBackground(problem);
-    	  }
+    	  setForeground(Color.white);
+    	  setForeground(greenFont);
       }
       else if (column == 7) {
-    	  if(wine.getMinPassedPrimer()>=0 && wine.getMinPassedPrimer()<=15) {
-    		  setBackground(ok);
+    	  if(wine.leftFlankOK()) {
+    		  setForeground(greenFont);
     	  }
     	  else {
-    		  setBackground(problem);
+    		  setForeground(problem);
     	  }
       }
-      
+      else if (column == 8) {
+    	  if(wine.rightFlankOK()) {
+    		  setForeground(greenFont);
+    	  }
+    	  else {
+    		  setForeground(problem);
+    	  }
+      }
+      else if (column == 9) {
+    	  if(wine.leftPrimerOK()) {
+    		  setForeground(greenFont);
+    	  }
+    	  else {
+    		  setForeground(problem);
+    	  }
+      }
+      else if (column == 10) {
+    	  if(wine.rightPrimerOK()) {
+    		  setForeground(greenFont);
+    	  }
+    	  else {
+    		  setForeground(problem);
+    	  }
+      }
+      else if (column == 11) {
+    	  if(wine.getMinPassedPrimer()>=0 && wine.getMinPassedPrimer()<=15) {
+    		  setForeground(greenFont);
+    	  }
+    	  else {
+    		  setForeground(problem);
+    	  }
+      }
       else {
          setBackground(Color.white);
-         //System.out.println("white");
       }
   
       return super.getTableCellRendererComponent(table, value, isSelected,

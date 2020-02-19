@@ -53,8 +53,11 @@ public class ReportPanel extends JFrame implements ActionListener {
 	
 	public ReportPanel(String title) {
 		this.setSize(1200, 800);
+		this.setMinimumSize(this.getSize());
 		this.setLayout(null);
 		this.setTitle(title);
+		this.pack();
+		
 	}
 	public void setup(ArrayList<CompareSequence> result) {
 		this.result = result;
@@ -221,7 +224,7 @@ public class ReportPanel extends JFrame implements ActionListener {
 				if(!f.getName().endsWith(".xlsx")) {
 					f = new File(f.getAbsolutePath()+".xlsx");
 				}
-				if(!f.renameTo(f)) {
+				if(f.exists() && !f.renameTo(f)) {
 					JOptionPane.showMessageDialog(this,"Excel file is in use, please close it and try again!");
 					return;
 				}
@@ -284,7 +287,6 @@ public class ReportPanel extends JFrame implements ActionListener {
         			File f = new File((String)o);
         			href.setAddress(f.toURI().toString());
         			cell.setHyperlink(href);
-        			
         			cell.setCellValue(f.getName());
         		}
         		else {
@@ -297,13 +299,13 @@ public class ReportPanel extends JFrame implements ActionListener {
 	            	else if(o instanceof Boolean) {
 	            		cell.setCellValue((Boolean)o);
 	            	}
-	            	if(remarkRow) {
-	            		cell.setCellStyle(remarkStyle);
-	            	}
-	            	else {
-	            		cell.setCellStyle(backgroundStyle);
-	            	}
         		}
+        		if(remarkRow) {
+            		cell.setCellStyle(remarkStyle);
+            	}
+            	else {
+            		cell.setCellStyle(backgroundStyle);
+            	}
             	columnCount++;
         	}
         }
