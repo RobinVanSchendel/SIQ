@@ -71,6 +71,7 @@ public class Subject {
 		if(subject.indexOf(rightFlank)<0) {
 			System.err.println("Cannot find rightFlank "+rightFlank);
 			//System.exit(0);
+			rightSet = false;
 		}
 		else {
 			this.startOfRightFlank = subject.indexOf(rightFlank);
@@ -83,6 +84,7 @@ public class Subject {
 		if(subject.indexOf(this.leftPrimer)<0) {
 			System.err.println("Cannot find leftPrimer "+leftPrimer);
 			//System.exit(0);
+			this.leftPrimerSet = false;
 		}
 		else {
 			this.startOfLeftPrimer = subject.indexOf(leftPrimer);
@@ -95,10 +97,12 @@ public class Subject {
 	public void setRightPrimer(String tempRightPrimer) {
 		this.rightPrimer = tempRightPrimer.toLowerCase();
 		//take rc
-		this.rightPrimer = Utils.reverseComplement(rightPrimer);
-		
+		if(rightPrimer!=null) {
+			this.rightPrimer = Utils.reverseComplement(rightPrimer);
+		}
 		if(subject.indexOf(this.rightPrimer)<0) {
 			System.err.println("Cannot find rightPrimer "+rightPrimer);
+			this.rightPrimerSet = false;
 			//System.exit(0);
 		}
 		else {
@@ -116,10 +120,11 @@ public class Subject {
 			return;
 		}
 		if(subject.indexOf(this.leftFlank)<0) {
-			//System.err.println("Cannot find leftFlank "+leftFlank+" "+subject.indexOf(this.leftFlank));
+			System.err.println("Cannot find leftFlank "+leftFlank+" "+subject.indexOf(this.leftFlank));
 			//System.err.println(subject);
 			//System.err.println(subject.length());
 			//System.exit(0);
+			leftSet = false;
 		}
 		else {
 			this.endOfLeftFlank = subject.indexOf(leftFlank)+leftFlank.length();
@@ -199,6 +204,7 @@ public class Subject {
 		return this.leftPrimerSet && this.rightPrimerSet;
 	}
 	public boolean evenStartsBehindPrimer(int delStart) {
+		//if 0 this filter should be disabled
 		if(minPassedPrimer == 0) {
 			return true;
 		}
@@ -211,6 +217,7 @@ public class Subject {
 		return matchEnd>=this.startOfRightPrimer && matchEnd<= this.endOfRightPrimer;
 	}
 	public boolean evenEndsBeforePrimer(int delEnd) {
+		//if 0 this filter should be disabled
 		if(minPassedPrimer == 0) {
 			return true;
 		}

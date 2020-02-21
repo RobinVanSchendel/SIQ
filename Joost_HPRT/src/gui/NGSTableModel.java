@@ -9,7 +9,7 @@ import javax.swing.table.AbstractTableModel;
 
 public class NGSTableModel extends AbstractTableModel {
 	// holds the strings to be displayed in the column headers of our table
-	   final String[] columnNames = {"R1 file", "R2 file", "<html>assembled<br>file</html>","<html>unassembled<br>R1 file</html>","<html>unassembled<br>R2 file</html>", "subject", "alias", "left flank", "right flank", "left primer", "right primer", "<html>#bases past<br>primer</html>","%Complete", "#Reads", "#Correct","%Correct"};
+	   final String[] columnNames = {"R1 file", "R2 file", "<html>assembled<br>file</html>","<html>unassembled<br>R1 file</html>","<html>unassembled<br>R2 file</html>", "reference", "alias", "left flank", "right flank", "left primer", "right primer", "<html>#bases past<br>primer</html>","%Complete", "#Reads", "#Correct","%Correct"};
 	  
 	   // holds the data types for all our columns
 	   Class[] columnClasses = {File.class, File.class, File.class,File.class,File.class,String.class, String.class, String.class, String.class, String.class, String.class, String.class, Float.class, Integer.class, Integer.class, Float.class};
@@ -92,7 +92,7 @@ public class NGSTableModel extends AbstractTableModel {
 	   }
 	   @Override
 	   public boolean isCellEditable(int row, int col) {
-		   if(col>=8) {
+		   if(col>=12) {
 			   return false;
 		   }
 		   return true;
@@ -165,6 +165,7 @@ public class NGSTableModel extends AbstractTableModel {
 			   wine.setAlias((String)aValue);
 		   }
 		   else if(columnIndex == 7) {
+			   System.out.println("setting leftFlank "+aValue);
 			   wine.setLeftFlank((String)aValue);
 		   }
 		   else if(columnIndex == 8) {
@@ -191,25 +192,26 @@ public class NGSTableModel extends AbstractTableModel {
 			   }
 		   }
 		   else if(columnIndex == 12) {
-			   if(aValue !=null) {
+			   if(aValue !=null && aValue instanceof Float) {
+				   System.out.println("12["+aValue+"]");
 				   float status = ((Float)aValue);
 				   wine.setStatus(status);
 			   }
 		   }
 		   else if(columnIndex == 13) {
-			   if(aValue !=null) {
-				   int total = ((Integer)aValue);
-				   wine.setTotalReads(total);
+			   if(aValue !=null && aValue instanceof Integer) {
+					   int total = ((Integer)aValue);
+					   wine.setTotalReads(total);
 			   }
 		   }
 		   else if(columnIndex == 14) {
-			   if(aValue !=null) {
-				   int correct = ((Integer)aValue);
-				   wine.setCorrectReads(correct);
+			   if(aValue !=null && aValue instanceof Integer) {
+					   int correct = ((Integer)aValue);
+					   wine.setCorrectReads(correct);
 			   }
 		   }
 		   else if(columnIndex == 15) {
-			   if(aValue !=null) {
+			   if(aValue !=null && aValue instanceof Float) {
 				   float correct = ((Float)aValue);
 				   wine.setPercentage(correct);
 			   }

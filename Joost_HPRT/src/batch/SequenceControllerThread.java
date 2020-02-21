@@ -18,12 +18,11 @@ public class SequenceControllerThread implements Runnable{
 	private Vector<Thread> vThreads = new Vector<Thread>();
 	private boolean includeStartEnd = false;
 	private JFrame GUI;
-	private String flashExec;
 	private int cpus;
+	private boolean assembleRequired;
 	
-	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, JFrame GUI, int maxReads, String flashExec) {
+	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, JFrame GUI, int maxReads, int minSupport, double maxError, String flashExec) {
 		this.GUI = GUI;
-		this.flashExec = flashExec;
 		Vector<NGS> notOK = new Vector<NGS>();
 		for(NGS n: v) {
 			if(!n.allOK()) {
@@ -48,6 +47,10 @@ public class SequenceControllerThread implements Runnable{
 		}
 		
 		for(NGS n: v) {
+			//not really perfect, but this will do
+			System.out.println("Setting setMaxError "+maxError);
+			n.setMaxError(maxError);
+			
 			Subject subject = n.getSubjectObject();
 			System.out.println(subject);
 			System.out.println("Primers: " +subject.hasPrimers());
@@ -61,6 +64,7 @@ public class SequenceControllerThread implements Runnable{
 				sft = new SequenceFileThread(n.getAssembledFile(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
 			}
 			else {
+				this.assembleRequired = true;
 				System.out.println("Starting assembled derived");
 				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
 			}
@@ -76,10 +80,12 @@ public class SequenceControllerThread implements Runnable{
 			else {
 				sft.setFileR(n.getUnassembledRFileDerived());
 			}
-			sft.setMinimalCount(2);
+			System.out.println("Setting minSupport "+minSupport);
+			System.out.println("Setting setMaximumReads "+maxReads);
+			
+			sft.setMinimalCount(minSupport);
 			sft.setNGS(n);
 			sft.setCollapseStartEnd(includeStartEnd);
-			sft.setMaximumReads(Long.MAX_VALUE);
 			sft.setAlias(n.getAlias());
 			KMERLocation kmerl = new KMERLocation(subject.getString());
 			sft.setKMERLocation(kmerl);
@@ -139,5 +145,8 @@ public class SequenceControllerThread implements Runnable{
 			}
 		}
 		
+	}
+	public boolean isAssemblyRequired() {
+		return assembleRequired;
 	}
 }

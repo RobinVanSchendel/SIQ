@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
@@ -35,6 +36,7 @@ import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
 import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -51,6 +53,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JViewport;
 import javax.swing.KeyStroke;
@@ -98,6 +101,7 @@ public class GUI implements ActionListener, MouseListener {
 	//JTextField left = new JTextField("ttaggcacatgacccgtgtttcctcac");
 	//JTextField left = new JTextField("GCATGCGTCGACCCgggaggcctgatttca");
 	JTextField left = new JTextField("");
+	JSpinner minSupport; 
 	//JTextField right = new JTextField("cagtggtgtaaatgctggtccatggct");
 	//JTextField right = new JTextField("CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT");
 	JTextField right = new JTextField("");
@@ -119,19 +123,21 @@ public class GUI implements ActionListener, MouseListener {
 	private JButton run;
 	private JSpinner maxReads;
 	private JButton excelNGS, switchToAB1;
+	private JSpinner baseError;
 	
 	
 	@SuppressWarnings("serial")
 	public GUI(String version, PropertiesManager pm)
     {
+		URL iconURL = getClass().getResource("/butterfly.png");
+		ImageIcon icon = new ImageIcon(iconURL);
+		guiFrame.setIconImage(icon.getImage());
 		this.version = version;
 		this.pm = pm;
 		//this.switchToNGS(true);
 		switchToAB1(true);
 		return;
-       	
     }
-
 	private void addOutputPanel() {
 		JPanel jpanel = new JPanel();
 		//jpanel.setSize(30, 800);
@@ -374,36 +380,32 @@ public class GUI implements ActionListener, MouseListener {
 		}
 		else if(e.getActionCommand().contentEquals("Run")) {
 			System.out.println("Run");
+			//something to do?
+			if(ngsModel.getRowCount()==0) {
+				return;
+			}
 			//make sure flash is there
 			//no longer required!
-			//if(pm.getProperty("flash")==null) {
-			//	JOptionPane.showMessageDialog(guiFrame, "FLASH is not set, please set the flash executable using the set FLASH button", "FLASH not set", JOptionPane.ERROR_MESSAGE);
-			//}
+			//yes, if no assembled files are filled in
+			
 			//still need to make sure that all rows are ok
 			Vector<NGS> v = ngsModel.getData();
 			SequenceControllerThread sct = new SequenceControllerThread();
 			int maxReadsInt = ((Double)maxReads.getValue()).intValue();
-			sct.setNGSfromGUI(v, ngsModel, guiFrame, maxReadsInt, pm.getProperty("flash"));
+			int minSupportInt = ((Integer)minSupport.getValue()).intValue();
+			double maxErrorDouble = ((Double)baseError.getValue()).doubleValue();
+			sct.setNGSfromGUI(v, ngsModel, guiFrame, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"));
+			
+			//check if requirements are met
+			if(sct.isAssemblyRequired()) {
+				if(pm.getProperty("flash")==null) {
+					JOptionPane.showMessageDialog(guiFrame, "FLASH is not set, please set the flash executable using the set FLASH button", "FLASH not set", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+			}
+			
 			Thread newThread = new Thread(sct);
 			newThread.start();
-			/*
-			File[] files = new File[model.getSize()];
-			for(int i = 0;i<model.getSize();i++) {
-				files[i] = model.getElementAt(i);
-				//System.out.println("adding "+i +" "+model.getElementAt(i));
-			}
-			afc.setFiles(files);
-			afc.setLeft(left.getText());
-			afc.setRight(right.getText());
-			afc.setMaxError((double)maxError.getValue());
-			afc.setMaskLowQuality(maskLowQuality.isSelected());
-			afc.setMaskLowQualityRemove(maskLowQualityRemove.isSelected());
-			afc.setProgressBar(progressBar);
-			afc.setFileChooser(chooser);
-			afc.setStartButton(analyzeFiles);
-			Thread newThread = new Thread(afc);
-			newThread.start();
-			*/
 		}
 		else if(e.getActionCommand().contentEquals("ExcelNGS")) {
 			System.out.println("Export to Excel");
@@ -434,6 +436,23 @@ public class GUI implements ActionListener, MouseListener {
 			ngsModel.removeAll();
 			ngsModel.addNGS(new NGS());
 		}
+		else if(e.getActionCommand().contentEquals("template")) {
+			int columns = ngs.getColumnModel().getColumnCount();
+			StringBuffer headerB = new StringBuffer();
+			for(int i=0;i<columns;i++) {
+				String header = (String) ngs.getColumnModel().getColumn(i).getHeaderValue();
+				if(headerB.length()>0) {
+					headerB.append("\t");
+				}
+				headerB.append(header.replaceAll("\\<[^>]*>",""));
+			}
+			JTextArea ta = new JTextArea(headerB.toString());
+			//ta.setPreferredSize(new Dimension(400,200));
+			JScrollPane jsp = new JScrollPane(ta);
+			jsp.setPreferredSize(new Dimension(400,200));
+			JOptionPane.showMessageDialog(null, jsp,"Please copy & paste and fill in",JOptionPane.INFORMATION_MESSAGE);
+		}
+		System.out.println("ActionCommand: "+e.getActionCommand());
 	}
 
 	
@@ -591,7 +610,7 @@ public class GUI implements ActionListener, MouseListener {
 		boolean firstFile = true;
 		int totalRow = 0;
 		XSSFWorkbook workbook = new XSSFWorkbook();
-        XSSFSheet sheet = workbook.createSheet("RawData");
+        XSSFSheet sheet = workbook.createSheet("rawData");
 		for(NGS n: v) {
 			File tempInput = n.getOutput();
 			int index = 0;
@@ -637,6 +656,41 @@ public class GUI implements ActionListener, MouseListener {
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			}
+		}
+		sheet = workbook.createSheet("RunInfo");
+		totalRow=0;
+		//header
+		int columns = ngs.getColumnModel().getColumnCount();
+		StringBuffer headerB = new StringBuffer();
+		for(int i=0;i<columns;i++) {
+			String header = (String) ngs.getColumnModel().getColumn(i).getHeaderValue();
+			if(headerB.length()>0) {
+				headerB.append("\t");
+			}
+			headerB.append(header.replaceAll("\\<[^>]*>",""));
+		}
+		printLineToExcel(sheet, headerB.toString(), totalRow++);
+		//contents
+		for(int row=0;row<ngs.getModel().getRowCount();row++) {
+			//header is already present
+			Row rowObject = sheet.createRow(row+1);
+			for(int col=0;col<ngs.getModel().getColumnCount();col++) {
+				Cell cell = rowObject.createCell(col);
+				Object o = ngs.getModel().getValueAt(row, col);
+	        	//obviously not the best method!
+				if(o instanceof String) {
+					cell.setCellValue((String)o);
+				}
+				else if(o instanceof File) {
+					cell.setCellValue(((File)o).getAbsolutePath());
+				}
+				else if(o instanceof Double) {
+					cell.setCellValue((Double)o);
+				}
+				else if(o instanceof Integer) {
+					cell.setCellValue((Integer)o);
+				}
 			}
 		}
 		try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
@@ -1198,25 +1252,52 @@ public class GUI implements ActionListener, MouseListener {
 		placeComp(options,guiFrame,5,0,2,1);
 		
         JLabel maxReadsL = new JLabel("Max reads to analyze");
+        maxReadsL.setToolTipText("Select the number of reads that you want to analyze. 0 means all reads will be analyzed");
         //maxReadsL.setBounds(510, 22, 120, 25);
         //guiFrame.add(maxReadsL,c);
         placeComp(maxReadsL,guiFrame,5,1,1,1);
         
         SpinnerModel model = new SpinnerNumberModel(0, 0, Double.MAX_VALUE, 100000);
         maxReads = new JSpinner(model);
-        maxReads.setToolTipText("Select the number of reads that you want to analyze. 0 means all reads will be analyzed");
         maxReads.setPreferredSize(new Dimension(80, 16));
         //maxReads.setBounds(400, 22, 100, 25);
         placeComp(maxReads,guiFrame,6,1,1,1);
+        placeComp(new JLabel("           "), guiFrame,7,0,1,1);
+        
+        JLabel minNumberReadstoCallEvent = new JLabel("Min support");
+        minNumberReadstoCallEvent.setToolTipText("Set the minimum number of reads required for an event to be included in the output");
+        placeComp(minNumberReadstoCallEvent,guiFrame,5,2,1,1);
+        SpinnerModel model2 = new SpinnerNumberModel(5, 0, Integer.MAX_VALUE, 1);
+        minSupport = new JSpinner(model2);
+        minSupport.setPreferredSize(new Dimension(80, 16));
+        placeComp(minSupport,guiFrame,6,2,1,1);
+        
+        
+        JLabel maxBaseErrro = new JLabel("Max base error");
+        maxBaseErrro.setToolTipText("The maximum base error tolerated, more reads will be correct if higher, but more sequencing errors are included (default: 0.05)");
+        placeComp(maxBaseErrro,guiFrame,5,3,1,1);
+        SpinnerModel model3 = new SpinnerNumberModel(0.05, 0, 1, 0.01);
+        baseError = new JSpinner(model3);
+        baseError.setPreferredSize(new Dimension(80, 16));
+        placeComp(baseError,guiFrame,6,3,1,1);
+        
         
         //maxReadsL.setBounds(510, 22, 120, 25);
         //guiFrame.add(maxReadsL,c);
         JButton removeRows = new JButton("Clear table");
         removeRows.setActionCommand("clearTable");
         removeRows.addActionListener(this);
-        //fileChooser.setBounds(212, 53, 174, 25);
-        placeComp(removeRows,guiFrame,7,1,1,1);
-        placeComp(new JLabel(" "),guiFrame,8,1,1,1);
+        placeComp(removeRows,guiFrame,0,2,1,1);
+        
+        
+        JButton template = new JButton("Table template");
+        template.setActionCommand("template");
+        template.addActionListener(this);
+        placeComp(template,guiFrame,1,2,1,1);
+        //placeComp(new JLabel(" "),guiFrame,0,1,1,1);
+        
+        JLabel copyPaste = new JLabel("You can copy & paste your table below:");
+        placeComp(copyPaste,guiFrame,0,3,1,1);
         
         addJTableNGS();
         
@@ -1224,7 +1305,7 @@ public class GUI implements ActionListener, MouseListener {
         switchToAB1.setActionCommand("SwitchMode");
         //switchToAB1.setBounds(400, 500, 150, 25);
         switchToAB1.addActionListener(this);
-        placeComp(switchToAB1,guiFrame,4,3,1,1);
+        placeComp(switchToAB1,guiFrame,4,5,1,1);
         //guiFrame.add(switchToAB1,c);
         
         
@@ -1233,7 +1314,7 @@ public class GUI implements ActionListener, MouseListener {
         setFlash.setActionCommand("flash");
         //setFlash.setBounds(550, 500, 150, 25);
         setFlash.addActionListener(this);
-        placeComp(setFlash,guiFrame,5,3,1,1);
+        placeComp(setFlash,guiFrame,5,5,1,1);
         
         setFlashLabel();
         
@@ -1243,18 +1324,18 @@ public class GUI implements ActionListener, MouseListener {
         run.setActionCommand("Run");
         //run.setBounds(20,500,120,20);
         run.addActionListener(this);
-        placeComp(run,guiFrame,0,3,1,1);
+        placeComp(run,guiFrame,0,5,1,1);
         
         excelNGS = new JButton("Export to Excel");
         excelNGS.setActionCommand("ExcelNGS");
         //excelNGS.setBounds(150,500,120,20);
         excelNGS.addActionListener(this);
         excelNGS.setEnabled(false);
-        placeComp(excelNGS,guiFrame,1,3,1,1);
+        placeComp(excelNGS,guiFrame,1,5,1,1);
         
         this.ab1Perspective = false;
         guiFrame.setTitle("Tijsterman lab - SATL "+version+" "+getMode());
-        guiFrame.pack();
+        //guiFrame.pack();
         guiFrame.setVisible(true);
 	}
 
@@ -1360,7 +1441,7 @@ public class GUI implements ActionListener, MouseListener {
 		//scrollPane.setBounds(20, 100, 950, 400);
 		//scrollPane.setVerticalScrollBarPolicy(
 		  //      JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-		placeComp(scrollPane,guiFrame,0,2,1);
+		placeComp(scrollPane,guiFrame,0,4,1);
 		//guiFrame.add(scrollPane);
 		ExcelAdapter myAd = new ExcelAdapter(ngs);
 		addFilesToNGSModel();
@@ -1486,7 +1567,7 @@ public class GUI implements ActionListener, MouseListener {
 	    cons.gridwidth = w;
 	    cons.gridheight = h;
 	    cons.fill = GridBagConstraints.HORIZONTAL;
-	    cons.insets = new Insets(2,2,2,2);
+	    cons.insets = new Insets(5,5,5,5);
 	    //comp.setPreferredSize(new Dimension(250,25));
 	    panel.add(comp, cons);
 	 }
@@ -1499,7 +1580,7 @@ public class GUI implements ActionListener, MouseListener {
 	    cons.weightx = weightX;
 	    cons.fill = GridBagConstraints.HORIZONTAL;
 	    //cons.fill = GridBagConstraints.BOTH;
-	    cons.insets = new Insets(2,2,2,2);
+	    cons.insets = new Insets(5,5,5,5);
 	    //comp.setPreferredSize(new Dimension(250,25));
 	    panel.add(comp, cons);
 	 }

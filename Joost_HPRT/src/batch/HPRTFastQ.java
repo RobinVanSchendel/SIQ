@@ -128,6 +128,7 @@ public class HPRTFastQ {
                 .build();
 				o.addOption(minEvent);
 		
+		//this value is ignored as it is always true
 		Option collapse   = Option.builder( "c" )
 				.longOpt("collapse")
                 .desc("Collapse the same events into one and count the number of occurrences")

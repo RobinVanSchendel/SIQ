@@ -321,6 +321,7 @@ public class Utils {
 					break;
 				default:
 					System.err.println("Can't complement "+c);
+					revCom.append(c);
 			}
 		}
 		return revCom.toString();

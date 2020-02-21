@@ -97,6 +97,16 @@ sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
              for(int i=0;st1.hasMoreTokens();i++)
              {
                 rowstring=st1.nextToken();
+                while(emptyRow(rowstring) || isHeader(rowstring)) {
+                	if(st1.hasMoreTokens()) {
+                		rowstring=st1.nextToken();
+                	}
+                	//that's it then!
+                	else {
+                		return;
+                	}
+                }
+                
                 String[] parts = rowstring.split("\t");
                 //maybe we need to insert a new row
                 if(startRow+i>=jTable1.getRowCount()) {
@@ -125,4 +135,21 @@ sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
           
       }
    }
+private boolean isHeader(String rowstring2) {
+	//don't paste the header, get the next line instead
+	//might be too simple, but is ok for now
+    if(rowstring.contains("#bases pastprimer")) {
+    	return true;
+    }
+	return false;
+}
+private boolean emptyRow(String rowstring) {
+	String[] parts = rowstring.split("\t");
+	for(String part: parts) {
+		if(part.length()>0) {
+			return false;
+		}
+	}
+	return true;
+}
 }

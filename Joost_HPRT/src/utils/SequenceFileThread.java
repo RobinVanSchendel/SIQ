@@ -241,11 +241,18 @@ public class SequenceFileThread implements Runnable {
 				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
 				}
-				//small speedup
 				boolean leftCorrect = false;
 				boolean rightCorrect = false;
+				if(cs.getName().equals("M01495:68:000000000-B4DGY:1:1101:22961:3157 1:N:0:AGGCAGAA+TAGATCGC")) {
+					System.out.println("FOUND IT!");
+					System.out.println(cs);
+					System.out.println(cs.isMasked());
+					System.out.println(cs.getRemarks());
+					
+				}
+				//at this point has to be true because of earlier check
 				if(cs.isMasked()) {
-					//there is a chance that we already saw such a sequence
+					//check if exists in cache
 					if(lookupDone.containsKey(cs.getQuery())) {
 						String key = lookupDone.get(cs.getQuery());
 						countEvents.put(key, countEvents.get(key)+1);
@@ -256,19 +263,15 @@ public class SequenceFileThread implements Runnable {
 						cs.determineFlankPositions(true);
 						leftCorrect = cs.isCorrectPositionLeft();
 						rightCorrect = cs.isCorrectPositionRight();
-						//System.out.println(leftCorrect+":"+rightCorrect);
 						if(leftCorrect && rightCorrect) {
 							correctPositionFRassembled.getAndIncrement();
-							//System.out.println("hier");
 						}
 						else {
 							wrongPosition.getAndIncrement();
-							//System.out.println(cs.toStringOneLine());
 						}
 						if(cs.getRemarks().isEmpty()) {
 							if(leftCorrect && rightCorrect) {
 								cs.setAdditionalSearchString(hmAdditional);
-								//cs.setCutType(type);
 								cs.setCurrentFile(f);
 								cs.setCurrentAlias(alias, f.getName());
 							}
@@ -285,54 +288,46 @@ public class SequenceFileThread implements Runnable {
 							}
 						}
 						//only correctly found ones
-						//System.out.println(cs.toStringOneLine());
 						if(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect){
 							correct.getAndIncrement();
-							if(!printOnlyIsParts){
-								if(collapseEvents){
-									String key = cs.getKey(includeStartEnd);
-									lookupDone.put(cs.getQuery(),key);
-									if(lookupDoneCounter.containsKey(cs.getQuery())) {
-										lookupDoneCounter.put(cs.getQuery(), lookupDoneCounter.get(cs.getQuery()+1));
-									}
-									else {
-										lookupDoneCounter.put(cs.getQuery(), 1);
-									}
-									if(countEvents.containsKey(key)){
-										countEvents.put(key, countEvents.get(key)+1);
-										//while this works, it might be slow and/or incorrect!
-										//the best would be to give the majority here
-										//replaced not so great sequences with more accurate ones
-										//to be able to filter better later
-										//20180731, added match positions as now sometimes shorter events are selected
-										//which causes problems with filters later
-										if(cs.getNrNs()<csEvents.get(key).getNrNs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
-											csEvents.put(key, cs);
-										}
-									}
-									else{
-										countEvents.put(key, 1);
-										//save the object instead
-										csEvents.put(key, cs);
-										//lookupDone.put(cs.getQuery(),key);
-										//actualEvents.put(key, cs.toStringOneLine());
-									}
+							String key = cs.getKey(includeStartEnd);
+							
+							//this is for the cache
+							lookupDone.put(cs.getQuery(),key);
+							if(lookupDoneCounter.containsKey(cs.getQuery())) {
+								lookupDoneCounter.put(cs.getQuery(), lookupDoneCounter.get(cs.getQuery()+1));
+							}
+							else {
+								lookupDoneCounter.put(cs.getQuery(), 1);
+							}
+							//now really count the event
+							if(countEvents.containsKey(key)){
+								countEvents.put(key, countEvents.get(key)+1);
+								//while this works, it might be slow and/or incorrect!
+								//the best would be to give the majority here
+								//replaced not so great sequences with more accurate ones
+								//to be able to filter better later
+								//20180731, added match positions as now sometimes shorter events are selected
+								//which causes problems with filters later
+								if(cs.getNrNs()<csEvents.get(key).getNrNs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
+									csEvents.put(key, cs);
 								}
 							}
 							else{
-								String[] ret = cs.printISParts(colorMap);
-								if(ret != null){
-									for(String s: ret){
-										System.out.println(type+"\t"+f.getName()+"\t"+s);
-									}
-								}
+								countEvents.put(key, 1);
+								//save the object instead
+								csEvents.put(key, cs);
 							}
 						}
 						else {
-							//System.out.println(cs.toStringOneLine());
 							wrong.getAndIncrement();
 						}
 					}
+				}
+				if(cs.getName().equals("M01495:68:000000000-B4DGY:1:1101:22961:3157 1:N:0:AGGCAGAA+TAGATCGC")) {
+					System.out.println(cs.toStringOneLine());
+					System.out.println(leftCorrect);
+					System.out.println(rightCorrect);
 				}
 				//System.out.println(cs.toStringOneLine());
 				//no masking
@@ -574,6 +569,7 @@ public class SequenceFileThread implements Runnable {
 			
 			//String execTotal = exec +" -query query.fa -db "+db+" -word_size 18 -outfmt \"6 std qseq sseq\"";
 			String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -M 5000 -O -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
+			//String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -r 300 -M 5000 -O -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
 			System.out.println(execTotal);
 			Process p = Runtime.getRuntime().exec(execTotal);
 			//Process p = Runtime.getRuntime().exec("ping");
