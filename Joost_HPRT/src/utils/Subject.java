@@ -199,6 +199,9 @@ public class Subject {
 		return this.leftPrimerSet && this.rightPrimerSet;
 	}
 	public boolean evenStartsBehindPrimer(int delStart) {
+		if(minPassedPrimer == 0) {
+			return true;
+		}
 		return delStart>getMinLocationStartEvent();
 	}
 	public boolean seqStartsWithinLeftPrimer(int matchStart) {
@@ -208,6 +211,9 @@ public class Subject {
 		return matchEnd>=this.startOfRightPrimer && matchEnd<= this.endOfRightPrimer;
 	}
 	public boolean evenEndsBeforePrimer(int delEnd) {
+		if(minPassedPrimer == 0) {
+			return true;
+		}
 		return delEnd<getMinLocationEndEvent();
 	}
 	public String toString() {
