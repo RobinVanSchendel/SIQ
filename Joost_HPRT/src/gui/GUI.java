@@ -106,7 +106,7 @@ public class GUI implements ActionListener, MouseListener {
 	//JTextField right = new JTextField("CCCCCCCCTCCCCCACCCCCTCCCtcgcAATT");
 	JTextField right = new JTextField("");
 	JCheckBox maskLowQuality = new JCheckBox("maskLowQuality");
-	JCheckBox maskLowQualityRemove = new JCheckBox("maskLowQualityRemove");
+	JCheckBox maskLowQualityRemove = new JCheckBox("Mask low quality bases");
 	JCheckBox removeRemarkRows = new JCheckBox("Remove sequences with remarks");
 	private ArrayList<RichSequence> sequences;
 	JProgressBar progressBar;
@@ -1102,6 +1102,7 @@ public class GUI implements ActionListener, MouseListener {
         
         //maskLowQualityRemove.setBounds(680, 22, 142, 16);
         maskLowQualityRemove.setSelected(true);
+        //maskLowQualityRemove.setActionCommand("maskLowQualityRemove");
         //guiFrame.add(maskLowQualityRemove);
         placeComp(maskLowQualityRemove, guiFrame,6,1,1,1);
         
@@ -1111,7 +1112,7 @@ public class GUI implements ActionListener, MouseListener {
         	removeRemarkRows.setSelected(pm.getPropertyBoolean("printCorrectColumnsOnly"));
         }
         //guiFrame.add(removeRemarkRows);
-        placeComp(removeRemarkRows, guiFrame,6,2,1,1);
+        placeComp(removeRemarkRows, guiFrame,6,3,1,1);
         
         
         JPanel jpanel = new JPanel();
@@ -1128,7 +1129,7 @@ public class GUI implements ActionListener, MouseListener {
 		lblMaxError.setBounds(735, 42, 100, 15);
 		lblMaxError.setText("max error (fraction)");
 		jpanel.add(lblMaxError);
-		placeComp(jpanel, guiFrame,6,3,1,1);
+		placeComp(jpanel, guiFrame,6,2,1,1);
 		//guiFrame.add(lblMaxError);
 		
 		jFiles.addMouseListener(this);
