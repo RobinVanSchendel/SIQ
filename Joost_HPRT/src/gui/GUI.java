@@ -129,9 +129,10 @@ public class GUI implements ActionListener, MouseListener {
 	@SuppressWarnings("serial")
 	public GUI(String version, PropertiesManager pm)
     {
-		URL iconURL = getClass().getResource("/butterfly.png");
-		ImageIcon icon = new ImageIcon(iconURL);
-		guiFrame.setIconImage(icon.getImage());
+		//TODO: make a real icon
+		//URL iconURL = getClass().getResource("/butterfly.png");
+		//ImageIcon icon = new ImageIcon(iconURL);
+		//guiFrame.setIconImage(icon.getImage());
 		this.version = version;
 		this.pm = pm;
 		//this.switchToNGS(true);
@@ -1006,7 +1007,7 @@ public class GUI implements ActionListener, MouseListener {
 		guiFrame.setVisible(false);
 		//switch to AB1
 		//make sure the program exits when the frame closes
-        guiFrame.setTitle("Tijsterman lab - SATL "+version+" "+getMode());
+        guiFrame.setTitle("Tijsterman lab - SIQ "+version+" "+getMode());
         
         //This will center the JFrame in the middle of the screen
         if(force) {

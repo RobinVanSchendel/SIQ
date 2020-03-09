@@ -27,6 +27,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableColumnModel;
 
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.Cell;
@@ -50,6 +51,7 @@ public class ReportPanel extends JFrame implements ActionListener {
 	private String rightFlank;
 	private boolean masked;
 	private double maxError;
+	private boolean[] removeColumns;
 	
 	public ReportPanel(String title) {
 		this.setSize(1200, 800);
@@ -251,7 +253,6 @@ public class ReportPanel extends JFrame implements ActionListener {
         CellStyle backgroundStyle = workbook.createCellStyle();
         CellStyle remarkStyle = workbook.createCellStyle();
         remarkStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        
         remarkStyle.setFillForegroundColor(IndexedColors.RED.getIndex());
         
         Vector<Object> v = getHeader();
@@ -260,53 +261,66 @@ public class ReportPanel extends JFrame implements ActionListener {
     	int columnCount = 0;
     	int remarkColumn = -1;
     	int fileColumn = -1;
+    	int counter = 0;
         for(Object o: v) {
-        	Cell cell = row.createCell(columnCount++);
+        	//get the indexes
         	if(o instanceof String) {
         		if(o.toString().contentEquals("Remarks")) {
-        			remarkColumn = columnCount-1;
+        			remarkColumn = counter;
         		}
         		else if(o.toString().contentEquals("File")) {
-        			fileColumn = columnCount-1;
+        			fileColumn = counter;
         		}
-        		cell.setCellValue((String)o);
         	}
-        	else if(o instanceof Integer) {
-        		cell.setCellValue((Integer)o);
+        	//only place header if needed
+        	if(removeColumns[counter]) {
+	        	Cell cell = row.createCell(columnCount++);
+	        	if(o instanceof String) {
+	        		cell.setCellValue((String)o);
+	        	}
+	        	else if(o instanceof Integer) {
+	        		cell.setCellValue((Integer)o);
+	        	}
         	}
+        	counter++;
         }
         Vector<Vector<Object>> w = this.getResultVector();
+        System.out.println("remarkColumn "+remarkColumn);
         for(Vector<Object> rowV :w) {
         	row = sheet.createRow(rowCount++);
         	columnCount = 0;
         	boolean remarkRow = rowV.get(remarkColumn).toString().length()>0;
+        	counter = 0;
         	for(Object o: rowV){
-        		Cell cell = row.createCell(columnCount);
-        		if(columnCount == fileColumn) {
-        			Hyperlink href = workbook.getCreationHelper().createHyperlink(HyperlinkType.FILE);
-        			File f = new File((String)o);
-        			href.setAddress(f.toURI().toString());
-        			cell.setHyperlink(href);
-        			cell.setCellValue(f.getName());
+        		if(removeColumns[counter]) {
+	        		Cell cell = row.createCell(columnCount);
+	        		if(columnCount == fileColumn) {
+	        			Hyperlink href = workbook.getCreationHelper().createHyperlink(HyperlinkType.FILE);
+	        			File f = new File((String)o);
+	        			href.setAddress(f.toURI().toString());
+	        			cell.setHyperlink(href);
+	        			cell.setCellValue(f.getName());
+	        		}
+	        		else {
+		            	if(o instanceof String) {
+		            		cell.setCellValue((String)o);
+		            	}
+		            	else if(o instanceof Integer) {
+		            		cell.setCellValue((Integer)o);
+		            	}
+		            	else if(o instanceof Boolean) {
+		            		cell.setCellValue((Boolean)o);
+		            	}
+	        		}
+	        		if(remarkRow) {
+	            		cell.setCellStyle(remarkStyle);
+	            	}
+	            	else {
+	            		cell.setCellStyle(backgroundStyle);
+	            	}
+	            	columnCount++;
         		}
-        		else {
-	            	if(o instanceof String) {
-	            		cell.setCellValue((String)o);
-	            	}
-	            	else if(o instanceof Integer) {
-	            		cell.setCellValue((Integer)o);
-	            	}
-	            	else if(o instanceof Boolean) {
-	            		cell.setCellValue((Boolean)o);
-	            	}
-        		}
-        		if(remarkRow) {
-            		cell.setCellStyle(remarkStyle);
-            	}
-            	else {
-            		cell.setCellStyle(backgroundStyle);
-            	}
-            	columnCount++;
+        		counter++;
         	}
         }
         
@@ -342,5 +356,14 @@ public class ReportPanel extends JFrame implements ActionListener {
 	}
 	public void setErrorRate(double error) {
 		this.maxError = error;
+	}
+	public void removeColumns(boolean[] outputColumns) {
+		this.removeColumns = outputColumns;
+		TableColumnModel tcm = jt.getColumnModel();
+		for(int col=0;col<outputColumns.length;col++) {
+			if(!outputColumns[col]) {
+				tcm.removeColumn(tcm.getColumn(col));
+			}
+		}
 	}
 }

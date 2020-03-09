@@ -125,6 +125,7 @@ public class AnalyzedFileController implements Runnable{
 		rp.setErrorRate(maxError);
 		//should be last
 		rp.setup(result);
+		rp.removeColumns(pm.getOutputColumns());
 		
 		//JOptionPane.showMessageDialog(
 			//	   null, area, "Result", JOptionPane.PLAIN_MESSAGE);
