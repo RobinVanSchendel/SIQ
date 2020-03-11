@@ -596,10 +596,13 @@ public class CompareSequence {
 		}
 		return hom;
 	}
+	//there is a bug here!f
 	private int getRightFlankRelativePos(){
 		int right = this.getDelEnd()-subjectObject.getEndOfLeftFlank();
 		//check if we have overlap
-		if(this.getInsertion() != null){
+		//but don't do this for anything else but a TD
+		Type type = getType();
+		if(type == Type.TANDEMDUPLICATION || type == Type.TANDEMDUPLICATION_COMPOUND || type == Type.TANDEMDUPLICATION_MULTI){
 			String insertTemp = this.getInsertion();
 			String leftTemp = this.getLeftFlank(0);
 			while(insertTemp.length()>0 && leftTemp.length()>0 
