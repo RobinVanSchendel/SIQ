@@ -1,4 +1,5 @@
 import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -21,7 +22,7 @@ import java.util.Scanner;
 import controller.PindelController;
 
 
-public class SNVCall {
+public class Manta {
 
 	private static final int MINQG = 50;
 
@@ -35,7 +36,7 @@ public class SNVCall {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
 		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
-		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20200403_gvcf_LUMC-003-001_arab_filtered.vcf");
+		File vcf = new File("E:\\temp\\gridss.vcf");
 		//cross check locations with SVs
 		File pindel = null; //new File("Z:\\Robin\\Project_Primase\\Paper\\project_primase_pindel.txt");
 		Scanner scan = new Scanner(new File("printToVCF.txt"));
@@ -86,18 +87,67 @@ public class SNVCall {
         while(it.hasNext()){
         	sb = new StringBuffer();
         	VariantContext vc = it.next();
-        	//only SNPs at the moment!
-        	if(!vc.isSNP()) {
-        		continue;
+        	String locationS = vc.getContig()+":"+vc.getStart();
+        	/*
+        	if(vc.getStart()==768301) {
+        		System.out.println(vc.toStringWithoutGenotypes());
+        		System.out.println(vc.isSimpleDeletion());
+        		System.out.println(vc.isSNP());
+        		System.out.println(vc.getType());
+        		for(Genotype gt: vc.getGenotypes()) {
+        			System.out.println(gt.toString());
+        		}
+        		System.out.println(locationS);
+        		System.out.println(vc.getAlleles());
+        		System.exit(0);
         	}
-        	String locationS = vc.getContig()+":"+vc.getStart()+"-"+vc.getEnd()+"["+vc.getReference()+"]";
+        	*/
+        	
+        	//System.out.println(key);
+    		int nrCalles = 0;
+        	int noOtherCall = 0;
+        	boolean unique = false;
+        	Genotype last = null;
+        	double assrValue = -1;
+        	for(String key: strains.keySet()) {
+        		for(String sample: strains.get(key)) {
+        			Genotype gt = vc.getGenotype(sample);
+    				String rpString = (String)gt.getExtendedAttribute("VF");
+    				//System.out.println(rpString);
+    				double rp = Double.parseDouble(rpString);
+    				if(rp>5) {
+    					//if(gt.getExtendedAttribute("RP"));
+    					//System.out.println(gt);
+    					nrCalles++;
+    					last = gt;
+    					assrValue = rp;
+    				}
+        		}
+        	}
+        	if(nrCalles == 1) {
+        		Allele one = vc.getAlleles().get(1);
+        		String chrEnd = retrieveChr(one);
+        		int endLocation = retrieveLoc(one);
+        		int size = -1;
+        		if(chrEnd.contentEquals(vc.getContig())) {
+        			size = endLocation-vc.getStart();
+        		}
+        		String locationE = chrEnd+":"+endLocation;
+        		//System.out.println(vc.toStringWithoutGenotypes());
+    			System.out.println(locationS+"\t"+locationE+"\t"+size+"\t"+assrValue+"\t"+last.getSampleName()+"\t"+vc.getAlleles());
+    			for(Allele a: vc.getAlleles()) {
+    				//System.out.println(a.toString());
+    				//System.out.println(a.getDisplayString());
+    			}
+    			//System.out.println(last);
+    		}
+        	/*
+        	System.exit(0);
         	if(locs.contains(locationS)) {
         		//System.out.println(vc.toStringWithoutGenotypes());
         		vcw.add(vc);
         	}
-        	sb.append(locationS);
         	List<String> i = vc.getSampleNamesOrderedByName();
-        	//System.out.println(vc);
         	int nrCalles = 0;
         	int noOtherCall = 0;
         	boolean unique = false;
@@ -105,6 +155,10 @@ public class SNVCall {
         	int maxDP = 0;
         	for(String s: i){
         		Genotype gt = vc.getGenotype(s);
+        		System.out.println(gt.toString());
+        	}
+        	
+        	/*
         		sb.append("\t");
         		String venn = gt.getType().toString();
         		if(venn.equals("HOM_VAR")) {
@@ -300,6 +354,38 @@ public class SNVCall {
         System.out.println("written "+uniqueCounter+" UNIQUE to "+outputUnique.getAbsolutePath());
         System.out.println("written outputDiffFromZeroWriter to "+outputNonUnique.getAbsolutePath());
         
+	}
+
+	private static int retrieveLoc(Allele one) {
+		//System.out.println(one.getBaseString());
+		//System.out.println(one.toString());
+		String str = one.toString();
+		String[] parts = str.split("[\\[\\]:]");
+		//System.out.println(String.join("\t", parts));
+		boolean next = false;
+		for(String part: parts) {
+			if(next) {
+				return Integer.parseInt(part);
+			}
+			if(part.contains("CHROM")) {
+				next = true;
+			}
+		}
+		return -1;
+	}
+
+	private static String retrieveChr(Allele one) {
+		//System.out.println(one.getBaseString());
+		//System.out.println(one.toString());
+		String str = one.toString();
+		String[] parts = str.split("[\\[\\]:]");
+		//System.out.println(String.join("\t", parts));
+		for(String part: parts) {
+			if(part.contains("CHROM")) {
+				return part;
+			}
+		}
+		return null;
 	}
 
 	private static boolean isHet(Genotype gt) {

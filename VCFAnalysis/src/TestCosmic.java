@@ -57,7 +57,7 @@ public class TestCosmic {
 		}
         while(it.hasNext()){
         	VariantContext vc = it.next();
-        	if(vc.getAttribute("GENE").equals("FLT3")){
+        	if(vc.getAttribute("GENE").equals("FLT3") || vc.getAttribute("GENE").equals("CEBPA") ){
         		//System.out.println(vc.getReference().getBaseString());
         		//String dna = vc.getContig()
         		//ReferenceSequence rs = rsf.getSubsequenceAt(vc.getContig(), vc.getStart(), vc.getEnd());
@@ -95,6 +95,7 @@ public class TestCosmic {
         		try {
         			if(cs.getRemarks().length()==0) {
         				b.write(cs.toStringOneLine()+"\n");
+        				System.out.println(vc.toString());
         			}
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
@@ -113,7 +114,7 @@ public class TestCosmic {
         		}
         }
         reader.close();
-        System.out.println(count+ " FLT3 mutations" );
+        System.out.println(count+ " mutations" );
 	}
 
 }
