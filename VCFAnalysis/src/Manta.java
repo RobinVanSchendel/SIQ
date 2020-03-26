@@ -36,7 +36,9 @@ public class Manta {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
 		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
-		File vcf = new File("E:\\temp\\gridss.vcf");
+		//File vcf = new File("E:\\temp\\diploidSV.vcf.gz");
+		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\Manta\\MMPdiploidSV.vcf.gz");
+		System.out.println(vcf.exists());
 		//cross check locations with SVs
 		File pindel = null; //new File("Z:\\Robin\\Project_Primase\\Paper\\project_primase_pindel.txt");
 		Scanner scan = new Scanner(new File("printToVCF.txt"));
@@ -88,6 +90,24 @@ public class Manta {
         	sb = new StringBuffer();
         	VariantContext vc = it.next();
         	String locationS = vc.getContig()+":"+vc.getStart();
+        	//System.out.println(vc.toStringDecodeGenotypes());
+        	
+        	String svType = (String) vc.getAttribute("SVTYPE");
+        	String svLenString = ((String) vc.getAttribute("SVLEN"));
+        	int svLen = -1;
+        	if(svLenString != null) {
+        		svLen = Integer.parseInt(svLenString);
+        	}
+        	String svEndString = (String) vc.getAttribute("END");
+        	int svEnd = -1;
+        	if(svEndString != null) {
+        		svEnd = Integer.parseInt(svEndString);
+        		locationS = vc.getContig()+":"+vc.getStart()+"-"+svEnd;
+        	}
+        	
+        	
+        	//System.out.println(vc.getAlternateAlleles());
+        	
         	/*
         	if(vc.getStart()==768301) {
         		System.out.println(vc.toStringWithoutGenotypes());
@@ -109,32 +129,35 @@ public class Manta {
         	boolean unique = false;
         	Genotype last = null;
         	double assrValue = -1;
+        	
         	for(String key: strains.keySet()) {
         		for(String sample: strains.get(key)) {
         			Genotype gt = vc.getGenotype(sample);
+        			//System.out.println(key+"\t"+sample+"\t"+gt.isHomVar());
     				String rpString = (String)gt.getExtendedAttribute("VF");
     				//System.out.println(rpString);
-    				double rp = Double.parseDouble(rpString);
-    				if(rp>5) {
-    					//if(gt.getExtendedAttribute("RP"));
-    					//System.out.println(gt);
+    				//TDs are called het!
+    				if(vc.getStart()==768299) {
+    					System.out.println("=====");
+    					System.out.println(gt.getType());
+    					System.out.println(gt.toString());
+    				}
+    				if(gt.isHomVar() || gt.isHet()) {
     					nrCalles++;
     					last = gt;
-    					assrValue = rp;
     				}
+    				/*
+    				if(vc.getStart()==3703787) {
+    					System.out.println("====");
+    					System.out.println(gt.getSampleName()+"\t"+gt.getType()+"\t"+gt.toString());
+    				}
+    				*/
         		}
         	}
         	if(nrCalles == 1) {
-        		Allele one = vc.getAlleles().get(1);
-        		String chrEnd = retrieveChr(one);
-        		int endLocation = retrieveLoc(one);
-        		int size = -1;
-        		if(chrEnd.contentEquals(vc.getContig())) {
-        			size = endLocation-vc.getStart();
-        		}
-        		String locationE = chrEnd+":"+endLocation;
         		//System.out.println(vc.toStringWithoutGenotypes());
-    			System.out.println(locationS+"\t"+locationE+"\t"+size+"\t"+assrValue+"\t"+last.getSampleName()+"\t"+vc.getAlleles());
+    			//System.out.println(locationS+"\t"+locationE+"\t"+size+"\t"+assrValue+"\t"+last.getSampleName()+"\t"+vc.getAlleles());
+    			System.out.println(last.getSampleName()+"\t"+locationS+"\t"+svType+"\t"+svLen+"\t"+last.getType()+"\t"+last.toString());
     			for(Allele a: vc.getAlleles()) {
     				//System.out.println(a.toString());
     				//System.out.println(a.getDisplayString());
@@ -430,7 +453,7 @@ public class Manta {
 		//should be char, char, digits
 		String part = s.substring(0, 2);
 		int index = 2;
-		while(Character.isDigit(s.charAt(index))) {
+		while(index<s.length() && Character.isDigit(s.charAt(index))) {
 			part+=s.charAt(index);
 			index++;
 		}
@@ -448,6 +471,10 @@ public class Manta {
 					return "N2";
 				}
 			}
+		}
+		//MMP hack
+		if(part.contains("VC")) {
+			return "VC";
 		}
 		//System.out.println(part);
 		return part;

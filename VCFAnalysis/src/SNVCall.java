@@ -34,10 +34,10 @@ public class SNVCall {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20190920_gvcf_LUMC-003-001_arab_filtered.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
-		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
-		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20200403_gvcf_LUMC-003-001_arab_filtered.vcf");
+		File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
+		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20200403_gvcf_LUMC-003-001_arab_filtered.vcf");
 		//cross check locations with SVs
-		File pindel = null; //new File("Z:\\Robin\\Project_Primase\\Paper\\project_primase_pindel.txt");
+		File pindel = new File("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\NGS data\\Pindel_Analysis.txt");
 		Scanner scan = new Scanner(new File("printToVCF.txt"));
 		ArrayList<String> locs = new ArrayList<String>();
 		while(scan.hasNext()) {
@@ -138,6 +138,7 @@ public class SNVCall {
     				}
     				if(location.equals("CHROMOSOME_IV:15764424-15764424")) {
     					System.out.println(gt);
+    					//System.out.println(gt.isCalled());
     					//System.out.println(gt.isPhased());
     					//System.out.println(gt.getExtendedAttribute("PID"));
     					//System.out.println(vc);
@@ -176,6 +177,10 @@ public class SNVCall {
 
         		
         		for(String name: strains.get(key)) {
+        			//incorrect file!!!!
+        			if(name.contentEquals("XF1012_F44")) {
+        				continue;
+        			}
         			//check for 0 strain
         			String[] parts = name.split("-");
         			//System.out.println("checking "+name);
@@ -232,7 +237,10 @@ public class SNVCall {
         			
         		}
         		
-        		if( uniqueHomCount==1 && uniqueHomCall==strains.get(key).size() ) {
+        		if( uniqueHomCount==1 && ( uniqueHomCall==strains.get(key).size()  || (uniqueHomCall+noCall)==strains.get(key).size() )) {
+        			if(location.equals("CHROMOSOME_IV:15764424-15764424")) {
+        				System.out.println("hier");
+            		}
         			//System.out.println("hier");
         			String ref = vc.getReference().getBaseString();
         			

@@ -18,15 +18,43 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import controller.PindelController;
+import controller.SVController;
+import data.GeneralCaller;
+import data.GridssCaller;
+import data.Location;
+import data.Sample;
+import data.StructuralVariation;
+import data.StructuralVariation.SVType;
 
-
-public class GridssCall {
+public class GridssCall extends GeneralCaller {
 
 	private static final int MINQG = 50;
+	private File vcf;
+	
+	public GridssCall(File vcf) {
+		this.vcf = vcf;
+	}
+	public void parseFile(SVController svc) {
+		VCFFileReader reader = new VCFFileReader(vcf, false);
+        CloseableIterator<VariantContext> it = reader.iterator();
+        while(it.hasNext()){
+        	VariantContext vc = it.next();
+        	StructuralVariation sv = this.parseStructuralVariation(vc);
+        	
+        	if(sv!=null) {
+        		svc.addSV(sv);
+        		//add call details here
+        	}
+        }
+        reader.close();
+	}
+	
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException{
 		//File vcf = new File("E:/Project_Genome_Scan_Brd_Rtel_Brc_RB873/multisample.final.vcf");
 		//File vcf = new File("E:/Project_TLS/20150928_combinevariants.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Hartwig\\LUMC-001-004\\Temp\\vcf\\mergeGVCF_output_filtered.g.vcf");
@@ -37,6 +65,13 @@ public class GridssCall {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
 		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
 		File vcf = new File("E:\\temp\\gridss.vcf");
+		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\Gridss\\gridss.vcf");
+		GridssCall gc = new GridssCall(vcf);
+		SVController svc = new SVController();
+		gc.parseFile(svc);
+		svc.printSVs();
+		System.exit(0);
+		
 		//cross check locations with SVs
 		File pindel = null; //new File("Z:\\Robin\\Project_Primase\\Paper\\project_primase_pindel.txt");
 		Scanner scan = new Scanner(new File("printToVCF.txt"));
@@ -47,6 +82,9 @@ public class GridssCall {
 		}
 		//File pindel = null;
 		PindelController pc = new PindelController(pindel);
+		
+		
+		
 		boolean excludeINVandTD = true;
 		
 		pc.parsePindel(excludeINVandTD);
@@ -104,11 +142,12 @@ public class GridssCall {
         	*/
         	
         	//System.out.println(key);
-    		int nrCalles = 0;
+    		int nrCalls = 0;
         	int noOtherCall = 0;
         	boolean unique = false;
         	Genotype last = null;
         	double assrValue = -1;
+        	List<Genotype> called = new ArrayList<Genotype>();
         	for(String key: strains.keySet()) {
         		for(String sample: strains.get(key)) {
         			Genotype gt = vc.getGenotype(sample);
@@ -118,242 +157,100 @@ public class GridssCall {
     				if(rp>5) {
     					//if(gt.getExtendedAttribute("RP"));
     					//System.out.println(gt);
-    					nrCalles++;
+    					nrCalls++;
     					last = gt;
     					assrValue = rp;
+    					called.add(gt);
     				}
         		}
         	}
-        	if(nrCalles == 1) {
-        		Allele one = vc.getAlleles().get(1);
-        		String chrEnd = retrieveChr(one);
-        		int endLocation = retrieveLoc(one);
-        		int size = -1;
-        		if(chrEnd.contentEquals(vc.getContig())) {
-        			size = endLocation-vc.getStart();
-        		}
-        		String locationE = chrEnd+":"+endLocation;
-        		//System.out.println(vc.toStringWithoutGenotypes());
-    			System.out.println(locationS+"\t"+locationE+"\t"+size+"\t"+assrValue+"\t"+last.getSampleName()+"\t"+vc.getAlleles());
-    			for(Allele a: vc.getAlleles()) {
-    				//System.out.println(a.toString());
-    				//System.out.println(a.getDisplayString());
-    			}
-    			//System.out.println(last);
-    		}
+        	Allele one = vc.getAlleles().get(1);
         	/*
-        	System.exit(0);
-        	if(locs.contains(locationS)) {
-        		//System.out.println(vc.toStringWithoutGenotypes());
-        		vcw.add(vc);
-        	}
-        	List<String> i = vc.getSampleNamesOrderedByName();
-        	int nrCalles = 0;
-        	int noOtherCall = 0;
-        	boolean unique = false;
-        	
-        	int maxDP = 0;
-        	for(String s: i){
-        		Genotype gt = vc.getGenotype(s);
-        		System.out.println(gt.toString());
-        	}
-        	
-        	/*
-        		sb.append("\t");
-        		String venn = gt.getType().toString();
-        		if(venn.equals("HOM_VAR")) {
-        			venn = "1";
-        			if(gt.getDP()>maxDP) {
-        				maxDP = gt.getDP();
-        			}
-        		}
-        		//maybe too simplistic
-        		else {
-        			venn = "0";
-        		}
-        		//sb.append(gt.getType());
-        		sb.append(venn);
-        	}
-        		
-        	int homCallInSet = 0;
-        	int nonhomRefCall = 0;
-        	int noCall = 0;
-        	int hetCall = 0;
-        	int homrefCall = 0;
-        	int phased = 0;
-        	String nonhomRefCallStrains = "";
-        	String location = vc.getContig()+":"+vc.getStart()+"-"+vc.getEnd();
-        	int locationPos = vc.getStart();
-        	String chr = vc.getContig();
-    		for(Genotype gt: vc.getGenotypes()) {
-    			if(containsSampleName(strains,gt.getSampleName())){
-    				if(gt.isPhased()) {
-    					phased++;
-    				}
-    				if(location.equals("CHROMOSOME_IV:15764424-15764424")) {
-    					System.out.println(gt);
-    					//System.out.println(gt.isPhased());
-    					//System.out.println(gt.getExtendedAttribute("PID"));
-    					//System.out.println(vc);
-    				}
-    				
-    				if(isHet(gt)) {
-    					hetCall++;
-    				}
-	    			if(gt.isHomVar()) {
-	    				homCallInSet++;
-	    			}
-	    			if(gt.isHomRef()) {
-	    				homrefCall++;
-	    			}
-	    			if(gt.isNoCall()) {
-	    				noCall++;
-	    			}
-	    			if(!gt.isHomRef() && !gt.isNoCall()) {
-	    				nonhomRefCall++;
-	    				if(nonhomRefCallStrains.length()>0) {
-	    					nonhomRefCallStrains+=":";
-	    				}
-	    				nonhomRefCallStrains+=gt.getSampleName();
-	    			}
-    			}
-    		}
-    		//System.exit(0);
-        	for(String key: strains.keySet()) {
-        		int uniqueHomCount = 0;
-        		int uniqueHomCall = 0; //REF or VAR
-        		Genotype lastUniqueHom = null;
-        		Genotype lastUniqueHet = null;
-        		boolean zeroGenerationStrainHomRef = true;
-        		boolean zeroGenerationFound = false;
-        		boolean printToDiffFromZeroWriter = false;
-
-        		
-        		for(String name: strains.get(key)) {
-        			//check for 0 strain
-        			String[] parts = name.split("-");
-        			//System.out.println("checking "+name);
-        			Genotype gt = vc.getGenotype(name);
-        			if(isHet(gt)) {
-        				//System.out.println("hier!");
-        				lastUniqueHet = gt;
-        			}
-        			if(gt.isHomVar()) {
-        				uniqueHomCount++;
-        				lastUniqueHom = gt;
-        			}
-        			if(gt.isHomRef() || gt.isHomVar()) {
-        				uniqueHomCall++;
-        			}
-        			if(parts[parts.length-1].equals("0") || name.contains("mother")) {
-        				if(gt.isHomRef()) {
-        					zeroGenerationStrainHomRef = true;
-        				}
-        				else {
-        					zeroGenerationStrainHomRef = false;
-        				}
-        				zeroGenerationFound = true;
-        			}
-        			else if(gt.isHomVar()) {
-        				printToDiffFromZeroWriter = true;
-        			}
-        		}
-        		//only call unique when all are called HOM
-        		//GQ>=50 probably leads to false positives!
-        		//20190312 80 seems a fair number. At 70 I also get strange sites
-        		//20190319 switched back to 50
-        		//20190319 err... removed GQ check altogether
-        		if(hetCall == 1 && lastUniqueHet != null && uniqueHomCall==strains.get(key).size()-1) {
-        			//System.out.println(hetCall);
-        			//System.out.println(lastUniqueHet);
-        			String ref = vc.getReference().getBaseString();
-        			String alt = lastUniqueHet.getAllele(0).getBaseString();
-        			//this is not a correct SNV position, but probably overlaps with a cnv
-        			String hetCallString = lastUniqueHet.getAD()[0]+"|"+lastUniqueHet.getAD()[1];
-        			        			
-        			
-        			if(!alt.equals("*")) {
-	        			String mut = getMutation(ref, alt);
-	        			String remark = "";
-	        			//if(nonhomRefCall == 1 && lastUniqueHom.getGQ()>=40 && lastUniqueHom.getDP()>=8) {
-	        				remark = hetCallString; 
-	        			//}
-	        			int distance = pc.getDistance(lastUniqueHet.getSampleName(), location);
-	        			String output =	key+"\t"+chr+"\t"+locationPos+"\t"+location+"\t"+lastUniqueHet.getSampleName()+"\t"+ref+"\t"+alt+"\t"+mut+"\t"+lastUniqueHet.getGQ()+"\t"+lastUniqueHet.getDP()+"\t"+homCallInSet+"\t"+nonhomRefCall+"\t"+noCall+"\t"+phased+"\t"+nonhomRefCallStrains+"\t"+remark+"\t"+distance+"\t"+homrefCall+"\t"+vc.getContig();
-	        			//utputUniqueWriter.write(output+"\n");
-	        			//System.out.println(output);
-        			}
-        			
-        		}
-        		
-        		if( uniqueHomCount==1 && uniqueHomCall==strains.get(key).size() ) {
-        			//System.out.println("hier");
-        			String ref = vc.getReference().getBaseString();
-        			
-        			String alt = lastUniqueHom.getAllele(0).getBaseString();
-        			//this is not a correct SNV position, but probably overlaps with a cnv
-        			        			
-        			
-        			if(!alt.equals("*")) {
-	        			String mut = getMutation(ref, alt);
-	        			String remark = "";
-	        			if(nonhomRefCall == 1 && lastUniqueHom.getGQ()>=40 && lastUniqueHom.getDP()>=8) {
-	        				remark = "VERY LIKELY CORRECT"; 
-	        			}
-	        			uniqueCounter++;
-	        			int distance = pc.getDistance(lastUniqueHom.getSampleName(), location);
-	        			String output =	key+"\t"+chr+"\t"+locationPos+"\t"+location+"\t"+lastUniqueHom.getSampleName()+"\t"+ref+"\t"+alt+"\t"+mut+"\t"+lastUniqueHom.getGQ()+"\t"+lastUniqueHom.getDP()+"\t"+homCallInSet+"\t"+nonhomRefCall+"\t"+noCall+"\t"+phased+"\t"+nonhomRefCallStrains+"\t"+remark+"\t"+distance;
-	        			outputUniqueWriter.write(output+"\n");
-	        			//System.out.println(output);
-        			}
-        		}
-        		if( zeroGenerationFound && zeroGenerationStrainHomRef && printToDiffFromZeroWriter ) {
-        			String ref = vc.getReference().getBaseString();
-        			
-        			//print all genotypes
-        			for(String name: strains.get(key)) {
-        				Genotype gtTemp = vc.getGenotype(name);
-        				//overwriting
-        				lastUniqueHom = gtTemp;
-	        			String alt = lastUniqueHom.getAllele(0).getBaseString();
-	        			//this is not a correct SNV position, but probably overlaps with a cnv
-	        			if(!alt.equals("*")) {
-		        			String mut = getMutation(ref, alt);
-		        			String output =	key+"\t"+chr+"\t"+locationPos+"\t"+vc.getContig()+":"+vc.getStart()+"-"+vc.getEnd()+"\t"+lastUniqueHom.getSampleName()+"\t"+ref+"\t"+alt+"\t"+mut+"\t"+lastUniqueHom.getGQ()+"\t"+lastUniqueHom.getDP()+"\t"+homCallInSet+"\t"+nonhomRefCall+"\t"+noCall+"\t"+phased+"\t"+nonhomRefCallStrains+"\t"+lastUniqueHom.getType().toString();
-		        			outputDiffFromZeroWriter.write(output+"\n");
-		        			//System.out.println(output);
-	        			}
-        			}
-        		}
-        	}
-        	/*
-        	if( noOtherCall == 0 && nrCalles > 0 && vc.getNAlleles() == 2){
-        		//System.out.println(vc.getStart());
-        		//System.out.println(vc.getGenotype(vc.getSampleNamesOrderedByName().get(0)).toBriefString());
-        		//System.out.println(inSample);
-        		if(vc.isSNP()){
-        			String printVar = vc.getContig()+"\t"+vc.getStart()+"\t"+vc.getAlleles()+"\t"+vc.getPhredScaledQual();
-        			List<String> list = vc.getSampleNamesOrderedByName();
-        			for(String s: list){
-       					Genotype gt = vc.getGenotype(s);
-       					printVar += "\t"+gt.getType();
-        			}
-        			System.out.println(printVar);
-        			
-        		}
-    			//System.out.println(gt.getType());
-        	}
+        	System.out.println(vc.getType());
+        	System.out.println(vc.toString());
+        	System.out.println("===");
+        	System.out.println(vc.getAlleles());
+        	System.out.println("===");
+        	System.out.println(one);
         	*/
+    		String chrEnd = retrieveChr(one);
+    		int endLocation = retrieveLoc(one);
+    		StructuralVariation.SVType type = retrieveType(one);
+    		int size = -1;
+    		if(chrEnd != null) {
+    			Location start = new Location(vc.getContig(),vc.getStart());
+    			Location end = new Location(chrEnd,endLocation);
+    			StructuralVariation sv = new StructuralVariation(type, start, end);
+    			svc.addSV(sv);
+	    		if(chrEnd.contentEquals(vc.getContig())) {
+	    			size = endLocation-vc.getStart();
+	    		}
+	    		String locationE = chrEnd+":"+endLocation;
+	        	if(nrCalls == 1) {
+	        		//System.out.println(vc.toStringWithoutGenotypes());
+	        		String names = getSampleNames(called);
+	        		String values = getVFValues(called);
+	    			System.out.println(nrCalls+"\t"+locationS+"\t"+locationE+"\t"+size+"\t"+assrValue+"\t"+names+"\t"+vc.getAlleles()+"\t"+values+"\t"+sv.toString());
+	    			//for(Allele a: vc.getAlleles()) {
+	    				//System.out.println(a.toString());
+	    				//System.out.println(a.getDisplayString());
+	    			//}
+	    			//System.out.println(last);
+	    		}
+    		}
+    		else if(!vc.getFilters().toString().contains("LOW_QUAL") && called.size()==1){
+    			System.out.println("====");
+    			System.out.println(vc.getFilters());
+    			System.out.println(vc.toStringWithoutGenotypes());
+    			for(Genotype gt: vc.getGenotypes()) {
+    				System.out.println(gt.toString());
+    			}
+    			//System.out.println(vc.toStringDecodeGenotypes());
+    			System.out.println("====");
+    		}
         }
         vcw.close();
         reader.close();
         outputAllWriter.close();
         outputUniqueWriter.close();
         outputDiffFromZeroWriter.close();
+        
+        svc.printSVs();
+        
         System.out.println("written ALL to "+outputAll.getAbsolutePath());
         System.out.println("written "+uniqueCounter+" UNIQUE to "+outputUnique.getAbsolutePath());
         System.out.println("written outputDiffFromZeroWriter to "+outputNonUnique.getAbsolutePath());
         
+        
+	}
+	private static SVType retrieveType(Allele one) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private static String getVFValues(List<Genotype> called) {
+		StringBuffer names = new StringBuffer();
+		String sep = " ";
+		for(Genotype gt: called) {
+			if(names.length()>0) {
+				names.append(sep);
+			}
+			String rpString = (String)gt.getExtendedAttribute("VF");
+			names.append(rpString);
+		}
+		return names.toString();
+	}
+
+	private static String getSampleNames(List<Genotype> called) {
+		StringBuffer names = new StringBuffer();
+		String sep = " ";
+		for(Genotype gt: called) {
+			if(names.length()>0) {
+				names.append(sep);
+			}
+			names.append(gt.getSampleName());
+		}
+		return names.toString();
 	}
 
 	private static int retrieveLoc(Allele one) {
@@ -430,7 +327,7 @@ public class GridssCall {
 		//should be char, char, digits
 		String part = s.substring(0, 2);
 		int index = 2;
-		while(Character.isDigit(s.charAt(index))) {
+		while(index<s.length() && Character.isDigit(s.charAt(index))) {
 			part+=s.charAt(index);
 			index++;
 		}
@@ -448,6 +345,10 @@ public class GridssCall {
 					return "N2";
 				}
 			}
+		}
+		//MMP hack
+		if(part.contains("VC")) {
+			return "VC";
 		}
 		//System.out.println(part);
 		return part;
@@ -475,6 +376,177 @@ public class GridssCall {
 			return "GC->CG";
 		}
 		return ref+"->"+alt;
+	}
+
+	@Override
+	public StructuralVariation parseStructuralVariation(VariantContext vc) {
+		//already remove SVs with low quality
+		if(vc.getFilters().contains("LOW_QUAL")) {
+			return null;
+		}
+		Location start = new Location(vc.getContig(),vc.getStart());
+		Allele high = vc.getAltAlleleWithHighestAlleleCount();
+		Location end = parseEnd(high);
+		if(end != null) {
+			//System.out.println("===");
+			//System.out.println(end);
+			//System.out.println("===");
+			
+			String typeSigns = obtainTypeSigns(high);
+			String insertReplacement = typeSigns.charAt(0)+end.toString()+typeSigns.charAt(1);
+			boolean altLeft = high.toString().indexOf(insertReplacement)==0;
+			String insert = high.toString().replace(insertReplacement, "");
+			//System.out.println("==");
+			//System.out.println(insert);
+			insert = obtainInsert(vc.getReference().getBaseString(),insert, altLeft);
+			//System.out.println("==");
+			//String insert = obtainInsert(vc.getReference().getBaseString(),high);
+			SVType type = null;
+			//System.out.println(typeSigns);
+			
+			//Determine the Type of the SV
+			if(start.onSameChromosome(end)) {
+				if(start.getPosition()<end.getPosition()) {
+					if(typeSigns.contentEquals("]]") && altLeft) {
+						if(insert==null) {
+							type = SVType.TD;
+						}
+						else {
+							type = SVType.TDINS;
+						}
+					}
+					else if(typeSigns.contentEquals("[[") && !altLeft) {
+						type = SVType.DEL;
+						if(insert==null) {
+							type = SVType.DEL;
+						}
+						else {
+							type = SVType.DELINS;
+						}
+					}
+					//is that an inversion??
+					else {
+						type = SVType.INV;
+					}
+					/*
+					else if(typeSigns.contentEquals("[[") && altLeft) {
+						if(insert==null) {
+							type = SVType.INV;
+						}
+						else {
+							type = SVType.INV;
+						}
+					}
+					else if(typeSigns.contentEquals("]]") && !altLeft) {
+						if(insert==null) {
+							type = SVType.INV;
+						}
+						else {
+							type = SVType.INV;
+						}
+					}
+					*/
+
+				}
+				else {
+					if(typeSigns.contentEquals("[[") && !altLeft) {
+						if(insert==null) {
+							type = SVType.TD;
+						}
+						else {
+							type = SVType.TDINS;
+						}
+					}
+					else if(typeSigns.contentEquals("]]") && altLeft) {
+						type = SVType.DEL;
+						if(insert==null) {
+							type = SVType.DEL;
+						}
+						else {
+							type = SVType.DELINS;
+						}
+					}
+					else {
+						type = SVType.INV;
+					}
+					
+				}
+			}
+			else {
+				type = SVType.TRANS;
+			}
+			StructuralVariation sv = new StructuralVariation(type,start,end, insert);
+			for(String name: vc.getSampleNamesOrderedByName()) {
+				Sample s = new Sample(name);
+				GridssCaller c = new GridssCaller(vc.getGenotype(name));
+				c.process();
+				s.addCall(c);
+				//s.setGt(vc.getGenotype(name));
+				sv.addSample(s);
+			}
+			
+			
+			if(sv.getStartEndLocation().contains("8997532")) {
+				//System.out.println(vc.toString());
+				//System.out.println(sv.toString());
+			}
+			
+			return sv;
+		}
+		return null;
+	}
+	private String obtainInsert(String refString, String insert, boolean altLeft) {
+		if(refString.contentEquals(insert)) {
+			return null;
+		}
+		if(!altLeft && insert.startsWith(refString)) {
+			return insert.substring(1);
+		}
+		else if(altLeft && insert.endsWith(refString)) {
+			return insert.substring(0, insert.length()-1);
+		}
+		System.err.println("Something I don't get yet");
+		System.err.println("ref: "+refString);
+		System.err.println("ins: "+insert);
+		return null;
+	}
+	private String obtainInsert(String refString, Allele high) {
+		System.out.println("====");
+		System.out.println(refString);
+		System.out.println(high);
+		System.out.println("====");
+		return null;
+	}
+	private String obtainTypeSigns(Allele high) {
+		String alleleString = high.toString();
+		//System.out.println(alleleString);
+		Pattern p = Pattern.compile("[\\[\\]]");
+		Matcher m = p.matcher(alleleString);
+		if(m.find()) {
+			String start = m.group();
+			if(m.find()) {
+				String end = m.group();
+				return start+end;
+			}
+		}
+		return null;
+	}
+	private Location parseEnd(Allele altAlleleWithHighestAlleleCount) {
+		String alleleString = altAlleleWithHighestAlleleCount.toString();
+		//System.out.println(altAlleleWithHighestAlleleCount);
+		Pattern p = Pattern.compile("[\\[\\]]");
+		Matcher m = p.matcher(alleleString);
+		if(m.find()) {
+			String start = m.group();
+			int startIndex = m.start()+1;
+			if(m.find()) {
+				String end = m.group();
+				int endIndex = m.start();
+				Location loc = Location.parse(alleleString.substring(startIndex, endIndex));
+				return loc;
+			}
+		}
+		return null;
 	}
 
 }
