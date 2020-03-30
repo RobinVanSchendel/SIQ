@@ -1,3 +1,5 @@
+import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -20,13 +22,26 @@ import java.util.List;
 import java.util.Scanner;
 
 import controller.PindelController;
+import controller.SVController;
+import data.GeneralCaller;
+import data.GridssCaller;
+import data.Location;
+import data.MantaCaller;
+import data.Sample;
+import data.StructuralVariation;
+import data.StructuralVariation.SVType;
 
 
-public class Manta {
+public class Manta extends GeneralCaller{
 
 	private static final int MINQG = 50;
+	
 
-	public static void main(String[] args) throws IOException {
+	public Manta(File vcf) {
+		this.vcf = vcf;
+	}
+
+	public static void test(String[] args) throws IOException {
 		//File vcf = new File("E:/Project_Genome_Scan_Brd_Rtel_Brc_RB873/multisample.final.vcf");
 		//File vcf = new File("E:/Project_TLS/20150928_combinevariants.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Hartwig\\LUMC-001-004\\Temp\\vcf\\mergeGVCF_output_filtered.g.vcf");
@@ -36,8 +51,24 @@ public class Manta {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
 		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
-		//File vcf = new File("E:\\temp\\diploidSV.vcf.gz");
-		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\Manta\\MMPdiploidSV.vcf.gz");
+		File genomeFile = new File("E:\\genomes\\caenorhabditis_elegans\\c_elegans.WS235.genomic.fa");
+		File vcf = new File("E:\\temp\\diploidSV.vcf.gz");
+		ReferenceSequenceFile rsf = ReferenceSequenceFileFactory.getReferenceSequenceFile(genomeFile);
+		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\Gridss\\gridss.vcf");
+		Manta manta = new Manta(vcf);
+		SVController svc = new SVController(rsf);
+		manta.parseFile(svc);
+		//svc.addMetaData();
+		int maxSupportingFiles = 2;
+		svc.printSVs(maxSupportingFiles);
+		System.exit(0);
+		
+		
+		
+		
+		
+		
+		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\Manta\\MMPdiploidSV.vcf.gz");
 		System.out.println(vcf.exists());
 		//cross check locations with SVs
 		File pindel = null; //new File("Z:\\Robin\\Project_Primase\\Paper\\project_primase_pindel.txt");
@@ -154,7 +185,7 @@ public class Manta {
     				*/
         		}
         	}
-        	if(nrCalles == 1) {
+        	if(nrCalles <= 1) {
         		//System.out.println(vc.toStringWithoutGenotypes());
     			//System.out.println(locationS+"\t"+locationE+"\t"+size+"\t"+assrValue+"\t"+last.getSampleName()+"\t"+vc.getAlleles());
     			System.out.println(last.getSampleName()+"\t"+locationS+"\t"+svType+"\t"+svLen+"\t"+last.getType()+"\t"+last.toString());
@@ -502,6 +533,153 @@ public class Manta {
 			return "GC->CG";
 		}
 		return ref+"->"+alt;
+	}
+
+	@Override
+	public StructuralVariation parseStructuralVariation(VariantContext vc) {
+		//System.out.println(vc);
+		StructuralVariation sv = null;
+		Location start = new Location(vc.getContig(),vc.getStart());
+    	//System.out.println(vc.toStringDecodeGenotypes());
+    	String svType = (String) vc.getAttribute("SVTYPE");
+    	String svLenString = ((String) vc.getAttribute("SVLEN"));
+    	int svLen = -1;
+    	if(svLenString != null) {
+    		svLen = Integer.parseInt(svLenString);
+    	}
+    	String svEndString = (String) vc.getAttribute("END");
+    	int svEnd = -1;
+    	Location end = null;
+    	if(svEndString != null) {
+    		svEnd = Integer.parseInt(svEndString);
+    		end = new Location(vc.getContig(),svEnd);
+    	}
+    	SVType type = getSVType(svType);
+    	if(type == SVType.TRANS) {
+    		Allele high = vc.getAltAlleleWithHighestAlleleCount();
+    		end = parseEnd(high);
+    		//actually it does not have to be a translocation at this point, merely a  bnd event
+    		String typeSigns = obtainTypeSigns(high);
+    		if(start.onSameChromosome(end)) {
+    			type = SVType.INV;
+    			if(start.getPosition()>end.getPosition()) {
+    				
+    			}
+    		}
+    	}
+    	if(type != null) {
+    		sv = new StructuralVariation(type, start, end);
+    	}
+    	else {
+   			System.err.println(end);
+    	}
+    	//prevent events that are called twice to be part of the output
+    	if(start.getPosition()>end.getPosition()) {
+    		return null;
+    	}
+    	if(start.getPosition()>11138647 && start.getPosition()<11138947) {
+    		//System.out.println("still here!");
+    	}
+    	
+    	
+    	//add insert
+    	sv.setInsert(obtainInsert(vc.getReference(),vc.getAltAlleleWithHighestAlleleCount()));
+    	
+    	//set inserts from attribute if present
+    	String insert = (String) vc.getAttribute("SVINSSEQ");
+    	if(insert != null) {
+    		sv.setInsert(insert);
+    	}
+    	
+    	//add Allele info for now
+    	sv.addAllele(vc.getAlleles());
+    	//System.out.println(vc);
+    	//System.out.println(sv);
+    	
+    	//add Sample info
+    	for(String name: vc.getSampleNamesOrderedByName()) {
+    		//System.out.println(name);
+			Sample s = new Sample(name);
+			MantaCaller m = new MantaCaller(vc.getGenotype(name));
+			m.process();
+			s.addCall(m);
+			//s.setGt(vc.getGenotype(name));
+			sv.addSample(s);
+		}
+    	/*
+    	if(sv.getStartEndLocation().contentEquals("CHROMOSOME_I:14034503-14387202")) {
+    		System.out.println(sv);
+    		System.out.println(vc);
+    		
+    	}
+    	*/
+    	if(start.getPosition()>11138647 && start.getPosition()<11138947) {
+    		//System.out.println(sv);
+    		//System.out.println("====");
+    	}
+    	
+		//System.exit(0);
+		return sv;
+	}
+
+	private String obtainInsert(Allele ref, Allele alt) {
+		String refString = ref.getBaseString();
+		String altString = alt.getBaseString();
+		if(altString.length() == 0 || refString.length() == 0) {
+			//System.err.println("Do not know how to handle this");
+			//System.err.println(ref);
+			//System.err.println(alt);
+			return null;
+		}
+		if(alt.length()>ref.length()) {
+			if(altString.charAt(0) == refString.charAt(0)) {
+				return altString.substring(1);
+			}
+		}
+		//DELINS?
+		else {
+			if(altString.charAt(0) == refString.charAt(0)) {
+				return altString.substring(1);
+			}
+		}
+		return null;
+		
+	}
+
+	private SVType getSVType(String type) {
+    	switch(type) {
+    		case "DEL":
+    			return SVType.DEL;
+    		case "DUP":
+    			return SVType.TD;
+    		case "INS":
+    			return SVType.SINS;
+    		case "BND":
+    			return SVType.TRANS;
+    		default:
+    			System.err.println("Don't know type "+type+" yet");
+    			return null;
+    	}
+	}
+
+	@Override
+	public void parseFile(SVController svc) {
+		VCFFileReader reader = new VCFFileReader(vcf, false);
+        CloseableIterator<VariantContext> it = reader.iterator();
+        while(it.hasNext()){
+        	VariantContext vc = it.next();
+        	StructuralVariation sv = this.parseStructuralVariation(vc);
+        	if(sv!=null) {
+        		svc.addSV(sv, getName());
+        		//add call details here
+        	}
+        }
+        reader.close();
+	}
+
+	@Override
+	public String getName() {
+		return MantaCaller.nameCaller;
 	}
 
 }

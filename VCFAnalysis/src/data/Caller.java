@@ -16,4 +16,5 @@ public abstract class Caller {
 	public abstract String getCaller();
 	
 	public abstract void process();
+	public abstract boolean supports();
 }

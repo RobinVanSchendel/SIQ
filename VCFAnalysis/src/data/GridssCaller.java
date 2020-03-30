@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.Genotype;
 
 public class GridssCaller extends Caller {
 	
-	public final String nameCaller = "GRIDSS";
+	public static final String nameCaller = "GRIDSS";
 	
 	public GridssCaller(Genotype genotype) {
 		super(genotype);
@@ -24,6 +24,13 @@ public class GridssCaller extends Caller {
 		}
 		// TODO Auto-generated method stub
 		
+	}
+	@Override
+	public boolean supports() {
+		if(gt!=null) {
+			return true;
+		}
+		return false;
 	}
 
 	

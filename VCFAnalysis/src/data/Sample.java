@@ -1,6 +1,7 @@
 package data;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 
 public class Sample {
@@ -25,13 +26,37 @@ public class Sample {
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
 		for(Caller call: calls) {
-			//sb.append(call.getCaller());
 			if(call.getGt() != null) {
 				sb.append(name);
-				sb.append(" ");
-				sb.append(call.getGt()).append("\t");
+				sb.append("["+call.getCaller()+"]");
+				sb.append("\t");
+				//sb.append(" ");
+				//sb.append(call.getGt()).append("\t");
 			}
 		}
 		return sb.toString();
+	}
+	public boolean isSupported() {
+		for(Caller call: calls) {
+			if(call.supports()) {
+				return true;
+			}
+		}
+		return false;
+	}
+	public ArrayList<String> getCallers() {
+		ArrayList<String> callers = new ArrayList<String>();
+		for(Caller call: calls) {
+			callers.add(call.getCaller());
+		}
+		return callers;
+	}
+	public boolean isSupported(String caller) {
+		for(Caller call: calls) {
+			if(call.getCaller().contentEquals(caller) && call.supports()) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

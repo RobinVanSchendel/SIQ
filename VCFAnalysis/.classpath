@@ -6,5 +6,16 @@
 	<classpathentry kind="lib" path="C:/javaLib/core-1.8.1.jar"/>
 	<classpathentry kind="lib" path="C:/javaLib/jillion-5.1.jar"/>
 	<classpathentry kind="src" path="/Joost_HPRT"/>
+	<classpathentry kind="lib" path="C:/javaLib/xmlbeans-3.1.0/lib/xmlbeans-3.1.0.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/xmlbeans-3.1.0/lib/xmlbeans-3.1.0-javadoc.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/xmlbeans-3.1.0/lib/xmlbeans-3.1.0-sources.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-examples-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-excelant-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-ooxml-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-ooxml-schemas-4.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-scratchpad-4.1.1.jar"/>
+	<classpathentry kind="src" path="/DNAToolAnalysis"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/TM_allele"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

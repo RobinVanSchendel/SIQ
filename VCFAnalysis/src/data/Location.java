@@ -1,6 +1,7 @@
 package data;
 
 public class Location {
+	private static final int NEIGHBOURHOOD = 50;
 	public String chr;
 	public int position;
 	
@@ -37,5 +38,14 @@ public class Location {
 			return end.position-this.position;
 		}
 		return -1;
+	}
+	public boolean isNeighbourHooud(Location start) {
+		if(this.onSameChromosome(start)) {
+			int dis = Math.abs(this.getPosition()-start.getPosition());
+			if(dis<NEIGHBOURHOOD) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

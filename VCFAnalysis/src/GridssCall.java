@@ -1,3 +1,5 @@
+import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -29,6 +31,7 @@ import data.Location;
 import data.Sample;
 import data.StructuralVariation;
 import data.StructuralVariation.SVType;
+import data.Utils;
 
 public class GridssCall extends GeneralCaller {
 
@@ -44,9 +47,8 @@ public class GridssCall extends GeneralCaller {
         while(it.hasNext()){
         	VariantContext vc = it.next();
         	StructuralVariation sv = this.parseStructuralVariation(vc);
-        	
         	if(sv!=null) {
-        		svc.addSV(sv);
+        		svc.addSV(sv, getName());
         		//add call details here
         	}
         }
@@ -54,7 +56,7 @@ public class GridssCall extends GeneralCaller {
 	}
 	
 
-	public static void main(String[] args) throws IOException{
+	public static void test(String[] args) throws IOException{
 		//File vcf = new File("E:/Project_Genome_Scan_Brd_Rtel_Brc_RB873/multisample.final.vcf");
 		//File vcf = new File("E:/Project_TLS/20150928_combinevariants.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Hartwig\\LUMC-001-004\\Temp\\vcf\\mergeGVCF_output_filtered.g.vcf");
@@ -64,12 +66,16 @@ public class GridssCall extends GeneralCaller {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
 		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
+		File genomeFile = new File("E:\\genomes\\caenorhabditis_elegans\\c_elegans.WS235.genomic.fa");
 		File vcf = new File("E:\\temp\\gridss.vcf");
+		ReferenceSequenceFile rsf = ReferenceSequenceFileFactory.getReferenceSequenceFile(genomeFile);
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\Gridss\\gridss.vcf");
 		GridssCall gc = new GridssCall(vcf);
-		SVController svc = new SVController();
+		SVController svc = new SVController(rsf);
 		gc.parseFile(svc);
-		svc.printSVs();
+		svc.addMetaData();
+		int maxSupportingFiles = 2;
+		svc.printSVs(maxSupportingFiles);
 		System.exit(0);
 		
 		//cross check locations with SVs
@@ -181,7 +187,7 @@ public class GridssCall extends GeneralCaller {
     			Location start = new Location(vc.getContig(),vc.getStart());
     			Location end = new Location(chrEnd,endLocation);
     			StructuralVariation sv = new StructuralVariation(type, start, end);
-    			svc.addSV(sv);
+    			svc.addSV(sv,"GRIDSS");
 	    		if(chrEnd.contentEquals(vc.getContig())) {
 	    			size = endLocation-vc.getStart();
 	    		}
@@ -384,6 +390,7 @@ public class GridssCall extends GeneralCaller {
 		if(vc.getFilters().contains("LOW_QUAL")) {
 			return null;
 		}
+		
 		Location start = new Location(vc.getContig(),vc.getStart());
 		Allele high = vc.getAltAlleleWithHighestAlleleCount();
 		Location end = parseEnd(high);
@@ -391,6 +398,10 @@ public class GridssCall extends GeneralCaller {
 			//System.out.println("===");
 			//System.out.println(end);
 			//System.out.println("===");
+			//get rid of the ones that are a double call
+			if(start.getPosition()>end.getPosition()) {
+				return null;
+			}
 			
 			String typeSigns = obtainTypeSigns(high);
 			String insertReplacement = typeSigns.charAt(0)+end.toString()+typeSigns.charAt(1);
@@ -448,6 +459,7 @@ public class GridssCall extends GeneralCaller {
 					*/
 
 				}
+				//start position past the begin position
 				else {
 					if(typeSigns.contentEquals("[[") && !altLeft) {
 						if(insert==null) {
@@ -466,8 +478,10 @@ public class GridssCall extends GeneralCaller {
 							type = SVType.DELINS;
 						}
 					}
+					//need to revcomplement the insert
 					else {
 						type = SVType.INV;
+						insert = Utils.reverseComplement(insert);
 					}
 					
 				}
@@ -476,7 +490,9 @@ public class GridssCall extends GeneralCaller {
 				type = SVType.TRANS;
 			}
 			StructuralVariation sv = new StructuralVariation(type,start,end, insert);
+			
 			for(String name: vc.getSampleNamesOrderedByName()) {
+				//System.out.println(name);
 				Sample s = new Sample(name);
 				GridssCaller c = new GridssCaller(vc.getGenotype(name));
 				c.process();
@@ -485,11 +501,12 @@ public class GridssCall extends GeneralCaller {
 				sv.addSample(s);
 			}
 			
-			
-			if(sv.getStartEndLocation().contains("8997532")) {
-				//System.out.println(vc.toString());
-				//System.out.println(sv.toString());
+			/*
+			if(sv.getStartEndLocation().contains("CHROMOSOME_III:829517-830738")) {
+				System.out.println(vc.toString());
+				System.out.println(sv.toString());
 			}
+			*/
 			
 			return sv;
 		}
@@ -510,43 +527,9 @@ public class GridssCall extends GeneralCaller {
 		System.err.println("ins: "+insert);
 		return null;
 	}
-	private String obtainInsert(String refString, Allele high) {
-		System.out.println("====");
-		System.out.println(refString);
-		System.out.println(high);
-		System.out.println("====");
-		return null;
+	
+	@Override
+	public String getName() {
+		return GridssCaller.nameCaller;
 	}
-	private String obtainTypeSigns(Allele high) {
-		String alleleString = high.toString();
-		//System.out.println(alleleString);
-		Pattern p = Pattern.compile("[\\[\\]]");
-		Matcher m = p.matcher(alleleString);
-		if(m.find()) {
-			String start = m.group();
-			if(m.find()) {
-				String end = m.group();
-				return start+end;
-			}
-		}
-		return null;
-	}
-	private Location parseEnd(Allele altAlleleWithHighestAlleleCount) {
-		String alleleString = altAlleleWithHighestAlleleCount.toString();
-		//System.out.println(altAlleleWithHighestAlleleCount);
-		Pattern p = Pattern.compile("[\\[\\]]");
-		Matcher m = p.matcher(alleleString);
-		if(m.find()) {
-			String start = m.group();
-			int startIndex = m.start()+1;
-			if(m.find()) {
-				String end = m.group();
-				int endIndex = m.start();
-				Location loc = Location.parse(alleleString.substring(startIndex, endIndex));
-				return loc;
-			}
-		}
-		return null;
-	}
-
 }
