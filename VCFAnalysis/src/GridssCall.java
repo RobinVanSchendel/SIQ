@@ -48,7 +48,7 @@ public class GridssCall extends GeneralCaller {
         	VariantContext vc = it.next();
         	StructuralVariation sv = this.parseStructuralVariation(vc);
         	if(sv!=null) {
-        		svc.addSV(sv, getName());
+        		svc.addSV(sv);
         		//add call details here
         	}
         }
@@ -186,8 +186,8 @@ public class GridssCall extends GeneralCaller {
     		if(chrEnd != null) {
     			Location start = new Location(vc.getContig(),vc.getStart());
     			Location end = new Location(chrEnd,endLocation);
-    			StructuralVariation sv = new StructuralVariation(type, start, end);
-    			svc.addSV(sv,"GRIDSS");
+    			StructuralVariation sv = new StructuralVariation(type, start, end,"GRIDSS");
+    			svc.addSV(sv);
 	    		if(chrEnd.contentEquals(vc.getContig())) {
 	    			size = endLocation-vc.getStart();
 	    		}
@@ -386,11 +386,11 @@ public class GridssCall extends GeneralCaller {
 
 	@Override
 	public StructuralVariation parseStructuralVariation(VariantContext vc) {
-		//already remove SVs with low quality
+		//already remove SVs with low quality that do not contain an assembly
 		if(vc.getFilters().contains("LOW_QUAL")) {
+			//System.out.println(vc.getFilters());
 			return null;
 		}
-		
 		Location start = new Location(vc.getContig(),vc.getStart());
 		Allele high = vc.getAltAlleleWithHighestAlleleCount();
 		Location end = parseEnd(high);
@@ -489,7 +489,8 @@ public class GridssCall extends GeneralCaller {
 			else {
 				type = SVType.TRANS;
 			}
-			StructuralVariation sv = new StructuralVariation(type,start,end, insert);
+			StructuralVariation sv = new StructuralVariation(type,start,end, getName());
+			sv.setInsert(insert);
 			
 			for(String name: vc.getSampleNamesOrderedByName()) {
 				//System.out.println(name);
@@ -500,11 +501,14 @@ public class GridssCall extends GeneralCaller {
 				//s.setGt(vc.getGenotype(name));
 				sv.addSample(s);
 			}
-			
 			/*
-			if(sv.getStartEndLocation().contains("CHROMOSOME_III:829517-830738")) {
+			if(sv.getStart().getPosition()>1330028 && sv.getStart().getPosition()<1330428) {
 				System.out.println(vc.toString());
-				System.out.println(sv.toString());
+				for(Genotype gt: vc.getGenotypes()) {
+					System.out.println(gt);
+				}
+				System.out.println(sv.toOneLineString(null));
+				System.exit(0);
 			}
 			*/
 			

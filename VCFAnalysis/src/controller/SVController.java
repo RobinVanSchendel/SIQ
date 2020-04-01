@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Set;
 
 import data.Sample;
 import data.StructuralVariation;
@@ -21,7 +22,7 @@ public class SVController {
 		this.rsf = rsf;
 	}
 	//only add SVs if they are not yet in
-	public void addSV(StructuralVariation sv, String caller) {
+	public void addSV(StructuralVariation sv) {
 		//change names if needed
 		for(Sample s: sv.getSamples()) {
 			s.setName(lookupName(s.getName()));
@@ -32,8 +33,8 @@ public class SVController {
 		}
 		
 		
-		if(!callers.contains(caller)) {
-			callers.add(caller);
+		if(!callers.contains(sv.getOrigCaller())) {
+			callers.add(sv.getOrigCaller());
 		}
 		if(callers.size()>1) {
 			checkForLocations = true;
@@ -42,21 +43,24 @@ public class SVController {
 		if(svs.containsKey(sv.getKey())) {
 			StructuralVariation svTemp = svs.get(sv.getKey());
 			//only stop if the callers match
-			if(svTemp.getCallers().contentEquals(caller)) {
+			if(svTemp.getCallers().contentEquals(sv.getOrigCaller())) {
 				return;
 			}
 		}
-		boolean inserted = insertSV(sv, caller);
+		boolean inserted = insertSV(sv);
 		//if(sv.getStartEndLocation().contentEquals("CHROMOSOME_II:967255-1050920")) {
 			//System.out.println("hier "+inserted);
 			//System.exit(0);
 		//}
 	}
 	private String getHeader() {
-		String header = StructuralVariation.getHeader(callers);
-		return header;
+		for(String key: svs.keySet()) {
+			StructuralVariation sv = svs.get(key);
+			return sv.getHeader(callers);
+		}
+		return null;
 	}
-	private boolean insertSV(StructuralVariation sv, String caller) {
+	private boolean insertSV(StructuralVariation sv) {
 		if(!checkForLocations) {
 			//System.out.println("Adding");
 			svs.put(sv.getKey(), sv);
@@ -69,7 +73,7 @@ public class SVController {
 			ArrayList<StructuralVariation> closest  = new ArrayList<StructuralVariation>();
 			for(String key: svs.keySet()) {
 				StructuralVariation svTemp = svs.get(key);
-				if(svTemp.inNeighbourhood(sv) && !svTemp.getCallers().contains(caller)) {
+				if(svTemp.inNeighbourhood(sv) && !svTemp.getCallers().contains(sv.getOrigCaller())) {
 					closest.add(svTemp);
 				}
 			}
@@ -112,10 +116,10 @@ public class SVController {
 		for(String key: svs.keySet()) {
 			StructuralVariation sv = svs.get(key);
 			
-			if(sv.getStartEndLocation().contentEquals("CHROMOSOME_V:11138746-11138835")) {
+			//if(sv.getStartEndLocation().contentEquals("CHROMOSOME_V:11138746-11138835")) {
 				//System.out.println("Filter");
 				//System.out.println("Filter "+sv.getNrSampleSupport());
-			}
+			//}
 			
 			int total = 0;
 			int max = 0;
@@ -139,6 +143,7 @@ public class SVController {
 				//System.out.println(sv.getNrFileSupport());
 			}
 		}
+		System.out.println(getHeader());
 		System.out.println("Printed "+counter+" events");
 	}
 	public void printSVs() {

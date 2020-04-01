@@ -18,8 +18,8 @@ public class GridssCaller extends Caller {
 	public void process() {
 		String rpString = (String)gt.getExtendedAttribute("VF");
 		double rp = Double.parseDouble(rpString);
-		//remove if nothing is there
-		if(rp == 0) {
+		//remove if nothing is there, or VF=1
+		if(rp <=1) {
 			this.gt = null;
 		}
 		// TODO Auto-generated method stub
@@ -32,6 +32,5 @@ public class GridssCaller extends Caller {
 		}
 		return false;
 	}
-
 	
 }

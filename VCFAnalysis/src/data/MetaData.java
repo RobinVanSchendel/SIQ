@@ -18,4 +18,13 @@ public class MetaData {
 	public void setValue(String value) {
 		this.value = value;
 	}
+	public void setValue(int value) {
+		this.value = ""+value;
+	}
+	public void setValue(boolean value) {
+		this.value = ""+value;
+	}
+	public void setValue(double max) {
+		this.value = ""+max;
+	}
 }

@@ -32,19 +32,19 @@ public class SNVCall {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\20190313_gvcf_brc-1_project.genotyped.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20190920_gvcf_LUMC-003-001_worms_filtered.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20190920_gvcf_LUMC-003-001_arab_filtered.vcf");
-		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
+		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
-		File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
+		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20200403_gvcf_LUMC-003-001_arab_filtered.vcf");
 		//cross check locations with SVs
-		File pindel = new File("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\NGS data\\Pindel_Analysis.txt");
+		//File pindel = new File("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\NGS data\\Pindel_Analysis.txt");
 		Scanner scan = new Scanner(new File("printToVCF.txt"));
 		ArrayList<String> locs = new ArrayList<String>();
 		while(scan.hasNext()) {
 			String line = scan.nextLine();
 			locs.add(line);
 		}
-		//File pindel = null;
+		File pindel = null;
 		PindelController pc = new PindelController(pindel);
 		boolean excludeINVandTD = true;
 		
@@ -88,7 +88,9 @@ public class SNVCall {
         	VariantContext vc = it.next();
         	//only SNPs at the moment!
         	if(!vc.isSNP()) {
+        		System.out.println(vc);
         		continue;
+        		
         	}
         	String locationS = vc.getContig()+":"+vc.getStart()+"-"+vc.getEnd()+"["+vc.getReference()+"]";
         	if(locs.contains(locationS)) {

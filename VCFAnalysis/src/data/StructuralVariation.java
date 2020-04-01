@@ -3,6 +3,8 @@ package data;
 import java.util.ArrayList;
 import java.util.List;
 
+import dnaanalysis.InsertionSolverTwoSides;
+import dnaanalysis.RandomInsertionSolverTwoSides;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.Allele;
 
@@ -15,42 +17,144 @@ public class StructuralVariation {
 	private ArrayList<MetaData> metadata;
 	private List<Allele> alleles;
 	private String info;
+	private String origCaller;
 	
-	public StructuralVariation(SVType type, Location start, Location end) {
+	public StructuralVariation(SVType type, Location start, Location end, String caller) {
 		setType(type);
 		setStart(start);
 		setEnd(end);
 		checkLeftRight();
+		if(caller==null) {
+			System.err.println("caller can not be null");
+			System.exit(0);
+		}
+		this.origCaller = caller;
 	}
 	public void addMetaData(ReferenceSequenceFile rsf) {
 		metadata = new ArrayList<MetaData>();
 		setHomology(rsf);
+		//maybe these should be configurable??
+		int sizeOutDel = 50;
+		int sizeInDel = 50;
+		setFlankInsert(rsf, 5, sizeInDel, sizeOutDel);
+		setHighestGriddCall();
 	}
 	
+	private void setHighestGriddCall() {
+		MetaData vf = new MetaData("GRIDSS_MAX_VF");
+		double max = 0;
+		for(Sample s: samples) {
+			Caller c = s.getCaller(GridssCaller.nameCaller);
+			if(c!= null && c.getGt()!= null) {
+				String rpString = (String)c.getGt().getExtendedAttribute("VF");
+				double rp = Double.parseDouble(rpString);
+				if(rp>max) {
+					max = rp;
+				}
+			}
+		}
+		vf.setValue(max);
+		metadata.add(vf);
+	}
+	private void setFlankInsert(ReferenceSequenceFile rsf, int minSize, int sizeInDel, int sizeOutDel) {
+		MetaData flankInsert = new MetaData("FlankInsert");
+		MetaData flankInsertLM = new MetaData("FlankInsertLargestMatch");
+		
+		if(this.getType()==SVType.DELINS || this.getType()==SVType.SINS || this.getType()==SVType.TDINS) {
+			if(this.getInsert().length()>=minSize && (!this.getInsert().contains("n") && !this.getInsert().contains("N"))) {
+				int startLeft = getStart().getPosition()-sizeOutDel;
+				int endLeft = getStart().getPosition()+sizeInDel;
+				String left = rsf.getSubsequenceAt(getStart().getChr(),startLeft,endLeft).getBaseString();
+				
+				int startRight = getEnd().getPosition()-sizeInDel;
+				int endRight = getEnd().getPosition()+sizeOutDel;
+				//safety
+				if(endRight>=rsf.getSequence(getStart().getChr()).length()) {
+					endRight = rsf.getSequence(getStart().getChr()).length()-1;
+				}
+				String right = rsf.getSubsequenceAt(getStart().getChr(),startRight,endRight).getBaseString();
+				
+				InsertionSolverTwoSides is = new InsertionSolverTwoSides(left, right,this.getInsert(),this.getStartEndLocation());
+				is.setAdjustedPositionLeft(-sizeInDel);		
+				is.setAdjustedPositionRight(-sizeInDel);
+				//search both directions
+				is.search(true, true);
+				//change this?
+				is.setMaxTriesSolved(2);
+				//set at 5
+				is.setMinimumMatch(minSize-1, false);
+				is.solveInsertion();
+				//this.is = is;
+				//now determine if this is random or not
+				//one peculiar thing is if the flanks overlap it is not quite fair anymore
+				if( endLeft > startRight) {
+					//System.out.println(endLeft);
+					//System.out.println(startRight);
+					int tooLarge = endLeft-startRight;
+					//System.out.println(tooLarge);
+					//System.out.println(right.length());
+					int cut = tooLarge/2;
+					right = right.substring(cut);
+					left = left.substring(0, left.length()-cut);
+				}
+				
+				RandomInsertionSolverTwoSides ris = new RandomInsertionSolverTwoSides(left,right, this.getInsert());
+				flankInsert.setValue(ris.isNonRandomInsert(0.9, is.getLargestMatch()));
+				flankInsertLM.setValue(is.getLargestMatchString());
+			}
+			//this.isFlankInsert = ris.isNonRandomInsert(0.9, is.getLargestMatch());
+		}
+		metadata.add(flankInsert);
+		metadata.add(flankInsertLM);
+	}
 	private void setHomology(ReferenceSequenceFile rsf) {
-		//no yet implemented
-		/*
-		MetaData hom = new MetaData("homology");
+		MetaData hom = new MetaData("Homology");
+		MetaData homLength = new MetaData("HomologyLength");
 		if(type == SVType.DEL || type == SVType.DEL) {
 			int delStart = start.getPosition();
 			int delEnd = end.getPosition();
-			String del = rsf.getSubsequenceAt(start.getChr(), delStart, delEnd).getBaseString();
-			String left = rsf.getSubsequenceAt(start.getChr(),start.getPosition()-50, start.getPosition()).getBaseString();
-			String right = rsf.getSubsequenceAt(start.getChr(),end.getPosition(), end.getPosition()+50).getBaseString();
-			if(getSize()==1222) {
-				System.out.println(del);
-				System.out.println(left);
-				System.out.println(right);
-				System.out.println(this);
-				System.exit(0);
+			String del = null, left = null, right = null;
+			if(this.origCaller.contentEquals("Pindel")){
+				del = rsf.getSubsequenceAt(start.getChr(), delStart, delEnd-1).getBaseString();
+				left = rsf.getSubsequenceAt(start.getChr(),delStart-50, delStart-1).getBaseString();
+				right = rsf.getSubsequenceAt(start.getChr(),delEnd, delEnd+50-1).getBaseString();
 			}
+			//normal VCF behaviour
+			else {
+				int delStartCorr = delStart+1;
+				del = rsf.getSubsequenceAt(start.getChr(), delStartCorr, delEnd-1).getBaseString();
+				left = rsf.getSubsequenceAt(start.getChr(),delStartCorr-50, delStartCorr-1).getBaseString();
+				right = rsf.getSubsequenceAt(start.getChr(),delEnd, delEnd+50-1).getBaseString();
+			}
+			//System.out.println(left);
+			//System.out.println(del);
+			//System.out.println(right);
+			String homology = Utils.getHomology(left, del, right);
+			/*
+			if(this.getStart().getPosition()> 12045000 && getStart().getPosition()<12046000) {
+				System.out.println(start.getPosition());
+				System.out.println(end.getPosition());
+				System.out.println(left);
+				System.out.println(del.length()+" "+del);
+				System.out.println(right);
+				System.out.println(homology);
+				//System.out.println(left.length());
+				String total = left+del+right;
+				String largeSub = rsf.getSubsequenceAt(start.getChr(),delStart-100, delEnd+100).getBaseString();
+				System.out.println(largeSub.contains(total));
+				System.out.println(largeSub);
+				System.out.println(this);
+				//System.exit(0);
+			}
+			*/
+			hom.setValue(homology);
 		}
+		if(hom.getValue()==null) {
+			hom.setValue("");
+		}
+		homLength.setValue(hom.getValue().length());
 		metadata.add(hom);
-		*/
-	}
-	public StructuralVariation(SVType type, Location start, Location end, String insert) {
-		this(type, start, end);
-		setInsert(insert);
+		metadata.add(homLength);
 	}
 
 	public void setInsert(String insert) {
@@ -94,6 +198,9 @@ public class StructuralVariation {
 	public void setEnd(Location end) {
 		this.end = end;
 	}
+	public String toOneLineString() {
+		return toOneLineString(null);
+	}
 	public String toOneLineString(ArrayList<String> callers) {
 		StringBuffer sb = new StringBuffer();
 		String sep = "\t";
@@ -102,10 +209,17 @@ public class StructuralVariation {
 		sb.append(getStartEndLocation(0.2)).append(sep);
 		sb.append(getSize()).append(sep);
 		sb.append(getInsert()).append(sep);
+		if(metadata!=null) {
+			for(MetaData md: metadata) {
+				sb.append(md.getValue()).append(sep);
+			}
+		}
 		sb.append(info).append(sep);
 		//sb.append(alleles).append(sep);
-		for(String caller: callers) {
-			sb.append(getSupportedSamplesString(caller)).append(sep);
+		if(callers!=null) {
+			for(String caller: callers) {
+				sb.append(getSupportedSamplesString(caller)).append(sep);
+			}
 		}
 		/*
 		if(samples!=null) {
@@ -146,7 +260,18 @@ public class StructuralVariation {
 
 	private int getSize() {
 		if(start.onSameChromosome(end)) {
-			return end.getPosition()-start.getPosition()+1;
+			if(this.origCaller.contentEquals("Pindel")) {
+				return end.getPosition()-start.getPosition();
+			}
+			else {
+				//if(this.type == SVType.DEL || type == SVType.DELINS) {
+				//not so sure if this is correct for all
+					return end.getPosition()-start.getPosition()-1;
+				//}
+				//else {
+				//	return end.getPosition()-start.getPosition();
+				//}
+			}
 		}
 		return -1;
 	}
@@ -256,8 +381,13 @@ public class StructuralVariation {
 	public void setCallerString(String totalString) {
 		this.info = totalString;
 	}
-	public static String getHeader(ArrayList<String> callers) {
+	public String getHeader(ArrayList<String> callers) {
 		String head =  "Type\tlocation\tIGVLocation\tSize\tInsert";
+		if(metadata != null) {
+			for(MetaData md: metadata) {
+				head+="\t"+md.getName();
+			}
+		}
 		for(String caller: callers) {
 			head+="\t"+caller;
 		}
@@ -266,6 +396,7 @@ public class StructuralVariation {
 		}
 		return head;
 	}
-	
-	 
+	public String getOrigCaller() {
+		return origCaller;
+	}
 }

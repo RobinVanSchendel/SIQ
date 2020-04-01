@@ -59,4 +59,12 @@ public class Sample {
 		}
 		return false;
 	}
+	public Caller getCaller(String namecaller) {
+		for(Caller call: calls) {
+			if(call.getCaller().contentEquals(namecaller)){
+				return call;
+			}
+		}
+		return null;
+	}
 }

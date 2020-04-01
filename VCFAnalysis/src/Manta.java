@@ -568,7 +568,7 @@ public class Manta extends GeneralCaller{
     		}
     	}
     	if(type != null) {
-    		sv = new StructuralVariation(type, start, end);
+    		sv = new StructuralVariation(type, start, end, getName());
     	}
     	else {
    			System.err.println(end);
@@ -670,7 +670,7 @@ public class Manta extends GeneralCaller{
         	VariantContext vc = it.next();
         	StructuralVariation sv = this.parseStructuralVariation(vc);
         	if(sv!=null) {
-        		svc.addSV(sv, getName());
+        		svc.addSV(sv);
         		//add call details here
         	}
         }
