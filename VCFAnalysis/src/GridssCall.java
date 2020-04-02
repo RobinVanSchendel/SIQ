@@ -44,18 +44,20 @@ public class GridssCall extends GeneralCaller {
 	public void parseFile(SVController svc) {
 		VCFFileReader reader = new VCFFileReader(vcf, false);
         CloseableIterator<VariantContext> it = reader.iterator();
+        int counter = 0;
         while(it.hasNext()){
         	VariantContext vc = it.next();
         	StructuralVariation sv = this.parseStructuralVariation(vc);
         	if(sv!=null) {
         		svc.addSV(sv);
+        		counter++;
         		//add call details here
         	}
         }
         reader.close();
 	}
 	
-
+	/*
 	public static void test(String[] args) throws IOException{
 		//File vcf = new File("E:/Project_Genome_Scan_Brd_Rtel_Brc_RB873/multisample.final.vcf");
 		//File vcf = new File("E:/Project_TLS/20150928_combinevariants.vcf");
@@ -71,9 +73,9 @@ public class GridssCall extends GeneralCaller {
 		ReferenceSequenceFile rsf = ReferenceSequenceFileFactory.getReferenceSequenceFile(genomeFile);
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\Gridss\\gridss.vcf");
 		GridssCall gc = new GridssCall(vcf);
-		SVController svc = new SVController(rsf);
+		//SVController svc = new SVController(rsf, 2);
 		gc.parseFile(svc);
-		svc.addMetaData();
+		//svc.addMetaData();
 		int maxSupportingFiles = 2;
 		svc.printSVs(maxSupportingFiles);
 		System.exit(0);
@@ -145,7 +147,6 @@ public class GridssCall extends GeneralCaller {
         		System.out.println(vc.getAlleles());
         		System.exit(0);
         	}
-        	*/
         	
         	//System.out.println(key);
     		int nrCalls = 0;
@@ -178,7 +179,6 @@ public class GridssCall extends GeneralCaller {
         	System.out.println(vc.getAlleles());
         	System.out.println("===");
         	System.out.println(one);
-        	*/
     		String chrEnd = retrieveChr(one);
     		int endLocation = retrieveLoc(one);
     		StructuralVariation.SVType type = retrieveType(one);
@@ -229,6 +229,7 @@ public class GridssCall extends GeneralCaller {
         
         
 	}
+	*/
 	private static SVType retrieveType(Allele one) {
 		// TODO Auto-generated method stub
 		return null;

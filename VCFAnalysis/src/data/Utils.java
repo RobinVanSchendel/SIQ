@@ -1,5 +1,7 @@
 package data;
 
+import java.util.ArrayList;
+
 public class Utils {
 	public static String reverseComplement(String dna){
 		if(dna==null) {
@@ -89,6 +91,17 @@ public class Utils {
 		String ret = leftHom+rightHom;
 		if(ret.length()> del.length()){
 			ret = del;
+		}
+		return ret;
+	}
+
+	public static String toString(ArrayList<String> support, String delim) {
+		String ret = "";
+		for(String s: support) {
+			if(ret.length()>0) {
+				ret+=delim;
+			}
+			ret+=s;
 		}
 		return ret;
 	}

@@ -25,6 +25,17 @@ public class GATKCall extends GeneralCaller{
 		if(vc.isSNP()) {
 			return null;
 		}
+		if(vc.getStart()>(2335976-100) && vc.getStart()<(2335976+100)) {
+			System.out.println(vc);
+			for(Genotype gt: vc.getGenotypes()) {
+				System.out.println(gt);
+				System.out.println(gt.isHomVar());
+				System.out.println(gt.isHet());
+				System.out.println(gt.isHomRef());
+				System.out.println(gt.getAnyAttribute("AD"));
+			}
+			//System.exit(0);
+		}
 		Location start = new Location(vc.getContig(),vc.getStart());
 		int alleles = vc.getAlleles().size();
 		//for now only 2 alleles are supported
@@ -51,6 +62,7 @@ public class GATKCall extends GeneralCaller{
 	   		}
 	   		Location end = new Location(vc.getContig(), endPos);
 	   		StructuralVariation sv = new StructuralVariation(type, start, end, getName());
+	   		sv.setInsert(insert);
 	   		//System.out.println(sv.toOneLineString(null));
 	   		//System.out.println("====");
 	   		//System.out.println(vc);
@@ -66,9 +78,17 @@ public class GATKCall extends GeneralCaller{
 				
 				//System.out.println(vc.getGenotype(name));
 			}
+	   		/*
+	   		if(vc.getStart()>(4031236-100) && vc.getStart()<(4031236+100)) {
+				System.out.println(sv.toOneLineString());
+				System.out.println(sv.getNrSampleSupport());
+				
+				System.exit(0);
+			}
+			*/
 	   		//System.exit(0);
 	   		/*
-	   		if(sv.getStartEndLocation().contentEquals("CHROMOSOME_IV:8574863-8575105")) {
+	   		if(sv.getStartEndLocation().contentEquals("CHROMOSOME_III:1330238-1330274")) {
 	   			System.out.println(vc);
 	   			System.out.println(sv.toOneLineString(null));
 	   			for(Genotype gt: vc.getGenotypes()) {
@@ -76,7 +96,7 @@ public class GATKCall extends GeneralCaller{
 	   				System.out.println(gt.isHomVar());
 	   				System.out.println(gt.isHet());
 	   			}
-	   			System.exit(0);
+	   			//System.exit(0);
 	   		}
 	   		*/
 	   		
@@ -139,7 +159,7 @@ public class GATKCall extends GeneralCaller{
         	}
         	counter++;
         }
-        System.out.println(counter+" added: "+added);
+        System.out.println("Added "+added);
         reader.close();
 	}
 

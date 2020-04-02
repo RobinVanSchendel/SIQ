@@ -18,6 +18,7 @@ public class StructuralVariation {
 	private List<Allele> alleles;
 	private String info;
 	private String origCaller;
+	private boolean neigbourhood = false;
 	
 	public StructuralVariation(SVType type, Location start, Location end, String caller) {
 		setType(type);
@@ -34,12 +35,45 @@ public class StructuralVariation {
 		metadata = new ArrayList<MetaData>();
 		setHomology(rsf);
 		//maybe these should be configurable??
-		int sizeOutDel = 50;
-		int sizeInDel = 50;
+		int sizeOutDel = 40;
+		int sizeInDel = 10;
 		setFlankInsert(rsf, 5, sizeInDel, sizeOutDel);
 		setHighestGriddCall();
+		setADCallGATK();
+		setHetCallGATK();
 	}
 	
+	private void setHetCallGATK() {
+		MetaData vf = new MetaData("GATK_HETCall");
+		boolean het = false;
+		for(Sample s: samples) {
+			Caller c = s.getCaller(GATKCaller.nameCaller);
+			if(c!= null && c.getGt()!= null) {
+				if(c.getGt().isHet()) {
+					het = true;
+					break;
+				}
+			}	
+		}
+		vf.setValue(het);
+		metadata.add(vf);
+	}
+	private void setADCallGATK() {
+		MetaData vf = new MetaData("GATK_AD_FOR_HETCall");
+		String af = "";
+		for(Sample s: samples) {
+			Caller c = s.getCaller(GATKCaller.nameCaller);
+			if(c!= null && c.getGt()!= null) {
+				ArrayList<Integer> adArr = (ArrayList<Integer>) c.getGt().getAnyAttribute("AD");
+				if(af.length()>0) {
+					af+="|";
+				}
+				af+=adArr;
+			}
+		}
+		vf.setValue(af);
+		metadata.add(vf);
+	}
 	private void setHighestGriddCall() {
 		MetaData vf = new MetaData("GRIDSS_MAX_VF");
 		double max = 0;
@@ -205,6 +239,7 @@ public class StructuralVariation {
 		StringBuffer sb = new StringBuffer();
 		String sep = "\t";
 		sb.append(type).append(sep);
+		sb.append(origCaller).append(sep);
 		sb.append(getStartEndLocation()).append(sep);
 		sb.append(getStartEndLocation(0.2)).append(sep);
 		sb.append(getSize()).append(sep);
@@ -221,6 +256,9 @@ public class StructuralVariation {
 				sb.append(getSupportedSamplesString(caller)).append(sep);
 			}
 		}
+		sb.append(getConsensusSample(callers)).append(sep);
+		sb.append(getConsensusGroup(callers)).append(sep);
+		sb.append(neigbourhood);
 		/*
 		if(samples!=null) {
 			for(Sample s: samples) {
@@ -231,6 +269,39 @@ public class StructuralVariation {
 		return sb.toString();
 	}
 	
+	private String getConsensusSample(ArrayList<String> callers) {
+		ArrayList<String> samplesA = new ArrayList<String>();
+		if(callers == null) {
+			return null;
+		}
+		for(String caller: callers) {
+			String samples = getSupportedSamplesString(caller);
+			if(samples!=null && samples.length()>0) {
+				for(String sampl: samples.split(" ")) {
+					if(!samplesA.contains(sampl)) {
+						samplesA.add(sampl);
+						//System.out.println(samples+"["+sampl+"]");
+					}
+				}
+			}
+		}
+		String ret = "";
+		for(String s: samplesA) {
+			if(ret.length()>0) {
+				ret+= " ";
+			}
+			ret+=s;
+		}
+		return ret;
+	}
+	private String getConsensusGroup(ArrayList<String> callers) {
+		String sample = getConsensusSample(callers);
+		if(sample!=null) {
+			sample = sample.replaceAll("-", "_");
+			return sample.split("_")[0];
+		}
+		return null;
+	}
 	private String getSupportedSamplesString(String caller) {
 		String ret = "";
 		for(Sample s: samples) {
@@ -260,6 +331,9 @@ public class StructuralVariation {
 
 	private int getSize() {
 		if(start.onSameChromosome(end)) {
+			if(this.type == SVType.SINS) {
+				return insert.length();
+			}
 			if(this.origCaller.contentEquals("Pindel")) {
 				return end.getPosition()-start.getPosition();
 			}
@@ -382,7 +456,7 @@ public class StructuralVariation {
 		this.info = totalString;
 	}
 	public String getHeader(ArrayList<String> callers) {
-		String head =  "Type\tlocation\tIGVLocation\tSize\tInsert";
+		String head =  "Type\torigCaller\tlocation\tIGVLocation\tSize\tInsert";
 		if(metadata != null) {
 			for(MetaData md: metadata) {
 				head+="\t"+md.getName();
@@ -391,12 +465,29 @@ public class StructuralVariation {
 		for(String caller: callers) {
 			head+="\t"+caller;
 		}
+		head+="\t#CallersCalled";
 		for(String caller: callers) {
 			head+="\tSample"+caller;
 		}
+		head+="\tconsensusSample\tsampleGroup\tneighbourhood";
 		return head;
 	}
 	public String getOrigCaller() {
 		return origCaller;
+	}
+	public void setInNeighbourhood(boolean b) {
+		this.neigbourhood  = b;
+		
+	}
+	public String getSupportingSamples() {
+		ArrayList<String> support = new ArrayList<String>();
+		for(Sample s: samples) {
+			for(Caller c: s.getCall()) {
+				if(c.supports() && !support.contains(s.getName())) {
+					support.add(s.getName());
+				}
+			}
+		}
+		return Utils.toString(support," ");
 	}
 }

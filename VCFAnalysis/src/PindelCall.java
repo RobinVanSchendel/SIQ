@@ -40,10 +40,9 @@ public class PindelCall extends GeneralCaller{
 		else {
 			System.err.println("Not implemented yet");
 		}
-		
 	}
 
-	private void parseFileExcel(SVController svc) {
+	private int parseFileExcel(SVController svc) {
 		 Workbook workbook = null;
 			try {
 				workbook = WorkbookFactory.create(this.vcf);
@@ -104,6 +103,7 @@ public class PindelCall extends GeneralCaller{
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+	        return counter;
 	}
 
 	private SVType getSVType(String type) {

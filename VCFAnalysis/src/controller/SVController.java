@@ -16,13 +16,29 @@ public class SVController {
 	private ReferenceSequenceFile rsf;
 	private ArrayList<String> callers = new ArrayList<String>();
 	private boolean checkForLocations = false;
+	private int maxSupportingSamples;
 	private HashMap<String, String> names = new HashMap<String, String>();
+	private int debugLocation = -1;
 	
-	public SVController(ReferenceSequenceFile rsf) {
+	public SVController(ReferenceSequenceFile rsf, int maxSupportingSamples) {
 		this.rsf = rsf;
+		this.maxSupportingSamples = maxSupportingSamples;
 	}
 	//only add SVs if they are not yet in
 	public void addSV(StructuralVariation sv) {
+		if(debugLocation >0 && sv.getStart().getPosition()>(debugLocation-100) && sv.getStart().getPosition()<(debugLocation+100)) {
+			System.out.println("DEBUG");
+			System.out.println(sv.toOneLineString());
+			System.out.println("Supports "+sv.getNrSampleSupport());
+			System.out.println("Supports "+sv.getSupportingSamples());
+			System.out.println("END DEBUG");
+		}
+		//check if not too many support
+		int support = sv.getNrSampleSupport();
+		if(support==0 || sv.getNrSampleSupport()>maxSupportingSamples) {
+			return;
+		}
+		
 		//change names if needed
 		for(Sample s: sv.getSamples()) {
 			s.setName(lookupName(s.getName()));
@@ -61,6 +77,11 @@ public class SVController {
 		return null;
 	}
 	private boolean insertSV(StructuralVariation sv) {
+		/*
+		if(sv.getStart().getPosition()>(7758914-100) && sv.getStart().getPosition()<(7758914+100)) {
+			System.out.println(sv.toOneLineString());
+		}
+		*/
 		if(!checkForLocations) {
 			//System.out.println("Adding");
 			svs.put(sv.getKey(), sv);
@@ -84,14 +105,24 @@ public class SVController {
 					return false;
 				}
 				else {
+					//pick the same type
+					ArrayList<StructuralVariation> typeSame = new ArrayList<StructuralVariation>();
 					for(StructuralVariation close : closest) {
-						//System.out.println(close);
-						
+						if(close.getType().equals(sv.getType())) {
+							typeSame.add(close);
+						}
+						//System.out.println(close.toOneLineString());
 					}
-					//System.out.println("====");
-					//System.out.println(sv);
-					//System.out.println("======");
-					//System.exit(0);
+					if(typeSame.size()==1) {
+						typeSame.get(0).merge(sv);
+					}
+					//now don't know what to do yet
+					else {
+						//System.out.println("====");
+						//System.out.println(sv.toOneLineString());
+						//System.out.println("======");
+						//System.exit(0);
+					}
 				}
 			}
 			if(!added) {
@@ -105,10 +136,31 @@ public class SVController {
 		return svs.size();
 	}
 	public void addMetaData() {
+		System.out.println("Adding metadata "+svs.size() );
+		int counter = 0;
 		for(String key: svs.keySet()) {
 			svs.get(key).addMetaData(rsf);
+			if(counter%1000==0) {
+				System.out.println("Already processed "+counter+ " keys");
+			}
+			counter++;
+		}
+		System.out.println("Done adding metadata");
+		//add vicinityInfo
+		for(String key: svs.keySet()) {
+			StructuralVariation sv = svs.get(key);
+			for(String key2: svs.keySet()) {
+				if(!key.contentEquals(key2)) {
+					StructuralVariation sv2 = svs.get(key2);
+					if(sv.inNeighbourhood(sv2)) {
+						sv.setInNeighbourhood(true);
+						sv2.setInNeighbourhood(true);
+					}
+				}
+			}
 		}
 	}
+	
 	
 	public void printSVs(int maxSupportingFiles) {
 		System.out.println(getHeader());
@@ -137,13 +189,12 @@ public class SVController {
 			}
 			
 			if(total>0 && max<=maxSupportingFiles) {
-				sv.setCallerString(totalString);
+				sv.setCallerString(totalString+"\t"+total);
 				System.out.println(sv.toOneLineString(callers));
 				counter++;
 				//System.out.println(sv.getNrFileSupport());
 			}
 		}
-		System.out.println(getHeader());
 		System.out.println("Printed "+counter+" events");
 	}
 	public void printSVs() {
@@ -160,11 +211,47 @@ public class SVController {
 			String[] parts = line.split("\t");
 			names.put(parts[0],parts[1]);
 		}
+		s.close();
 	}
 	public String lookupName(String name) {
 		if(names.containsKey(name)) {
 			return names.get(name);
 		}
 		return name;
+	}
+	public void setDebugLocation(int debugLocation) {
+		this.debugLocation = debugLocation;
+		
+	}
+	public void printLocations(File locs) {
+		try {
+			Scanner s = new Scanner(locs);
+			System.out.println(getHeader());
+			while(s.hasNextLine()) {
+				String line = s.nextLine();
+				for(String key: svs.keySet()) {
+					StructuralVariation sv = svs.get(key);
+					if(sv.getStartEndLocation().contentEquals(line)) {
+						String totalString = "";
+						int total = 0;
+						for(String caller: callers) {
+							int nrFileSupports = sv.getNrSampleSupport(caller);
+							if(totalString.length()>0) {
+								totalString+="\t";
+							}
+							totalString+=nrFileSupports;
+							total += nrFileSupports;
+						}
+						sv.setCallerString(totalString+"\t"+total);
+						System.out.println(sv.toOneLineString(callers));
+					}
+				}
+			}
+			s.close();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 }
