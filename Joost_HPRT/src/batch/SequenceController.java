@@ -108,7 +108,7 @@ public class SequenceController {
 		System.out.println("Found "+ab1s.size()+" FASTQ files");
 		int fileNr = 1;
 		SequenceFileThread sft = null;
-		Subject subjectObject = new Subject(subject,options.getLeftFlank(),options.getRightFlank());
+		Subject subjectObject = new Subject(subject,options.getLeftFlank(),options.getRightFlank(), true);
 		subjectObject.setLeftPrimer(options.getLeftPrimer());
 		subjectObject.setRightPrimer(options.getRightPrimer());
 		subjectObject.setMinPassedPrimer(options.getMinPassedPrimer());

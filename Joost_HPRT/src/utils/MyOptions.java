@@ -143,10 +143,16 @@ public class MyOptions {
 		return cmd.getOptionValue("infile");
 	}
 	public File getSingleFileF() {
-		return new File(cmd.getOptionValue("infileF"));
+		if(cmd.hasOption("infileF")) {
+			return new File(cmd.getOptionValue("infileF"));
+		}
+		return null;
 	}
 	public File getSingleFileR() {
-		return new File(cmd.getOptionValue("infileR"));
+		if(cmd.hasOption("infileR")) {
+			return new File(cmd.getOptionValue("infileR"));
+		}
+		return null;
 	}
 	public String getSubject() {
 		return cmd.getOptionValue("subject");

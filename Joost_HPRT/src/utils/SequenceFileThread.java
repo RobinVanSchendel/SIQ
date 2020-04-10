@@ -115,6 +115,8 @@ public class SequenceFileThread implements Runnable {
 		AtomicInteger counterFR = new AtomicInteger(0);
 		AtomicInteger wrong = new AtomicInteger(0);
 		AtomicInteger wrongPosition = new AtomicInteger(0);
+		AtomicInteger wrongPositionL = new AtomicInteger(0);
+		AtomicInteger wrongPositionR = new AtomicInteger(0);
 		AtomicInteger correctPositionFR = new AtomicInteger(0);
 		AtomicInteger correctPositionFRassembled = new AtomicInteger(0);
 		AtomicInteger badQual = new AtomicInteger(0);
@@ -227,7 +229,6 @@ public class SequenceFileThread implements Runnable {
 					checkReverse = true;
 				}
 				CompareSequence cs = new CompareSequence(subject, fastqRecord.getNucleotideSequence().toString(), quals, f.getParentFile().getName(), checkReverse, id, kmerl);
-				//System.out.println(fastqRecord.getNucleotideSequence().toString());
 				if(counter.get()==0 && cs.isReversed()) {
 					takeRc.set(true);
 				}
@@ -243,13 +244,6 @@ public class SequenceFileThread implements Runnable {
 				}
 				boolean leftCorrect = false;
 				boolean rightCorrect = false;
-				if(cs.getName().equals("M01495:68:000000000-B4DGY:1:1101:22961:3157 1:N:0:AGGCAGAA+TAGATCGC")) {
-					System.out.println("FOUND IT!");
-					System.out.println(cs);
-					System.out.println(cs.isMasked());
-					System.out.println(cs.getRemarks());
-					
-				}
 				//at this point has to be true because of earlier check
 				if(cs.isMasked()) {
 					//check if exists in cache
@@ -267,7 +261,16 @@ public class SequenceFileThread implements Runnable {
 							correctPositionFRassembled.getAndIncrement();
 						}
 						else {
+							if(!leftCorrect && rightCorrect) {
+								wrongPositionL.getAndIncrement();
+							}
+							if(!rightCorrect && leftCorrect) {
+								wrongPositionR.getAndIncrement();
+								//System.out.println(cs.toStringOneLine());
+							}
 							wrongPosition.getAndIncrement();
+							System.out.println(cs.toStringOneLine());
+							
 						}
 						if(cs.getRemarks().isEmpty()) {
 							if(leftCorrect && rightCorrect) {
@@ -285,6 +288,17 @@ public class SequenceFileThread implements Runnable {
 										remarks.put(rs, 1);
 									}
 								}
+								//trick to look at the wrong events
+								//you have to disable the cache!!!
+								//disable for now
+								/*
+								else {
+									cs.setCurrentFile(f);
+									cs.setCurrentAlias(alias+" "+leftCorrect+" "+rightCorrect, f.getName());
+									leftCorrect = true;
+									rightCorrect = true;
+								}
+								*/
 							}
 						}
 						//only correctly found ones
@@ -409,6 +423,8 @@ public class SequenceFileThread implements Runnable {
 			writerStats.println(f.getName()+"\tcorrect\t"+correct);
 			writerStats.println(f.getName()+"\twrong\t"+wrong);
 			writerStats.println(f.getName()+"\twrongPosition\t"+wrongPosition);
+			writerStats.println(f.getName()+"\twrongPositionL\t"+wrongPositionL);
+			writerStats.println(f.getName()+"\twrongPositionR\t"+wrongPositionR);
 			if(singleFileF != null && singleFileR != null) {
 				writerStats.println(f.getName()+"\tcorrectPositionFR\t"+correctPositionFR);
 			}

@@ -170,8 +170,8 @@ public class NGS {
 			return false;
 		}
 		s.setLeftFlank(leftFlank);
-		System.out.println("leftFlank in NGS is "+leftFlank);
-		System.out.println("leftFlank in NGS subject is "+s.getLeftFlank());
+		//System.out.println("leftFlank in NGS is "+leftFlank);
+		//System.out.println("leftFlank in NGS subject is "+s.getLeftFlank());
 		
 		if(s.hasLeft()) {
 			return true;

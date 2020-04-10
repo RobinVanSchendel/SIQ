@@ -76,6 +76,10 @@ public class AnalyzedFileController implements Runnable{
 		progressBar.setMaximum(nrFiles());
 		KMERLocation kmerl = new KMERLocation(subject.seqString());
 		Subject subjectObject = new Subject(subject,left,right);
+		boolean splitCs = false;
+		if(left.length()==0 && right.length()==0) {
+			splitCs = true;
+		}
 		for(File f: queries) {
 			System.out.println(f.getName());
 			Chromatogram chromo = null;
@@ -98,17 +102,36 @@ public class AnalyzedFileController implements Runnable{
 			if(maskLowQuality){
 				cs.maskSequenceToHighQuality(left, right);
 			}
-			if(maskLowQualityRemove){
-				cs.maskSequenceToHighQualityRemove();
-			}
-			cs.determineFlankPositions(true);
-			//cs.setAdditionalSearchString(hmAdditional);
-			//do we want to print it?
-			if(pm.getPropertyBoolean("printCorrectColumnsOnly") && cs.getRemarks().length()>0) {
-				
+			if(splitCs && maskLowQualityRemove) {
+				ArrayList<CompareSequence> al = cs.maskSequenceToHighQualityRemoveNoFlanks();
+				for(CompareSequence tempCS: al) {
+					tempCS.setAndDetermineCorrectRange(maxError);
+					tempCS.maskSequenceToHighQualityRemove();
+					tempCS.determineFlankPositions(true);
+					//cs.setAdditionalSearchString(hmAdditional);
+					//do we want to print it?
+					if(pm.getPropertyBoolean("printCorrectColumnsOnly") && tempCS.getRemarks().length()>0) {
+						
+					}
+					else {
+						result.add(tempCS);
+					}
+					
+				}
 			}
 			else {
-				result.add(cs);
+				if(maskLowQualityRemove){
+					cs.maskSequenceToHighQualityRemove();
+				}
+				cs.determineFlankPositions(true);
+				//cs.setAdditionalSearchString(hmAdditional);
+				//do we want to print it?
+				if(pm.getPropertyBoolean("printCorrectColumnsOnly") && cs.getRemarks().length()>0) {
+					
+				}
+				else {
+					result.add(cs);
+				}
 			}
 			current++;
 			progressBar.setValue(current);

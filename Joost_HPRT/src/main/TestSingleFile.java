@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.Vector;
 
@@ -38,7 +39,7 @@ public class TestSingleFile {
 			//is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
 			//is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\XF1280_whole_unc-22_100bp_zone_for_polq.fa"));
 			//is = new BufferedReader(new FileReader("E:\\Project_Hartwig\\HPRT-FASTA-CR1.txt"));
-			is = new BufferedReader(new FileReader("Z:\\Robin\\Project_Primase\\unc-22_reversion_assay\\XF1546_extended.fa"));
+			is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\Sanger_unc-93\\Unc93-rev1\\Unc93-rev1\\unc-93.txt"));
 			
 		} catch (FileNotFoundException e1) {
 			// TODO Auto-generated catch block
@@ -78,7 +79,7 @@ public class TestSingleFile {
 				//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_HPRT_test\\Cas9N863A_G462ntE2_01_2611422-1045404.ab1");
 				//File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\plate_1C07_2481341-1036656.ab1");
 				//File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\Ku80_1_WTcas9_CR1_A23_2538438-1040473.ab1");
-				File f = new File("Z:\\Robin\\Project_Primase\\unc-22_reversion_assay\\XF1546\\1052669\\XF1546_38_2719780-1052669.ab1");
+				File f = new File("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\Sanger_unc-93\\Unc93-rev1\\Unc93-rev1\\G381_2seqfw_2454192-1034976.ab1");
 				
 				
 	
@@ -113,8 +114,10 @@ public class TestSingleFile {
 			//String right = "CCCCCCCCCCCCCCCCCCCCCCCGACTGCTTGCGGA";
 			//String left = "TTGTATACCTAATCATTATG";
 			//String right = "CCGAGGATTTGGAAAAAGTG";
-			String left = "ggaggcctgatttca";
-			String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATTCAT";
+			//String left = "ggaggcctgatttca";
+			//String right = "CCCCCCCCTCCCCCACCCCCTCCCtcgcAATTCAT";
+			String left = null;
+			String right = null;
     		//String query = "attagcgatgatgaaccaggttatgacctagatttgttttgtatacctaatcattatgccgaggatttggaaaaagtgtttattcctcattatgccgaggatttggaaaaagtgtttattcctcatggactgattatggaca";
     		//String query = "attagcgatgatgaaccaggttatgacctagatttgttttgtatacctaatcattatgccgaggatttggaaaaatgaggatttggaaaaagtgtttattcctcatggactgattatggaca";
 			
@@ -131,10 +134,14 @@ public class TestSingleFile {
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
 			kmerWith.setAndDetermineCorrectRange(0.05);
-			kmerWith.maskSequenceToHighQualityRemove();
-			kmerWith.determineFlankPositions(false);
-			String outputKMER = kmerWith.toStringOneLine();
-			System.out.println(outputKMER);
+			ArrayList<CompareSequence> al = kmerWith.maskSequenceToHighQualityRemoveNoFlanks();
+			for(CompareSequence cs: al) {
+				cs.setAndDetermineCorrectRange(0.05);
+				cs.maskSequenceToHighQualityRemove();
+				cs.determineFlankPositions(false);
+				String outputKMER = cs.toStringOneLine();
+				System.out.println(outputKMER);
+			}
 			
 			/*
 			

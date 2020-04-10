@@ -19,6 +19,9 @@ public class Subject {
 	private int endOfRightPrimer;
 	private boolean rightPrimerSet;
 	private int minPassedPrimer;
+	private int endOfRightFlank;
+	private String errorMessage = "";
+	private boolean exitOnError = false;
 	
 	public Subject(RichSequence subject) {
 		this.subject = subject.seqString().toString();
@@ -28,6 +31,13 @@ public class Subject {
 			this.subjectComments = subjectName;
 		}
 	}
+	public Subject(RichSequence subject, String left, String right, boolean exitOnError) {
+		this(subject, left, right);
+		this.exitOnError = exitOnError;
+		if(this.exitOnError && errorMessage.length()>0) {
+			System.exit(0);
+		}
+	}
 	public Subject(RichSequence subject, String left, String right) {
 		this.subject = subject.seqString().toString();
 		this.subjectName = subject.getName();
@@ -35,7 +45,13 @@ public class Subject {
 		if(subjectComments == null) {
 			this.subjectComments = subjectName;
 		}
+		if(left == null) {
+			left = "";
+		}
 		this.setLeftFlank(left);
+		if(right == null) {
+			right = "";
+		}
 		this.setRightFlank(right);
 		
 		checkLeftRight();
@@ -75,6 +91,7 @@ public class Subject {
 		}
 		else {
 			this.startOfRightFlank = subject.indexOf(rightFlank);
+			this.endOfRightFlank = startOfRightFlank+rightFlank.length();
 			rightSet = true;
 		}
 	}
@@ -83,6 +100,9 @@ public class Subject {
 
 		if(subject.indexOf(this.leftPrimer)<0) {
 			System.err.println("Cannot find leftPrimer "+leftPrimer);
+			if(this.exitOnError) {
+				System.exit(0);
+			}
 			//System.exit(0);
 			this.leftPrimerSet = false;
 		}
@@ -103,12 +123,16 @@ public class Subject {
 		if(subject.indexOf(this.rightPrimer)<0) {
 			System.err.println("Cannot find rightPrimer "+rightPrimer);
 			this.rightPrimerSet = false;
+			if(this.exitOnError) {
+				System.exit(0);
+			}
 			//System.exit(0);
 		}
 		else {
 			this.startOfRightPrimer = subject.indexOf(rightPrimer);
 			this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
 			this.rightPrimerSet = true;
+			
 			//System.out.println("RightPrimer "+startOfRightPrimer+":"+endOfRightPrimer);
 		}
 	}
@@ -165,6 +189,7 @@ public class Subject {
 		return this.rightFlank;
 	}
 	private void checkLeftRight() {
+		String message = "";
 		if(!hasLeftRight()) {
 			this.leftRightIsOK  = true;
 		}
@@ -175,14 +200,23 @@ public class Subject {
 			else if(this.getStartOfRightFlank() > getEndOfLeftFlank()) {
 				this.leftRightIsOK = true;
 			}
+			//they cannot overlap
+			else if(this.getStartOfRightFlank()<this.getEndOfLeftFlank() && this.getEndOfRightFlank() > this.getEndOfLeftFlank()) {
+				this.leftRightIsOK = false;
+				message = "the flanks overlap and that is not allowed";
+			}
 			//this can now happen as well, so maybe the check is nonsense now
 			else {
 				this.leftRightIsOK = true;
 			}
 		}
 		if(!leftRightIsOK) {
-			System.err.println("Something wrong with left or right "+getLeftFlank()+":"+getRightFlank());
+			this.errorMessage = "Something wrong with left or right "+getLeftFlank()+":"+getRightFlank()+"\n"+message;
+			System.err.println(errorMessage);
 		}
+	}
+	private int getEndOfRightFlank() {
+		return this.endOfRightFlank;
 	}
 	public void setMinPassedPrimer(long minPassedPrimer) {
 		this.minPassedPrimer = (int) minPassedPrimer;
@@ -211,6 +245,12 @@ public class Subject {
 		return delStart>getMinLocationStartEvent();
 	}
 	public boolean seqStartsWithinLeftPrimer(int matchStart) {
+		/*
+		System.out.println(matchStart>=this.startOfLeftPrimer);
+		System.out.println(matchStart <= this.endOfLeftPrimer);
+		System.out.println(matchStart);
+		System.out.println(endOfLeftPrimer);
+		*/
 		return matchStart>=this.startOfLeftPrimer && matchStart <= this.endOfLeftPrimer;
 	}
 	public boolean seqStartsWithinRightPrimer(int matchEnd) {

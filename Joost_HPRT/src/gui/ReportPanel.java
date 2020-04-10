@@ -231,6 +231,7 @@ public class ReportPanel extends JFrame implements ActionListener {
 					return;
 				}
 				
+				
 				exportToExcel(f);
 				
 				//open it in Excel
