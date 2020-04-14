@@ -97,22 +97,27 @@ public class Subject {
 	}
 	public void setLeftPrimer(String tempLeftPrimer) {
 		this.leftPrimer = tempLeftPrimer.toLowerCase();
-
+		//can also be in reverse complement orientation
 		if(subject.indexOf(this.leftPrimer)<0) {
-			System.err.println("Cannot find leftPrimer "+leftPrimer);
-			if(this.exitOnError) {
-				System.exit(0);
+			//check reverse complement
+			String leftPrimerRC = Utils.reverseComplement(leftPrimer);
+			//really cannot find it
+			if(subject.indexOf(leftPrimerRC)<0) {
+				System.err.println("Cannot find leftPrimer "+leftPrimer);
+				if(this.exitOnError) {
+					System.exit(0);
+				}
+				this.leftPrimerSet = false;
+				//still have to return otherwise primer gets set
+				return;
 			}
-			//System.exit(0);
-			this.leftPrimerSet = false;
+			else {
+				this.leftPrimer = leftPrimerRC;
+			}
 		}
-		else {
-			this.startOfLeftPrimer = subject.indexOf(leftPrimer);
-			this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
-			this.leftPrimerSet = true;
-			
-			//System.out.println("LeftPrimer "+startOfLeftPrimer+":"+endOfLeftPrimer);
-		}
+		this.startOfLeftPrimer = subject.indexOf(leftPrimer);
+		this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
+		this.leftPrimerSet = true;
 	}
 	public void setRightPrimer(String tempRightPrimer) {
 		this.rightPrimer = tempRightPrimer.toLowerCase();
@@ -121,20 +126,25 @@ public class Subject {
 			this.rightPrimer = Utils.reverseComplement(rightPrimer);
 		}
 		if(subject.indexOf(this.rightPrimer)<0) {
-			System.err.println("Cannot find rightPrimer "+rightPrimer);
-			this.rightPrimerSet = false;
-			if(this.exitOnError) {
-				System.exit(0);
+			//try normal orientation
+			String rightPrimerTemp = tempRightPrimer.toLowerCase();
+			if(subject.indexOf(rightPrimerTemp)<0) {
+				System.err.println("Cannot find rightPrimer "+rightPrimer);
+				this.rightPrimerSet = false;
+				if(this.exitOnError) {
+					System.exit(0);
+				}
+				//still have to return here
+				return;
+			}
+			else {
+				this.rightPrimer = rightPrimerTemp;
 			}
 			//System.exit(0);
 		}
-		else {
-			this.startOfRightPrimer = subject.indexOf(rightPrimer);
-			this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
-			this.rightPrimerSet = true;
-			
-			//System.out.println("RightPrimer "+startOfRightPrimer+":"+endOfRightPrimer);
-		}
+		this.startOfRightPrimer = subject.indexOf(rightPrimer);
+		this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
+		this.rightPrimerSet = true;
 	}
 	public void setLeftFlank(String tempLeftFlank) {
 		this.leftFlank = tempLeftFlank.toLowerCase();
@@ -266,5 +276,15 @@ public class Subject {
 	public String toString() {
 		String ret = this.subjectName+" "+this.getLeftFlank()+" "+this.getRightFlank()+" "+this.leftPrimer+" "+this.rightPrimer;
 		return ret;
+	}
+	public void swapPrimersIfNeeded() {
+		if(this.leftPrimerSet && this.rightPrimerSet) {
+			if(this.startOfLeftPrimer>this.startOfRightPrimer) {
+				String leftPrimerTemp = this.leftPrimer;
+				String rightPrimerTemp = this.rightPrimer;
+				this.setLeftPrimer(rightPrimerTemp);
+				this.setRightPrimer(leftPrimerTemp);
+			}
+		}
 	}
 }

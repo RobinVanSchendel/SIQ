@@ -269,7 +269,7 @@ public class SequenceFileThread implements Runnable {
 								//System.out.println(cs.toStringOneLine());
 							}
 							wrongPosition.getAndIncrement();
-							System.out.println(cs.toStringOneLine());
+							//System.out.println(cs.toStringOneLine());
 							
 						}
 						if(cs.getRemarks().isEmpty()) {

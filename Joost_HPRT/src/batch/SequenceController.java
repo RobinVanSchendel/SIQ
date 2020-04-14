@@ -111,6 +111,7 @@ public class SequenceController {
 		Subject subjectObject = new Subject(subject,options.getLeftFlank(),options.getRightFlank(), true);
 		subjectObject.setLeftPrimer(options.getLeftPrimer());
 		subjectObject.setRightPrimer(options.getRightPrimer());
+		subjectObject.swapPrimersIfNeeded();
 		subjectObject.setMinPassedPrimer(options.getMinPassedPrimer());
 		
 		
