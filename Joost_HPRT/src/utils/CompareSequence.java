@@ -111,14 +111,11 @@ public class CompareSequence {
 		}
 	}
 	public void determineFlankPositions(boolean stopIfLeftNotFound){
-		int leftPos = -2;
 		int rightPos = -2;
 		Left flankOne = null;
 		String flankTwo = "";
 
 		if(subjectObject.hasLeftRight()){
-			
-			leftPos = subjectObject.getEndOfLeftFlank();
 			rightPos = subjectObject.getStartOfRightFlank();
 			
 			Left kmerFlankOne = kmerl.getMatchLeft(query, rightPos, allowJump);
@@ -1339,6 +1336,7 @@ public class CompareSequence {
 				//masked = true;
 				//System.out.println(tempDNA.toString());
 				CompareSequence cs = new CompareSequence(subjectObject, tempDNA.toString(),q.build(), null, true, this.queryName+"_"+counter, kmerl);
+				cs.setCurrentFile(this.file);
 				cs.setSplit(true);
 				counter++;
 				al.add(cs);
@@ -1348,5 +1346,8 @@ public class CompareSequence {
 	}
 	public void setSplit(boolean split) {
 		this.isSplit = split;
+	}
+	public File getFile() {
+		return this.file;
 	}
 }

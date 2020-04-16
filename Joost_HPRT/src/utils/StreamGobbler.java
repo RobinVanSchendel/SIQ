@@ -5,14 +5,14 @@ import java.util.*;
 import dnaanalysis.Blast;
 
 import java.io.*;
-class StreamGobbler extends Thread
+public class StreamGobbler extends Thread
 {
     InputStream is;
     String type;
     HashMap<String, ArrayList<Blast>> blasts = new HashMap<String, ArrayList<Blast>>();
     boolean blast = false;
     
-    StreamGobbler(InputStream is, String type, boolean blast)
+    public StreamGobbler(InputStream is, String type, boolean blast)
     {
         this.is = is;
         this.type = type;

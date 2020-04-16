@@ -16,12 +16,14 @@ import org.biojava.bio.seq.*;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
+import org.jcvi.jillion.core.pos.PositionSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 
 import utils.CompareSequence;
 import utils.KMERLocation;
 import utils.Subject;
+import utils.Utils;
 
 public class TestSingleFile {
 
@@ -39,7 +41,8 @@ public class TestSingleFile {
 			//is = new BufferedReader(new FileReader("Z:\\Tim\\G23 insertion\\XF1426.fa.txt"));
 			//is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Documents\\Project_Primase\\polq-1_reversion\\XF1280_whole_unc-22_100bp_zone_for_polq.fa"));
 			//is = new BufferedReader(new FileReader("E:\\Project_Hartwig\\HPRT-FASTA-CR1.txt"));
-			is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\Sanger_unc-93\\Unc93-rev1\\Unc93-rev1\\unc-93.txt"));
+			//is = new BufferedReader(new FileReader("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\Sanger_unc-93\\Unc93-rev1\\Unc93-rev1\\unc-93.txt"));
+			is = new BufferedReader(new FileReader("Z:\\Datasets - NGS, UV_TMP, MMP\\CRISPR_dpy-10\\dpy-10_target.fa.txt"));
 			
 		} catch (FileNotFoundException e1) {
 			// TODO Auto-generated catch block
@@ -79,7 +82,8 @@ public class TestSingleFile {
 				//File f = new File("C:\\Users\\rvanschendel\\Documents\\Project_HPRT_test\\Cas9N863A_G462ntE2_01_2611422-1045404.ab1");
 				//File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\plate_1C07_2481341-1036656.ab1");
 				//File f = new File("E:\\Project_Joost_HPRT\\test_Blast\\Ku80_1_WTcas9_CR1_A23_2538438-1040473.ab1");
-				File f = new File("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\Sanger_unc-93\\Unc93-rev1\\Unc93-rev1\\G381_2seqfw_2454192-1034976.ab1");
+				//File f = new File("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\Sanger_unc-93\\Unc93-rev1\\Unc93-rev1\\G381_2seqfw_2454192-1034976.ab1");
+				File f = new File("Z:\\\\Datasets - NGS, UV_TMP, MMP\\\\CRISPR_dpy-10\\\\1038851\\\\N2_dpy10_3_2515449-1038851.ab1");
 				
 				
 	
@@ -129,19 +133,30 @@ public class TestSingleFile {
 			//System.out.println(outputKMERless);
 			KMERLocation kmerl = new KMERLocation(hprtSeq.seqString());
 			Subject subjectObject = new Subject(hprtSeq, left, right);
-			
-			CompareSequence kmerWith = new CompareSequence(subjectObject, chromo.getNucleotideSequence().toString(),chromo.getQualitySequence(), null, true, "", kmerl);
-			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
-			//s.setAdditionalSearchString(additional);
-			kmerWith.setAndDetermineCorrectRange(0.05);
-			ArrayList<CompareSequence> al = kmerWith.maskSequenceToHighQualityRemoveNoFlanks();
-			for(CompareSequence cs: al) {
-				cs.setAndDetermineCorrectRange(0.05);
-				cs.maskSequenceToHighQualityRemove();
-				cs.determineFlankPositions(false);
-				String outputKMER = cs.toStringOneLine();
-				System.out.println(outputKMER);
+			//a.forEach((k)->System.out.print(k.toString()));
+			String secondary = Utils.getSecondarySequence(chromo);
+			//chromo.getPeakSequence().forEach((k)->System.out.println(k));
+			//System.out.println(chromo.getPeakSequence().getLength());
+			String[] seqs = {chromo.getNucleotideSequence().toString(),secondary};
+			String[] names = {"primary","secondary"};
+			for(int i=0;i<seqs.length;i++) {
+				String str = seqs[i];
+				String name = names[i];
+				CompareSequence kmerWith = new CompareSequence(subjectObject, str,chromo.getQualitySequence(), null, true, name, kmerl);
+				//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
+				//s.setAdditionalSearchString(additional);
+				//kmerWith.setAndDetermineCorrectRange(0.05);
+				
+				ArrayList<CompareSequence> al = kmerWith.maskSequenceToHighQualityRemoveNoFlanks();
+				for(CompareSequence cs: al) {
+					//cs.setAndDetermineCorrectRange(0.05);
+					//cs.maskSequenceToHighQualityRemove();
+					cs.determineFlankPositions(false);
+					String outputKMER = cs.toStringOneLine();
+					System.out.println(outputKMER);
+				}
 			}
+			
 			
 			/*
 			

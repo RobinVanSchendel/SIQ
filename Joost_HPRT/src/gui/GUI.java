@@ -89,11 +89,33 @@ import utils.AnalyzedFileController;
 import utils.CompareSequence;
 import utils.KMERLocation;
 import utils.NGSPair;
+import utils.StreamGobbler;
 import utils.Subject;
 
 public class GUI implements ActionListener, MouseListener {
 	//JFileChooser chooser = new JFileChooser(new File("C:\\Users\\rvanschendel\\Documents\\Project_Joost"));
-	JFileChooser chooser = new JFileChooser();
+	JFileChooser chooser = new JFileChooser() {
+	    @Override
+	    public void approveSelection(){
+	        File f = getSelectedFile();
+	        if(f.exists() && getDialogType() == SAVE_DIALOG){
+	            int result = JOptionPane.showConfirmDialog(this,"The file exists, overwrite?","Existing file",JOptionPane.YES_NO_CANCEL_OPTION);
+	            switch(result){
+	                case JOptionPane.YES_OPTION:
+	                    super.approveSelection();
+	                    return;
+	                case JOptionPane.NO_OPTION:
+	                    return;
+	                case JOptionPane.CLOSED_OPTION:
+	                    return;
+	                case JOptionPane.CANCEL_OPTION:
+	                    cancelSelection();
+	                    return;
+	            }
+	        }
+	        super.approveSelection();
+	    }        
+	};
 	JFrame guiFrame = new JFrame();
 	DefaultListModel<File> model = new DefaultListModel<File>();
 	JList<File> jFiles = new JList<File>(model);
@@ -108,6 +130,8 @@ public class GUI implements ActionListener, MouseListener {
 	JCheckBox maskLowQuality = new JCheckBox("maskLowQuality");
 	JCheckBox maskLowQualityRemove = new JCheckBox("Mask low quality bases");
 	JCheckBox removeRemarkRows = new JCheckBox("Remove sequences with remarks");
+	JCheckBox split = new JCheckBox("Split reads in multiple ranges");
+	JButton R = new JButton("R");
 	private ArrayList<RichSequence> sequences;
 	JProgressBar progressBar;
 	JLabel maxE = new JLabel("maxError:");
@@ -144,7 +168,7 @@ public class GUI implements ActionListener, MouseListener {
 		//jpanel.setSize(30, 800);
 		jpanel.setLayout(new GridLayout(0,1));
 		String[] columns = CompareSequence.getOneLineHeaderArray();
-		JLabel label = new JLabel("Select output columns");
+		JLabel label = new JLabel("Select output columns:");
 		//label.setBounds(450, 90, 130, 20);
 		//guiFrame.add(label);
 		placeComp(label, guiFrame, 4, 3, 2, 1);
@@ -310,6 +334,9 @@ public class GUI implements ActionListener, MouseListener {
 				afc.setProgressBar(progressBar);
 				afc.setFileChooser(chooser);
 				afc.setStartButton(analyzeFiles);
+				if(left.getText().length()==0 && right.getText().length()==0) {
+					afc.setSplit(split.isSelected());
+				}
 				Thread newThread = new Thread(afc);
 				newThread.start();
 			}
@@ -433,7 +460,6 @@ public class GUI implements ActionListener, MouseListener {
 			}
 		}
 		else if(e.getActionCommand().contentEquals("clearTable")) {
-			System.out.println("hier "+e.getActionCommand());
 			ngsModel.removeAll();
 			ngsModel.addNGS(new NGS());
 		}
@@ -453,6 +479,10 @@ public class GUI implements ActionListener, MouseListener {
 			jsp.setPreferredSize(new Dimension(400,200));
 			JOptionPane.showMessageDialog(null, jsp,"Please copy & paste and fill in",JOptionPane.INFORMATION_MESSAGE);
 		}
+		else if(e.getActionCommand().contentEquals("split")) {
+			pm.setProperty("split", ""+split.isSelected());
+		}
+		
 		System.out.println("ActionCommand: "+e.getActionCommand());
 	}
 
@@ -1113,6 +1143,22 @@ public class GUI implements ActionListener, MouseListener {
         }
         //guiFrame.add(removeRemarkRows);
         placeComp(removeRemarkRows, guiFrame,6,3,1,1);
+        
+        split.addActionListener(this);
+        split.setActionCommand("split");
+        split.setToolTipText("If no flanks are selected all high quality parts of a sequence will be matched against the reference");
+        if(pm.getPropertyBoolean("split")) {
+        	split.setSelected(pm.getPropertyBoolean("split"));
+        }
+        //guiFrame.add(removeRemarkRows);
+        placeComp(split, guiFrame,6,4,1,1);
+        
+        R.addActionListener(this);
+        R.setActionCommand("R");
+        //guiFrame.add(removeRemarkRows);
+        placeComp(R, guiFrame,6,5,1,1);
+        
+        
         
         
         JPanel jpanel = new JPanel();

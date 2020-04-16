@@ -41,6 +41,7 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import utils.CompareSequence;
+import utils.StreamGobbler;
 
 public class ReportPanel extends JFrame implements ActionListener {
 	protected int remarkColumn = 0;
@@ -52,6 +53,12 @@ public class ReportPanel extends JFrame implements ActionListener {
 	private boolean masked;
 	private double maxError;
 	private boolean[] removeColumns;
+	private boolean split;
+	private File lastFileSaved = null;
+	private JButton R, Rin;
+	private final String RscriptCommand = "C:\\Program Files\\R\\R-3.6.0\\bin\\Rscript.exe"; 
+	private final String Rscript = "E:\\R_working_directory\\r-plots-ngs\\SIQPlotter.R";
+			
 	
 	public ReportPanel(String title) {
 		this.setSize(1200, 800);
@@ -70,6 +77,21 @@ public class ReportPanel extends JFrame implements ActionListener {
 		export.setBounds(20, 710, 120, 20);
 		export.addActionListener(this);
 		this.add(export);
+		
+		R = new JButton("Plot with R");
+		R.setActionCommand("R");
+		R.setBounds(140, 710, 120, 20);
+		R.addActionListener(this);
+		R.setEnabled(false);
+		this.add(R);
+		
+		Rin = new JButton("Plot with R (inverse)");
+		Rin.setActionCommand("Rinverse");
+		Rin.setBounds(260, 710, 120, 20);
+		Rin.addActionListener(this);
+		Rin.setEnabled(false);
+		this.add(Rin);
+		
 		this.setVisible(true);
 		
 	}
@@ -79,7 +101,7 @@ public class ReportPanel extends JFrame implements ActionListener {
 		lblTotal.setBounds(20, 20, 100, 20);
 		this.add(lblTotal);
 
-		JLabel lbtTotalSeqs = new JLabel(result.size()+"");
+		JLabel lbtTotalSeqs = new JLabel(getUniqueNrFiles()+"");
 		lbtTotalSeqs.setBounds(120, 20, 100, 20);
 		this.add(lbtTotalSeqs);
 		
@@ -125,7 +147,21 @@ public class ReportPanel extends JFrame implements ActionListener {
 		error.setBounds(534, 40, 100, 20);
 		this.add(error);
 		
-
+		JCheckBox split = new JCheckBox("Split reads");
+		split.setEnabled(false);
+		split.setSelected(this.split);
+		split.setBounds(534, 60, 100, 20);
+		this.add(split);
+		
+	}
+	private int getUniqueNrFiles() {
+		ArrayList<File> files = new ArrayList<File>();
+		for(CompareSequence cs: result) {
+			if(!files.contains(cs.getFile())){
+				files.add(cs.getFile());
+			}
+		}
+		return files.size();
 	}
 	private int getResultsWithRemark() {
 		int ok = 0;
@@ -219,7 +255,7 @@ public class ReportPanel extends JFrame implements ActionListener {
 		if(arg0.getActionCommand().contentEquals("Export to Excel")) {
 			jfc.setFileSelectionMode(JFileChooser.FILES_ONLY);
 			jfc.setMultiSelectionEnabled(false);
-			if(jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
+			if(jfc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION){
 				File f = jfc.getSelectedFile();
 				//make sure it is an .xlsx file
 				System.out.println("File "+f);
@@ -233,6 +269,10 @@ public class ReportPanel extends JFrame implements ActionListener {
 				
 				
 				exportToExcel(f);
+				this.lastFileSaved = f;
+				Rin.setEnabled(true);
+				R.setEnabled(true);
+				
 				
 				//open it in Excel
 				try {
@@ -244,13 +284,59 @@ public class ReportPanel extends JFrame implements ActionListener {
 				
 			}
 		}
+		else if(arg0.getActionCommand().contentEquals("R")) {
+			R.setEnabled(false);
+			Rin.setEnabled(false);
+			runR(false);
+			R.setEnabled(true);
+			Rin.setEnabled(true);
+		}
+		else if(arg0.getActionCommand().contentEquals("Rinverse")) {
+			R.setEnabled(false);
+			Rin.setEnabled(false);
+			runR(true);
+			R.setEnabled(true);
+			Rin.setEnabled(true);
+		}
 		
+	}
+	private void runR(boolean inverse) {
+		String[] commands = getRCommand(inverse);
+		Process p;
+		try {
+			p = Runtime.getRuntime().exec(commands);
+			
+			// any error message?get
+            StreamGobbler errorGobbler = new 
+                StreamGobbler(p.getErrorStream(), "ERROR", false);            
+            
+            // any output?
+            StreamGobbler outputGobbler = new 
+                StreamGobbler(p.getInputStream(), "OUTPUT", false);
+                
+            // kick them off
+            errorGobbler.start();
+            outputGobbler.start();
+            //wait until completed
+			p.waitFor();
+		} catch (InterruptedException | IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}
+	private String[] getRCommand(boolean inverse) {
+		if(inverse) {
+			String[] command = {RscriptCommand, Rscript, this.lastFileSaved.getAbsolutePath(), "true"}; 
+			return command;
+		}
+		else {
+			String[] command = {RscriptCommand, Rscript, this.lastFileSaved.getAbsolutePath()}; 
+			return command;
+		}
 	}
 	private void exportToExcel(File file) {
 		XSSFWorkbook workbook = new XSSFWorkbook();
-        XSSFSheet sheet = workbook.createSheet("RawData");
-        
-        
+        XSSFSheet sheet = workbook.createSheet("rawData");
         CellStyle backgroundStyle = workbook.createCellStyle();
         CellStyle remarkStyle = workbook.createCellStyle();
         remarkStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -366,5 +452,8 @@ public class ReportPanel extends JFrame implements ActionListener {
 				tcm.removeColumn(tcm.getColumn(col));
 			}
 		}
+	}
+	public void setSplit(boolean split) {
+		this.split = split;
 	}
 }

@@ -33,7 +33,8 @@ public class KMERLocation {
 		}
 	}
 	private boolean hasQuery(String q) {
-		if(query!= null && query.equals(q)) {
+		//not sure if the query.length check is speeding up things
+		if(query!= null && query.length() == q.length() && query.equals(q)) {
 			return true;
 		}
 		return false;
@@ -80,10 +81,6 @@ public class KMERLocation {
 		if(lcss.size()==0) {
 			return null;
 		}
-		for(int i = 0;i<lcss.size();i++) {
-			//System.out.println(i+" "+lcss.get(i));
-		}
-		
 		if(lcss.size()==1) {
 			LCS one = lcss.get(0);
 			int start = one.getSubjectStart();

@@ -44,6 +44,7 @@ public class AnalyzedFileController implements Runnable{
 	private JProgressBar progressBar;
 	private JButton button;
 	private JFileChooser jfc;
+	private boolean split;
 	
 	public AnalyzedFileController(PropertiesManager pm) {
 		this.pm = pm;
@@ -78,7 +79,7 @@ public class AnalyzedFileController implements Runnable{
 		Subject subjectObject = new Subject(subject,left,right);
 		boolean splitCs = false;
 		if(left.length()==0 && right.length()==0) {
-			splitCs = true;
+			splitCs = split;
 		}
 		for(File f: queries) {
 			System.out.println(f.getName());
@@ -93,6 +94,7 @@ public class AnalyzedFileController implements Runnable{
 			}
 			NucleotideSequence seq = chromo.getNucleotideSequence();
 			QualitySequence quals = chromo.getQualitySequence();
+			chromo.getChannelGroup().getAChannel().toString();
 			
 			//kmerl = null;
 			String name = f.getName();
@@ -148,6 +150,7 @@ public class AnalyzedFileController implements Runnable{
 		rp.setErrorRate(maxError);
 		//should be last
 		rp.setup(result);
+		rp.setSplit(split);
 		rp.removeColumns(pm.getOutputColumns());
 		
 		//JOptionPane.showMessageDialog(
@@ -293,5 +296,9 @@ public class AnalyzedFileController implements Runnable{
 		RichSequence subject = subjectSequences.get(0);
 		Subject subjectObject = new Subject(subject,left,right);
 		return subjectObject.hasLeft();
+	}
+	public void setSplit(boolean split) {
+		this.split = split;
+		
 	}
 }

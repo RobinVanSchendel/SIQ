@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -21,6 +22,10 @@ import org.biojava.bio.seq.SequenceIterator;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
+import org.jcvi.jillion.core.pos.PositionSequence;
+import org.jcvi.jillion.core.residue.nt.Nucleotide;
+import org.jcvi.jillion.trace.chromat.Channel;
+import org.jcvi.jillion.trace.chromat.Chromatogram;
 
 
 public class Utils {
@@ -385,4 +390,278 @@ public class Utils {
 
         return result;
     }
+	public static String getSecondarySequence(Chromatogram chromo) {
+		StringBuffer secondary = new StringBuffer();
+		ArrayList<Integer> peaksA = getPeaks(chromo.getChannelGroup().getAChannel());
+		ArrayList<Integer> peaksT = getPeaks(chromo.getChannelGroup().getTChannel());
+		ArrayList<Integer> peaksC = getPeaks(chromo.getChannelGroup().getCChannel());
+		ArrayList<Integer> peaksG = getPeaks(chromo.getChannelGroup().getGChannel());
+		//debug
+		
+		
+		for(int i = 0; i<chromo.getPeakSequence().getLength();i++) {
+			int start = 0;
+			int end = 0;
+			//first starts at 0;
+			if(i==0) {
+				start = 0;
+				int peakLocation = chromo.getPeakSequence().get(i).getValue();
+				int peakLocationNext = chromo.getPeakSequence().get(i+1).getValue();
+				end = (int) (peakLocation+0.5*(peakLocationNext-peakLocation));
+			}
+			else if(i==chromo.getPeakSequence().getLength()-1) {
+				int peakLocationPrev = chromo.getPeakSequence().get(i-1).getValue();
+				int peakLocation = chromo.getPeakSequence().get(i).getValue();
+				start = (int) (peakLocation-0.5*(peakLocation-peakLocationPrev));
+				end = chromo.getNumberOfTracePositions();
+			}
+			else {
+				int peakLocationPrev = chromo.getPeakSequence().get(i-1).getValue();
+				int peakLocation = chromo.getPeakSequence().get(i).getValue();
+				int peakLocationNext = chromo.getPeakSequence().get(i+1).getValue();
+				start = (int) (peakLocation-0.5*(peakLocation-peakLocationPrev));
+				end = (int) (peakLocation+0.5*(peakLocationNext-peakLocation));
+				
+			}
+			//System.out.println(start+":"+end);
+			//System.out.println((i+1)+":"+chromo.getNucleotideSequence().get(i));
+			String seqTemp = getMaxPeaks(chromo,start,end,peaksA,peaksT,peaksC,peaksG, chromo.getNucleotideSequence().get(i).toString());
+			//System.out.println(seqTemp);
+			secondary.append(seqTemp);
+			if(i==249) {
+				//System.out.println(peaksC);
+				//System.exit(0);
+			}
+			//System.out.println((i+1)+":"+chromo.getNucleotideSequence().get(i)+":"+peaks);
+			//String print = (i+1)+"\t"+a.get(peakLocation)+"\t"+t.get(peakLocation)+"\t"+c.get(peakLocation)+"\t"+g.get(peakLocation)+"\t"+chromo.getNucleotideSequence().get(i)+"\t"+chromo.getPeakSequence().get(i);
+			//System.out.println(print);
+		}
+		//System.out.println(a.getLength());
+		//System.out.println(t);
+		//System.out.println(c);
+		//System.out.println(g);
+		System.out.println(chromo.getNucleotideSequence().toString().length());
+		System.out.println(chromo.getNucleotideSequence().toString());
+		System.out.println(secondary.toString());
+		System.out.println(secondary.length());
+		return secondary.toString();
+		//System.exit(0);
+	}
+	private static ArrayList<Integer> getPeaks(Channel channel) {
+		ArrayList<Integer> numbers = new ArrayList<Integer>();
+		ArrayList<Integer> length = new ArrayList<Integer>();
+		int lastPosition = Integer.MIN_VALUE;
+		int nrTimes = 1;
+		for(int i=0;i<channel.getPositionSequence().getLength();i++) {
+			int value = channel.getPositionSequence().get(i).getValue();
+			if(lastPosition!=value) {
+				numbers.add(lastPosition);
+				length.add(nrTimes);
+				nrTimes = 0;
+			}
+			lastPosition = value;
+			nrTimes++;
+			//System.out.println(i+" "+value);
+		}
+		//add last one
+		numbers.add(lastPosition);
+		length.add(nrTimes);
+		
+		
+		ArrayList<Integer> indexes = extrema(numbers);
+		ArrayList<Integer> indexesReal = new ArrayList<Integer>();
+		
+		/*
+		System.out.println(channel.getPositionSequence());
+		System.out.println(numbers);
+		System.out.println(length);
+		System.out.println(indexes);
+		*/
+		
+		int index = indexes.remove(0);
+		//since infinitive was added
+		int indexReal = -1;
+		for(int i=0;i<length.size();i++) {
+			int times = length.get(i);
+			if(i==index) {
+				for(int j=0;j<times;j++) {
+					indexesReal.add(indexReal+j);
+				}
+				if(indexes.size()>0) {
+					index = indexes.remove(0);
+				}
+			}
+			indexReal+=times;
+		}
+		return indexesReal;
+	}
+	private static ArrayList<Integer> extrema(ArrayList<Integer> a) 
+    { 
+        ArrayList<Integer> indexes = new ArrayList<Integer>();
+        for (int i = 1; i < a.size() - 1; i++)  
+        { 
+            if(a.get(i) > a.get(i-1) && a.get(i) > a.get(i+1)) {
+            	indexes.add(i);
+            } 
+        } 
+        return indexes; 
+    }
+	private static String getMaxPeaks(Chromatogram chromo, int start, int end, ArrayList<Integer> peaksA,
+			ArrayList<Integer> peaksT, ArrayList<Integer> peaksC, ArrayList<Integer> peaksG, String nucleotide) {
+		double ratio = 0.33;
+		//A
+		PositionSequence aPos = chromo.getChannelGroup().getAChannel().getPositionSequence();
+		PositionSequence tPos = chromo.getChannelGroup().getTChannel().getPositionSequence();
+		PositionSequence cPos = chromo.getChannelGroup().getCChannel().getPositionSequence();
+		PositionSequence gPos = chromo.getChannelGroup().getGChannel().getPositionSequence();
+		int aMax = -1;
+		int tMax = -1;
+		int cMax = -1;
+		int gMax = -1;
+		for(int i = start+1;i<end;i++) {
+			if(peaksA.contains(i)) {
+				aMax=i;
+			}
+			if(peaksT.contains(i)) {
+				tMax = i;
+			}
+			if(peaksC.contains(i)) {
+				cMax = i;
+			}
+			if(peaksG.contains(i)) {
+				gMax = i;
+			}
+		}
+		//System.out.println("=");
+		ArrayList<Integer> list = new ArrayList<Integer>();
+		if(aMax>0) {
+			list.add(aPos.get(aMax).getValue());
+		}
+		if(tMax>0) {
+			list.add(tPos.get(tMax).getValue());
+		}
+		if(cMax>0) {
+			list.add(cPos.get(cMax).getValue());
+		}
+		if(gMax>0) {
+			list.add(gPos.get(gMax).getValue());
+		}
+		//System.out.println("Size: "+list.size()+" "+list);
+		if(list.size()==0) {
+			return "N";
+		}
+		double max = Collections.max(list);
+		//System.out.println(max);
+		ArrayList<Double> ratios = new ArrayList<Double>();
+		double aRatio = 0.0;
+		double tRatio = 0.0;
+		double cRatio = 0.0;
+		double gRatio = 0.0;
+		
+		if(aMax>0) {
+			aRatio = aPos.get(aMax).getValue()/max;
+		}
+		if(tMax>0) {
+			tRatio = tPos.get(tMax).getValue()/max;
+		}
+		if(cMax>0) {
+			cRatio = cPos.get(cMax).getValue()/max;
+		}
+		if(gMax>0) {
+			gRatio = gPos.get(gMax).getValue()/max;
+		}
+		
+		String ret = "";
+		if(aRatio>ratio) {
+			ratios.add(aRatio);
+		}
+		if(tRatio>ratio) {
+			ratios.add(tRatio);
+		}
+		if(cRatio>ratio) {
+			ratios.add(cRatio);
+		}
+		if(gRatio>ratio) {
+			//System.out.println("G:"+gRatio);
+			ratios.add(gRatio);
+		}
+		Collections.sort(ratios, Collections.reverseOrder());
+		//System.out.println("ratios "+ratios);
+		for(int i=0;i<ratios.size();i++) {
+			double ratioAmount = ratios.get(i);
+			if(ratioAmount == aRatio && !ret.contains("A")) {
+				ret+="A";
+			}
+			else if(ratioAmount == tRatio && !ret.contains("T")) {
+				ret+="T";
+			}
+			else if(ratioAmount == cRatio && !ret.contains("C")) {
+				ret+="C";
+			}
+			else if(ratioAmount == gRatio && !ret.contains("G")) {
+				ret+="G";
+			}
+		}
+		//System.out.println(ret);
+		//test
+		/*
+		if(ret.length()>0) {
+			if(ret.charAt(0)!=nucleotide.charAt(0)) {
+				System.out.println("The highest peak is not the value taken");
+				System.out.println(aRatio+":"+tRatio+":"+cRatio+":"+gRatio);
+				System.out.println((index+1)+":" +ret.charAt(0)+": "+nucleotide.charAt(0)+" :"+ret);
+				System.out.println(tRatio);
+			}
+		}
+		*/
+		//some weird hack
+		//System.exit(0);
+		if(ret.length()==0 || ret.length()==4) {
+			//clueless
+			return "N";
+		}
+		else {
+			if(ret.length()==1) {
+				return ret;
+			}
+			//take out the nucleotide taken by the basecaller
+			//that is not alway the top ranked nucleotide...
+			else {
+				ret = ret.replace(nucleotide, "");
+				return translateToIUPAC(ret);
+			}
+		}
+	}
+	private static String translateToIUPAC(String substring) {
+		if(substring.length()==1) {
+			return substring;
+		}
+		else {
+			char[] chars = substring.toCharArray();
+			Arrays.sort(chars);
+			String sorted = new String(chars);
+			//System.out.println("Sorted:"+sorted);
+			switch(sorted) {
+			case "AT":
+				return "W";
+			case "AG":
+				return "R";
+			case "CT":
+				return "Y";
+			case "CG":
+				return "S";
+			case "GT":
+				return "K";
+			case "AC":
+				return "M";
+			case "ACG":
+				return "V";
+			case "ACT":
+				return "H";
+			default:
+				System.err.println("nucleotide combination:"+sorted+" unknown");
+				return "N";
+			}
+		}
+	}
 }
