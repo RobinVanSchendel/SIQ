@@ -132,6 +132,7 @@ public class GUI implements ActionListener, MouseListener {
 	JCheckBox removeRemarkRows = new JCheckBox("Remove sequences with remarks");
 	JCheckBox split = new JCheckBox("Split reads in multiple ranges");
 	JButton R = new JButton("R");
+	JButton Rin = new JButton("Rin");
 	private ArrayList<RichSequence> sequences;
 	JProgressBar progressBar;
 	JLabel maxE = new JLabel("maxError:");
@@ -148,6 +149,7 @@ public class GUI implements ActionListener, MouseListener {
 	private JSpinner maxReads;
 	private JButton excelNGS, switchToAB1;
 	private JSpinner baseError;
+	private File lastSavedExcel;
 	
 	
 	@SuppressWarnings("serial")
@@ -407,7 +409,6 @@ public class GUI implements ActionListener, MouseListener {
 			
 		}
 		else if(e.getActionCommand().contentEquals("Run")) {
-			System.out.println("Run");
 			//something to do?
 			if(ngsModel.getRowCount()==0) {
 				return;
@@ -436,9 +437,7 @@ public class GUI implements ActionListener, MouseListener {
 			newThread.start();
 		}
 		else if(e.getActionCommand().contentEquals("ExcelNGS")) {
-			System.out.println("Export to Excel");
 			exportToExcel();
-			//still implement
 		}
 		else if(e.getActionCommand().contentEquals("SwitchMode")) {
 			if(this.ab1Perspective) {
@@ -481,6 +480,44 @@ public class GUI implements ActionListener, MouseListener {
 		}
 		else if(e.getActionCommand().contentEquals("split")) {
 			pm.setProperty("split", ""+split.isSelected());
+		}
+		else if(e.getActionCommand().contentEquals("R")) {
+			if(lastSavedExcel!=null) {
+				ReportPanel.runR(lastSavedExcel, false);
+			}
+			else {
+				if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+					File f = chooser.getSelectedFile();
+					if(f.getAbsolutePath().endsWith(".xlsx")) {
+						ReportPanel.runR(f, false);
+					}
+					else {
+						JOptionPane.showMessageDialog(guiFrame,
+							    "Please select an Excel file produced by SIQ",
+							    "No Excel file (.xlsx) was selected",
+							    JOptionPane.ERROR_MESSAGE);
+					}
+				}
+			}
+		}
+		else if(e.getActionCommand().contentEquals("Rin")) {
+			if(lastSavedExcel!=null) {
+				ReportPanel.runR(lastSavedExcel, true);
+			}
+			else {
+				if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+					File f = chooser.getSelectedFile();
+					if(f.getAbsolutePath().endsWith(".xlsx")) {
+						ReportPanel.runR(f, true);
+					}
+					else {
+						JOptionPane.showMessageDialog(guiFrame,
+							    "Please select an Excel file produced by SIQ",
+							    "No Excel file (.xlsx) was selected",
+							    JOptionPane.ERROR_MESSAGE);
+					}
+				}
+			}
 		}
 		
 		System.out.println("ActionCommand: "+e.getActionCommand());
@@ -607,22 +644,21 @@ public class GUI implements ActionListener, MouseListener {
 	private void exportToExcel() {
 		chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		chooser.setMultiSelectionEnabled(false);
-		if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+		if(chooser.showSaveDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
 			File f = chooser.getSelectedFile();
 			//make sure it is an .xlsx file
 			System.out.println("File "+f);
 			if(!f.getName().endsWith(".xlsx")) {
 				f = new File(f.getAbsolutePath()+".xlsx");
 				System.out.println("File "+f);
-				
 			}
-			
 			if(f.exists() && !f.renameTo(f)) {
 				JOptionPane.showMessageDialog(guiFrame,"Excel file is in use, please close it and try again!");
 				return;
 			}
 			
 			exportToExcel(f);
+			this.lastSavedExcel = f;
 			
 			//open it in Excel
 			try {
@@ -1153,14 +1189,6 @@ public class GUI implements ActionListener, MouseListener {
         //guiFrame.add(removeRemarkRows);
         placeComp(split, guiFrame,6,4,1,1);
         
-        R.addActionListener(this);
-        R.setActionCommand("R");
-        //guiFrame.add(removeRemarkRows);
-        placeComp(R, guiFrame,6,5,1,1);
-        
-        
-        
-        
         JPanel jpanel = new JPanel();
         SpinnerModel model = new SpinnerNumberModel(0.05, 0, 1.0, 0.01);
         maxError = new JSpinner(model);
@@ -1349,11 +1377,22 @@ public class GUI implements ActionListener, MouseListener {
         
         addJTableNGS();
         
+        R = new JButton("Plot with R");
+        R.setActionCommand("R");
+        R.addActionListener(this);
+        placeComp(R, guiFrame, 4,5,1,1);
+
+        Rin = new JButton("Plot with R (inverse)");
+        Rin.setActionCommand("Rin");
+        Rin.addActionListener(this);
+        placeComp(Rin, guiFrame, 5,5,1,1);
+        
+        
         switchToAB1 = new JButton("Switch to Sanger mode");
         switchToAB1.setActionCommand("SwitchMode");
         //switchToAB1.setBounds(400, 500, 150, 25);
         switchToAB1.addActionListener(this);
-        placeComp(switchToAB1,guiFrame,4,5,1,1);
+        placeComp(switchToAB1,guiFrame,7,5,1,1);
         //guiFrame.add(switchToAB1,c);
         
         
@@ -1362,7 +1401,7 @@ public class GUI implements ActionListener, MouseListener {
         setFlash.setActionCommand("flash");
         //setFlash.setBounds(550, 500, 150, 25);
         setFlash.addActionListener(this);
-        placeComp(setFlash,guiFrame,5,5,1,1);
+        placeComp(setFlash,guiFrame,8,5,1,1);
         
         setFlashLabel();
         

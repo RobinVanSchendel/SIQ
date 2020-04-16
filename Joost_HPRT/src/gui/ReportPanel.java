@@ -56,8 +56,8 @@ public class ReportPanel extends JFrame implements ActionListener {
 	private boolean split;
 	private File lastFileSaved = null;
 	private JButton R, Rin;
-	private final String RscriptCommand = "C:\\Program Files\\R\\R-3.6.0\\bin\\Rscript.exe"; 
-	private final String Rscript = "E:\\R_working_directory\\r-plots-ngs\\SIQPlotter.R";
+	private final static String RscriptCommand = "C:\\Program Files\\R\\R-3.6.0\\bin\\Rscript.exe"; 
+	private final static String Rscript = "E:\\R_working_directory\\r-plots-ngs\\SIQPlotter.R";
 			
 	
 	public ReportPanel(String title) {
@@ -287,21 +287,21 @@ public class ReportPanel extends JFrame implements ActionListener {
 		else if(arg0.getActionCommand().contentEquals("R")) {
 			R.setEnabled(false);
 			Rin.setEnabled(false);
-			runR(false);
+			runR(this.lastFileSaved,false);
 			R.setEnabled(true);
 			Rin.setEnabled(true);
 		}
 		else if(arg0.getActionCommand().contentEquals("Rinverse")) {
 			R.setEnabled(false);
 			Rin.setEnabled(false);
-			runR(true);
+			runR(lastFileSaved,true);
 			R.setEnabled(true);
 			Rin.setEnabled(true);
 		}
 		
 	}
-	private void runR(boolean inverse) {
-		String[] commands = getRCommand(inverse);
+	public static void runR(File f, boolean inverse) {
+		String[] commands = getRCommand(f, inverse);
 		Process p;
 		try {
 			p = Runtime.getRuntime().exec(commands);
@@ -324,13 +324,13 @@ public class ReportPanel extends JFrame implements ActionListener {
 			e1.printStackTrace();
 		}
 	}
-	private String[] getRCommand(boolean inverse) {
+	private static String[] getRCommand(File f, boolean inverse) {
 		if(inverse) {
-			String[] command = {RscriptCommand, Rscript, this.lastFileSaved.getAbsolutePath(), "true"}; 
+			String[] command = {RscriptCommand, Rscript, f.getAbsolutePath(), "true"}; 
 			return command;
 		}
 		else {
-			String[] command = {RscriptCommand, Rscript, this.lastFileSaved.getAbsolutePath()}; 
+			String[] command = {RscriptCommand, Rscript, f.getAbsolutePath()}; 
 			return command;
 		}
 	}
