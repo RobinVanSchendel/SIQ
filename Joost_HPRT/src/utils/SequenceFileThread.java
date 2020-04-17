@@ -120,6 +120,7 @@ public class SequenceFileThread implements Runnable {
 		AtomicInteger correctPositionFR = new AtomicInteger(0);
 		AtomicInteger correctPositionFRassembled = new AtomicInteger(0);
 		AtomicInteger badQual = new AtomicInteger(0);
+		AtomicInteger containsN = new AtomicInteger(0);
 		AtomicInteger correct = new AtomicInteger(0);
 		AtomicInteger cacheHit = new AtomicInteger(0);
 		AtomicBoolean takeRc = new AtomicBoolean(false);
@@ -242,6 +243,10 @@ public class SequenceFileThread implements Runnable {
 				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
 				}
+				boolean hasN = cs.checkContainsN();
+				if(hasN) {
+					containsN.getAndIncrement();
+				}
 				boolean leftCorrect = false;
 				boolean rightCorrect = false;
 				//at this point has to be true because of earlier check
@@ -323,7 +328,7 @@ public class SequenceFileThread implements Runnable {
 								//to be able to filter better later
 								//20180731, added match positions as now sometimes shorter events are selected
 								//which causes problems with filters later
-								if(cs.getNrNs()<csEvents.get(key).getNrNs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
+								if(cs.getNrXs()<csEvents.get(key).getNrXs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
 									csEvents.put(key, cs);
 								}
 							}
@@ -431,6 +436,7 @@ public class SequenceFileThread implements Runnable {
 			writerStats.println(f.getName()+"\tcorrectPositionFRassembled\t"+correctPositionFRassembled);
 			
 			writerStats.println(f.getName()+"\tbadQual\t"+badQual);
+			writerStats.println(f.getName()+"\tcontainsN\t"+containsN);
 			
 			
 			for(String key: remarks.keySet()) {

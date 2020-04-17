@@ -76,8 +76,8 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     	  setForeground(greenFont);
       }
       else if (column == 7) {
-    	  System.out.println("rendering leftFlank "+wine.leftFlankOK());
-    	  System.out.println("rendering leftFlank "+wine.getLeftFlank());
+    	  //System.out.println("rendering leftFlank "+wine.leftFlankOK());
+    	  //System.out.println("rendering leftFlank "+wine.getLeftFlank());
     	  if(wine.leftFlankOK()) {
     		  setForeground(greenFont);
     	  }

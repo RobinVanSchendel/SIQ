@@ -32,9 +32,11 @@ public class TestSingleSequence {
 		//FILL IN
 		
 		String refFile = "E:\\temp\\eGFP.txt";
-		String seqS = "gacgtaaacggccacaagttcagcgtgtccggcgagggcgagggcgatgccacctacggcaagctgaccctgaagttcatctgcaccaccggcaagctgcccgtgccctggcccaccctcgtgaccaccctgaccacatgaagcagcacgacttcttcaagtcc";
+		String seqS = "GTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAaCGTGTCCGGCGAGGGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAGCTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGCCGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCAT";
 		String left = "GAAGTTCATCTGCACCACCG";
 		String right = "CTACGGCGTGCAGTGCTTCA";
+		//String left = null;
+		//String right = null;
 		
 		File ref = new File(refFile);
 		try {

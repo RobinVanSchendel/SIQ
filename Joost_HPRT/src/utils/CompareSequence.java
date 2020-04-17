@@ -159,6 +159,31 @@ public class CompareSequence {
 			if(flankTwoLCS!= null) {
 				flankTwo = flankTwoLCS.getString();
 				this.jumpedRight = flankTwoLCS.getJumped();
+				//there is a chance that we are wrong about this call now
+				if(flankOne!=null && flankOne.getQueryStart()>minimumSizeWithLeftRight) {
+					String total = flankOne.getString()+flankTwo;
+					LCS lcs = kmerl.getLCS(total);
+					//check if WT so far, maybe we took the wrong left
+					//System.out.println(flankOne.getQueryStart());
+					if(lcs.length()==total.length()) {
+						//try again left to this seq
+						String partOfQuery = query.replace(total, replacementFlank);
+						LCS lcsLeft = kmerl.getLCS(partOfQuery);
+						//System.out.println("lcsLeft");
+						//System.out.println(lcsLeft);
+						//overwrite of to the left
+						//only if it is completely to the left of the other flank
+						if(lcsLeft!= null && lcsLeft.getSubjectEnd()<lcs.getSubjectStart()) {
+							flankOne = lcsLeft;
+							flankTwo = total;
+						}
+						//System.out.println(flankOne);
+						//System.out.println(flankTwo);
+						//System.out.println("Perhaps a problem");
+						
+					}
+				}
+				//System.out.println(flankTwo);
 			}
 			if(flankOne == null) {
 				//do nothing, the remark is already set!
@@ -556,6 +581,7 @@ public class CompareSequence {
 				System.out.println("del:"+this.getDel());
 				System.out.println("raw:"+query);
 				System.out.println("subject:"+subjectObject.getString());
+				System.out.println("["+totalSubject+"]");
 				System.out.println(getName());
 				System.out.println(this.getRemarks());
 				this.setRemarks("SUBJECT BROKEN");
@@ -1178,6 +1204,15 @@ public class CompareSequence {
 	public long getNrNs() {
 		//changed to X
 		long count = query.chars().filter(ch -> ch == 'N' || ch == 'n').count();
+		return count;
+	}
+	/**Get the number of masked bases
+	 * 
+	 * @return
+	 */
+	public long getNrXs() {
+		//changed to X
+		long count = query.chars().filter(ch -> ch == 'X').count();
 		return count;
 	}
 	public boolean isCorrectPositionLeft() {
