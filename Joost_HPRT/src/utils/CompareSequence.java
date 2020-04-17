@@ -1177,7 +1177,7 @@ public class CompareSequence {
 	}
 	public long getNrNs() {
 		//changed to X
-		long count = query.chars().filter(ch -> ch == 'X').count();
+		long count = query.chars().filter(ch -> ch == 'N' || ch == 'n').count();
 		return count;
 	}
 	public boolean isCorrectPositionLeft() {
@@ -1349,5 +1349,13 @@ public class CompareSequence {
 	}
 	public File getFile() {
 		return this.file;
+	}
+	public boolean checkContainsN() {
+		long ns = this.getNrNs();
+		if(ns>0) {
+			this.setRemarks("contains N");
+			return true;
+		}
+		return false;
 	}
 }
