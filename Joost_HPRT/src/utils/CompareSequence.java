@@ -173,7 +173,7 @@ public class CompareSequence {
 						//System.out.println(lcsLeft);
 						//overwrite of to the left
 						//only if it is completely to the left of the other flank
-						if(lcsLeft!= null && lcsLeft.getSubjectEnd()<lcs.getSubjectStart()) {
+						if(lcsLeft!= null && lcsLeft.getSubjectEnd()<lcs.getSubjectStart() && lcsLeft.getQueryEnd()<lcs.getQueryStart()) {
 							flankOne = lcsLeft;
 							flankTwo = total;
 						}
