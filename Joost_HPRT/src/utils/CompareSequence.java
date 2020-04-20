@@ -166,14 +166,16 @@ public class CompareSequence {
 					//check if WT so far, maybe we took the wrong left
 					//System.out.println(flankOne.getQueryStart());
 					if(lcs.length()==total.length()) {
-						//try again left to this seq
+						//try again left to this seq'
+						//need the location of the query
+						int queryLoc = query.indexOf(total);
 						String partOfQuery = query.replace(total, replacementFlank);
 						LCS lcsLeft = kmerl.getLCS(partOfQuery);
 						//System.out.println("lcsLeft");
 						//System.out.println(lcsLeft);
 						//overwrite of to the left
 						//only if it is completely to the left of the other flank
-						if(lcsLeft!= null && lcsLeft.getSubjectEnd()<lcs.getSubjectStart() && lcsLeft.getQueryEnd()<lcs.getQueryStart()) {
+						if(lcsLeft!= null && lcsLeft.getSubjectEnd()<lcs.getSubjectStart() && lcsLeft.getQueryEnd()<queryLoc) {
 							flankOne = lcsLeft;
 							flankTwo = total;
 						}
