@@ -240,6 +240,14 @@ public class HPRTFastQ {
                 .desc("The sample name that will be included in the final output" )
                 .build();
 				o.addOption(alias);
+				
+		Option hr   = Option.builder( "hdr" )
+				.longOpt("hdr")
+                .hasArg()
+                .desc("The fasta file representing an HR event" )
+                .required()
+                .build();
+				o.addOption(hr);
 		
 		return o;
 	}

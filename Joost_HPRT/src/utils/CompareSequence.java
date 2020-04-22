@@ -44,7 +44,7 @@ public class CompareSequence {
 	private ArrayList<Blast> blasts;
 	private boolean entireQueryUsed = false;
 	
-	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI};
+	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR};
 	public String dir;
 	private Vector<Sequence> additionalSearchSequence;
 	private boolean possibleDouble = false;
@@ -332,14 +332,17 @@ public class CompareSequence {
 		}
 		
 		checkCall();
-		int maxLengthMatch = 10;
 		//only check if long enough
+		//TODO: I became unsure if this is really a good idea.
+		//2020422 don't do this
+		//now that we also allow HDR events which might me caused by two SNV close by we need to make sure that does are still in
+		int maxLengthMatch = 10;
 		if(del!= null && insert != null && del.length()>maxLengthMatch && insert.length()>maxLengthMatch) {
 			String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
-			//TODO: I became unsure if this is really a good idea. 
-			if(insertDelCommon.length()>maxLengthMatch){
+			if(!this.subjectObject.isHDREvent(this) && insertDelCommon.length()>maxLengthMatch){
 				//if we masked, then probably this check is not correct
 				//after testing it turns out that most often this is correct
+				//this.multipleSNVs = insertDelCommon;
 				this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused a DELINS which is probably incorrect.");
 			}
 		}
@@ -751,6 +754,9 @@ public class CompareSequence {
 		}
 		if(this.getDel().length()== 0 && this.getInsertion().length() == 0){
 			return Type.WT;
+		}
+		else if(this.subjectObject.isHDREvent(this)) {
+			return Type.HDR;
 		}
 		else if(this.getDel().length()== 1 && this.getInsertion().length() == 1){
 			return Type.SNV;

@@ -1,5 +1,7 @@
 package utils;
 
+import java.io.File;
+
 import org.biojavax.bio.seq.RichSequence;
 
 public class Subject {
@@ -22,6 +24,8 @@ public class Subject {
 	private int endOfRightFlank;
 	private String errorMessage = "";
 	private boolean exitOnError = false;
+	private RichSequence hdr;
+	private CompareSequence hdrCS;
 	
 	public Subject(RichSequence subject) {
 		this.subject = subject.seqString().toString();
@@ -286,5 +290,25 @@ public class Subject {
 				this.setRightPrimer(leftPrimerTemp);
 			}
 		}
+	}
+	public void setHDR(RichSequence hdr) {
+		this.hdr = hdr;
+	}
+	public boolean isHDREvent(CompareSequence cs) {
+		if(this.hdr == null) {
+			return false;
+		}
+		//make HDR object
+		if(hdrCS == null) {
+			KMERLocation kmerl = new KMERLocation(this.getString());
+			hdrCS = new CompareSequence(this,hdr.seqString(),null, null, true, "", kmerl);
+			hdrCS.determineFlankPositions(false);
+		}
+		if(hdrCS!=null) {
+			if(hdrCS.getDel().contentEquals(cs.getDel()) && hdrCS.getInsertion().contentEquals(cs.getInsertion())) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

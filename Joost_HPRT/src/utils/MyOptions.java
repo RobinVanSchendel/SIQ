@@ -203,4 +203,10 @@ public class MyOptions {
 	public boolean allowJump() {
 		return false;
 	}
+	public File getHDR() {
+		if(cmd.hasOption("hdr")) {
+			return new File(cmd.getOptionValue("hdr"));
+		}
+		return null;
+	}
 }

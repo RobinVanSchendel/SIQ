@@ -343,11 +343,6 @@ public class SequenceFileThread implements Runnable {
 						}
 					}
 				}
-				if(cs.getName().equals("M01495:68:000000000-B4DGY:1:1101:22961:3157 1:N:0:AGGCAGAA+TAGATCGC")) {
-					System.out.println(cs.toStringOneLine());
-					System.out.println(leftCorrect);
-					System.out.println(rightCorrect);
-				}
 				//System.out.println(cs.toStringOneLine());
 				//no masking
 				counter.getAndIncrement();

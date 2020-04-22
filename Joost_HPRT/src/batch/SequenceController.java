@@ -73,8 +73,8 @@ public class SequenceController {
 		if(!f.exists()) {
 			MyError.err("The reference input file does not exist: "+f.getAbsolutePath());
 		}
-		BufferedReader is = null, is2 = null;
-		RichSequence subject = null;
+		BufferedReader is = null, is2 = null, is3 = null;
+		RichSequence subject = null, hdr = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
 		HashMap<String, String> hmAdditional = new HashMap<String, String>();
 		try {
@@ -88,6 +88,11 @@ public class SequenceController {
 				for(Sequence s: additional) {
 					hmAdditional.put(s.getName(), s.seqString().toString());
 				}
+			}
+			if(options.getHDR()!=null) {
+				is3 =  new BufferedReader(new FileReader(options.getHDR()));
+				RichSequenceIterator rsi = IOTools.readFastaDNA(is3, null);
+				hdr = rsi.nextRichSequence();
 			}
 			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
 			subject = si.nextRichSequence();
@@ -113,6 +118,7 @@ public class SequenceController {
 		subjectObject.setRightPrimer(options.getRightPrimer());
 		subjectObject.swapPrimersIfNeeded();
 		subjectObject.setMinPassedPrimer(options.getMinPassedPrimer());
+		subjectObject.setHDR(hdr);
 		
 		
 		KMERLocation kmerl = new KMERLocation(subject.seqString());
