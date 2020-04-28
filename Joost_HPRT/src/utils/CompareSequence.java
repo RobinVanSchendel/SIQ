@@ -44,7 +44,7 @@ public class CompareSequence {
 	private ArrayList<Blast> blasts;
 	private boolean entireQueryUsed = false;
 	
-	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR};
+	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR, TINS};
 	public String dir;
 	private Vector<Sequence> additionalSearchSequence;
 	private boolean possibleDouble = false;
@@ -58,7 +58,6 @@ public class CompareSequence {
 	private boolean jumpedRight = false;
 	private boolean jumpedLeft = false;
 	private String alias = "";
-	private KMERLocation kmerl;
 	//Default = yes!
 	private boolean allowJump = true;
 	private boolean isFlankInsert = false;
@@ -67,22 +66,20 @@ public class CompareSequence {
 	private boolean isSplit = false;
 	
 	
-	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
+	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName) {
 		this.queryName = queryName;
 		this.query = query.toLowerCase();
 		this.dir = dir;
 		this.quals = quals;
 		this.subjectObject = subjectObject;
-		this.kmerl = kmerl;
 		if(checkReverse) {
 			checkAndPossibleReverse();
 		}
-		
 	}
 	private void checkAndPossibleReverse() {
 		String queryS = query;
 		String lcs = "";
-		LCS lcsObject = kmerl.getLCS(queryS);
+		LCS lcsObject = subjectObject.getKmerl().getLCS(queryS);
 		if(lcsObject == null) {
 			lcs = null;
 		}
@@ -94,7 +91,7 @@ public class CompareSequence {
 		//20190523 removed the check
 		String revCom = Utils.reverseComplement(queryS);
 		String rc = null;
-		lcsObject = kmerl.getLCS(revCom);
+		lcsObject = subjectObject.getKmerl().getLCS(revCom);
 		if(lcsObject == null) {
 			rc = null;
 		}
@@ -118,7 +115,7 @@ public class CompareSequence {
 		if(subjectObject.hasLeftRight()){
 			rightPos = subjectObject.getStartOfRightFlank();
 			
-			Left kmerFlankOne = kmerl.getMatchLeft(query, rightPos, allowJump);
+			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump);
 			if(kmerFlankOne != null) {
 				this.jumpedLeft = kmerFlankOne.getJumped();
 			}
@@ -150,11 +147,11 @@ public class CompareSequence {
 			LCS flankTwoLCS = null;
 			if(replacementIndex == -1) {
 				seqRemainRightPart = query;
-				flankTwoLCS = kmerl.getMatchRight(seqRemainRightPart, 0, minimumSizeWithLeftRight, allowJump);
+				flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemainRightPart, 0, minimumSizeWithLeftRight, allowJump);
 			}
 			else {
 				seqRemainRightPart = seqRemain.substring(replacementIndex);
-				flankTwoLCS = kmerl.getMatchRight(seqRemainRightPart, flankOne.getSubjectEnd(), minimumSizeWithLeftRight, allowJump);
+				flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemainRightPart, flankOne.getSubjectEnd(), minimumSizeWithLeftRight, allowJump);
 			}
 			if(flankTwoLCS!= null) {
 				flankTwo = flankTwoLCS.getString();
@@ -162,7 +159,7 @@ public class CompareSequence {
 				//there is a chance that we are wrong about this call now
 				if(flankOne!=null && flankOne.getQueryStart()>minimumSizeWithLeftRight) {
 					String total = flankOne.getString()+flankTwo;
-					LCS lcs = kmerl.getLCS(total);
+					LCS lcs = subjectObject.getKmerl().getLCS(total);
 					//check if WT so far, maybe we took the wrong left
 					//System.out.println(flankOne.getQueryStart());
 					if(lcs.length()==total.length()) {
@@ -170,7 +167,7 @@ public class CompareSequence {
 						//need the location of the query
 						int queryLoc = query.indexOf(total);
 						String partOfQuery = query.replace(total, replacementFlank);
-						LCS lcsLeft = kmerl.getLCS(partOfQuery);
+						LCS lcsLeft = subjectObject.getKmerl().getLCS(partOfQuery);
 						//System.out.println("lcsLeft");
 						//System.out.println(lcsLeft);
 						//overwrite of to the left
@@ -223,7 +220,7 @@ public class CompareSequence {
 			}
 		}
 		else{
-			flankOne = kmerl.getMatchLongestLeft(query, allowJump);
+			flankOne = subjectObject.getKmerl().getMatchLongestLeft(query, allowJump);
 
 			if(flankOne != null ) {
 				this.leftFlank = flankOne;
@@ -232,7 +229,7 @@ public class CompareSequence {
 				String seqRemain = query.replace(querySub, replacementFlank);
 				//start searching after the leftFlank
 				if(flankOne!=null) {
-					LCS flankTwoLCS = kmerl.getMatchRight(seqRemain, flankOne.getSubjectEnd(), minimumSizeWithoutLeftRight, allowJump);
+					LCS flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemain, flankOne.getSubjectEnd(), minimumSizeWithoutLeftRight, allowJump);
 					if(flankTwoLCS != null) {
 						flankTwo = flankTwoLCS.getString();
 					}
@@ -412,7 +409,7 @@ public class CompareSequence {
 		int homologyLengthM = -1;
 		checkCall();
 		//only do it when no weird things found
-		if(this.remarks.length() == 0 && insert.length()>0){
+		if(this.remarks.length() == 0 && insert.length()>0 && is == null){
 			//currently fixed value
 			solveInsertion(solveInsertStart,solveInsertEnd, MAXIMUMTRIESSOLVING);
 		}
@@ -776,7 +773,12 @@ public class CompareSequence {
 			return Type.DELETION;
 		}
 		else if(this.getDel().length()> 0 && this.getInsertion().length() > 0){
-			return Type.DELINS;
+			if(this.isFlankInsert) {
+				return Type.TINS;
+			}
+			else {
+				return Type.DELINS;
+			}
 		}
 		return Type.UNKNOWN;
 	}
@@ -1009,7 +1011,7 @@ public class CompareSequence {
 			this.setRemarks("No high quality range found, unable to mask");
 		}
 		if(ranges.size()>=1){
-			//System.out.println("hier");
+			//System.out.println("hier "+ranges.size());
 			String dna = this.query;
 			StringBuffer tempDNA = new StringBuffer();
 			long j=0;
@@ -1018,30 +1020,37 @@ public class CompareSequence {
 			Range rangeContainingLargest = null;			
 			Range largestRange = null;
 			long largestRangeLength = -1;
-			for(Range r: ranges){
-				//System.out.println(r);
-				String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
-				String lcsL = Utils.longestCommonSubstring(sub, subjectObject.getLeftFlank());
-				String lcsR = Utils.longestCommonSubstring(sub, subjectObject.getRightFlank());
-				//System.out.println(lcsL.length());
-				//System.out.println(lcsR.length());
-				if(largestCommon == null || (lcsL.length()+lcsR.length()) >largestCommon.length()){
-					largestCommon = lcsL+"_"+lcsR;
-					rangeContainingLargest = r;
+			//if there is only one, take that one
+			if(ranges.size()==1) {
+				correct = ranges.get(0);
+			}
+			//>1
+			else {
+				for(Range r: ranges){
+					//System.out.println(r);
+					String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
+					String lcsL = Utils.longestCommonSubstring(sub, subjectObject.getLeftFlank());
+					String lcsR = Utils.longestCommonSubstring(sub, subjectObject.getRightFlank());
+					//System.out.println(lcsL.length());
+					//System.out.println(lcsR.length());
+					if(largestCommon == null || (lcsL.length()+lcsR.length()) >largestCommon.length()){
+						largestCommon = lcsL+"_"+lcsR;
+						rangeContainingLargest = r;
+					}
+					if(r.getLength()>largestRangeLength){
+						largestRangeLength = r.getLength();
+						largestRange = r;
+					}
+					//take the first
+					if(largestCommon.length()>=10){
+						correct = rangeContainingLargest;
+					}
+					else{
+						correct = largestRange;
+					}
+					//removed break
+					//break;
 				}
-				if(r.getLength()>largestRangeLength){
-					largestRangeLength = r.getLength();
-					largestRange = r;
-				}
-				//take the first
-				if(largestCommon.length()>=10){
-					correct = rangeContainingLargest;
-				}
-				else{
-					correct = largestRange;
-				}
-				//removed break
-				//break;
 			}
 			if(correct != null){
 				long begin = correct.getBegin();
@@ -1208,6 +1217,9 @@ public class CompareSequence {
 	}
 	public int getRelativeDelEnd(){
 		return this.getDelEnd()-subjectObject.getEndOfLeftFlank();
+	}
+	public int getRelativeDelStart() {
+		return this.getDelStart()-subjectObject.getEndOfLeftFlank();
 	}
 	public long getNrNs() {
 		//changed to X
@@ -1378,7 +1390,7 @@ public class CompareSequence {
 				//this.query = tempDNA.toString();
 				//masked = true;
 				//System.out.println(tempDNA.toString());
-				CompareSequence cs = new CompareSequence(subjectObject, tempDNA.toString(),q.build(), null, true, this.queryName+"_"+counter, kmerl);
+				CompareSequence cs = new CompareSequence(subjectObject, tempDNA.toString(),q.build(), null, true, this.queryName+"_"+counter);
 				cs.setCurrentFile(this.file);
 				cs.setSplit(true);
 				counter++;

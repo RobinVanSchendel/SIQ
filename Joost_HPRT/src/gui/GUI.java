@@ -872,10 +872,9 @@ public class GUI implements ActionListener, MouseListener {
 		NucleotideSequence seq = chromo.getNucleotideSequence();
 		QualitySequence quals = chromo.getQualitySequence();
 		
-		KMERLocation kmerl = new KMERLocation(subject.seqString());
 		Subject subjectObject = new Subject(subject,left,right);
 		//kmerl = null;
-		CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, f.getParent(), true, name, kmerl);
+		CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, f.getParent(), true, name);
 		cs.setAndDetermineCorrectRange((double)maxError.getValue());
 		if(this.maskLowQuality.isSelected()){
 			cs.maskSequenceToHighQuality(left, right);

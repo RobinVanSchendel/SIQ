@@ -131,7 +131,6 @@ public class TestSingleFile {
 			//kmerless1.determineFlankPositions();
 			//String outputKMERless = kmerless1.toStringOneLine();
 			//System.out.println(outputKMERless);
-			KMERLocation kmerl = new KMERLocation(hprtSeq.seqString());
 			Subject subjectObject = new Subject(hprtSeq, left, right);
 			//a.forEach((k)->System.out.print(k.toString()));
 			String secondary = Utils.getSecondarySequence(chromo);
@@ -142,7 +141,7 @@ public class TestSingleFile {
 			for(int i=0;i<seqs.length;i++) {
 				String str = seqs[i];
 				String name = names[i];
-				CompareSequence kmerWith = new CompareSequence(subjectObject, str,chromo.getQualitySequence(), null, true, name, kmerl);
+				CompareSequence kmerWith = new CompareSequence(subjectObject, str,chromo.getQualitySequence(), null, true, name);
 				//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 				//s.setAdditionalSearchString(additional);
 				//kmerWith.setAndDetermineCorrectRange(0.05);

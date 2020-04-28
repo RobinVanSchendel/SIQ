@@ -72,10 +72,9 @@ public class TestSingleSequence {
 				e.printStackTrace();
 			}
 		}
-			KMERLocation kmerl = new KMERLocation(hprtSeq.seqString());
 			Subject subjectObject = new Subject(hprtSeq, left, right);
 			
-			CompareSequence kmerWith = new CompareSequence(subjectObject,seqS,null, null, true, "", kmerl);
+			CompareSequence kmerWith = new CompareSequence(subjectObject,seqS,null, null, true, "");
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
 			//kmerWith.setAndDetermineCorrectRange(0.05);

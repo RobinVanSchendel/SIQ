@@ -29,7 +29,7 @@ public class Demultiplex {
 	public static void main(String[] args) {
 		
 		// TODO Auto-generated method stub
-		File dir = new File("E:\\Project_pICLPuck\\");
+		File dir = new File("E:\\temp\\Ramsden\\\\");
 		ArrayList<PairedEnd> files = getPairedEnd(dir);
 		try {
 			for(PairedEnd pe: files) {
@@ -120,6 +120,14 @@ public class Demultiplex {
 			for(File R1: f.listFiles()) {
 				if(R1.getName().endsWith("R1_001.fastq.gz")) {
 					String str = R1.getAbsolutePath().replace("R1_001.fastq.gz", "R2_001.fastq.gz");
+					File R2 = new File(str);
+					if(R2.exists()) {
+						PairedEnd pe = new PairedEnd(R1, R2);
+						al.add(pe);
+					}
+				}
+				else if(R1.getName().endsWith("_1.fastq")) {
+					String str = R1.getAbsolutePath().replace("_1.fastq", "_2.fastq");
 					File R2 = new File(str);
 					if(R2.exists()) {
 						PairedEnd pe = new PairedEnd(R1, R2);

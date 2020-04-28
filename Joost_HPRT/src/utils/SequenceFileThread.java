@@ -40,7 +40,7 @@ public class SequenceFileThread implements Runnable {
 	private HashMap<String, String> actualEvents = new HashMap<String, String>();
 	private HashMap<String, CompareSequence> csEvents = new HashMap<String, CompareSequence>();
 	private HashMap<String, String> colorMap;
-	private boolean collapse = true;;
+	private boolean collapse = true;
 	private double maxError;
 	private HashMap<String, String> hmAdditional;
 	private long minimalCount;
@@ -48,7 +48,6 @@ public class SequenceFileThread implements Runnable {
 	private long maxReads;
 	private boolean printHeader = true;
 	private String alias = "";
-	private KMERLocation kmerl;
 	private boolean allowJump;
 	private File statsOutput;
 	private File singleFileF, singleFileR;
@@ -151,7 +150,7 @@ public class SequenceFileThread implements Runnable {
 					if(checkReverseOverwrite) {
 						checkReverse = true;
 					}
-					CompareSequence cs = new CompareSequence(subject, F.getNucleotideSequence().toString(), F.getQualitySequence(), f.getParentFile().getName(), checkReverse, F.getId(), kmerl);
+					CompareSequence cs = new CompareSequence(subject, F.getNucleotideSequence().toString(), F.getQualitySequence(), f.getParentFile().getName(), checkReverse, F.getId());
 					if(first && cs.isReversed()) {
 						takeRc.set(true);
 						first = false;
@@ -169,7 +168,7 @@ public class SequenceFileThread implements Runnable {
 						//speedup
 						if(leftCorrect) {
 							//Reverse
-							cs = new CompareSequence(subject, R.getNucleotideSequence().toString(), R.getQualitySequence(), f.getParentFile().getName(), checkReverse, R.getId(), kmerl);
+							cs = new CompareSequence(subject, R.getNucleotideSequence().toString(), R.getQualitySequence(), f.getParentFile().getName(), checkReverse, R.getId());
 							cs.setAndDetermineCorrectRange(maxError);
 							cs.maskSequenceToHighQualityRemove();
 							cs.setAllowJump(this.allowJump);
@@ -191,7 +190,7 @@ public class SequenceFileThread implements Runnable {
 							long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
 							//System.out.println("So far took :"+duration+" milliseconds");
 							start.set(end);
-							System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+count+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get())));
+							System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+count+" reads, costed (milliseconds): "+duration+" correct: "+correctPositionFR+" correct fraction: "+(correctPositionFR.get()/(double)(count)));
 						}
 					}
 				}
@@ -229,7 +228,7 @@ public class SequenceFileThread implements Runnable {
 				if(checkReverseOverwrite) {
 					checkReverse = true;
 				}
-				CompareSequence cs = new CompareSequence(subject, fastqRecord.getNucleotideSequence().toString(), quals, f.getParentFile().getName(), checkReverse, id, kmerl);
+				CompareSequence cs = new CompareSequence(subject, fastqRecord.getNucleotideSequence().toString(), quals, f.getParentFile().getName(), checkReverse, id);
 				if(counter.get()==0 && cs.isReversed()) {
 					takeRc.set(true);
 				}
@@ -517,9 +516,6 @@ public class SequenceFileThread implements Runnable {
 	public void setAlias(String alias) {
 		this.alias = alias;
 	}
-	public void setKMERLocation(KMERLocation k) {
-		this.kmerl = k;
-	}
 
 	public void setAllowJump(boolean allowJump) {
 		this.allowJump = allowJump;
@@ -585,7 +581,7 @@ public class SequenceFileThread implements Runnable {
 		try {
 			
 			//String execTotal = exec +" -query query.fa -db "+db+" -word_size 18 -outfmt \"6 std qseq sseq\"";
-			String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -M 5000 -O -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
+			String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -M 5000 -O -x 0 -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
 			//String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -r 300 -M 5000 -O -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
 			System.out.println(execTotal);
 			Process p = Runtime.getRuntime().exec(execTotal);

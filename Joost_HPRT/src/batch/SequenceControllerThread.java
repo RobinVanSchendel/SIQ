@@ -20,6 +20,7 @@ public class SequenceControllerThread implements Runnable{
 	private JFrame GUI;
 	private int cpus;
 	private boolean assembleRequired;
+	private boolean readyToRun = false;
 	
 	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, JFrame GUI, int maxReads, int minSupport, double maxError, String flashExec) {
 		this.GUI = GUI;
@@ -31,9 +32,10 @@ public class SequenceControllerThread implements Runnable{
 		}
 		if(notOK.size()>0) {
 			//add info message
-			JOptionPane.showMessageDialog(null, notOK.size()+" NGS entries have the correct info, please correct the red cells in the table", "A problem was found with your input", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, notOK.size()+" NGS entries have incorrect/incomplete info, please correct the red cells in the table", "A problem was found with your input", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
+		readyToRun = true;
 		//this can als be a user defined maximum
 		int cores = Runtime.getRuntime().availableProcessors();
 		if(v.size()>=cores) {
@@ -87,8 +89,6 @@ public class SequenceControllerThread implements Runnable{
 			sft.setNGS(n);
 			sft.setCollapseStartEnd(includeStartEnd);
 			sft.setAlias(n.getAlias());
-			KMERLocation kmerl = new KMERLocation(subject.getString());
-			sft.setKMERLocation(kmerl);
 			sft.setAllowJump(false);
 			sft.setTableModel(m);
 			sft.setMaximumReads(maxReads);
@@ -101,6 +101,9 @@ public class SequenceControllerThread implements Runnable{
 	
 	@Override
 	public void run() {
+		if(!readyToRun) {
+			return;
+		}
 		enableButtons(false);
 		int cores = Runtime.getRuntime().availableProcessors();
 		int maxFiles = vThreads.size();

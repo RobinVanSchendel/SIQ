@@ -120,8 +120,6 @@ public class SequenceController {
 		subjectObject.setMinPassedPrimer(options.getMinPassedPrimer());
 		subjectObject.setHDR(hdr);
 		
-		
-		KMERLocation kmerl = new KMERLocation(subject.seqString());
 		//kmerl = null;
 		for(File seqs: ab1s){
 			System.out.println(fileNr+"/"+ab1s.size()+":"+seqs.getName());
@@ -137,7 +135,6 @@ public class SequenceController {
 			sft.setCollapseStartEnd(includeStartEnd);
 			sft.setMaximumReads(options.getMaxReads());
 			sft.setAlias(options.getAlias());
-			sft.setKMERLocation(kmerl);
 			sft.setAllowJump(options.allowJump());
 			if(options.getSingleFile()!= null) {
 				sft.printHeader();
@@ -239,7 +236,6 @@ public class SequenceController {
 		Vector<File> ab1s = getAB1Files(dir);
 		//System.out.println("Found "+ab1s.size()+" ab1 files");
 		//Introduce the KMER
-		KMERLocation kmerl = new KMERLocation(currentSequence.seqString());
 		Subject subjectObject = new Subject(currentSequence, leftFlank, rightFlank);
 		for(File seqs: ab1s){
 			try {
@@ -248,7 +244,7 @@ public class SequenceController {
 				NucleotideSequence seq = chromo.getNucleotideSequence();
 				QualitySequence quals = chromo.getQualitySequence();
 				//mask
-				CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, seqs.getParent(), checkReverse, seqs.getName(), kmerl);
+				CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, seqs.getParent(), checkReverse, seqs.getName());
 				cs.setAndDetermineCorrectRange(quality);
 				cs.maskSequenceToHighQualityRemove();
 				cs.determineFlankPositions(false);

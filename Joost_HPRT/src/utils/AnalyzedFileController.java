@@ -75,7 +75,6 @@ public class AnalyzedFileController implements Runnable{
 		RichSequence subject = subjectSequences.get(0);
 		progressBar.setValue(0);
 		progressBar.setMaximum(nrFiles());
-		KMERLocation kmerl = new KMERLocation(subject.seqString());
 		Subject subjectObject = new Subject(subject,left,right);
 		boolean splitCs = false;
 		if(left.length()==0 && right.length()==0) {
@@ -98,7 +97,7 @@ public class AnalyzedFileController implements Runnable{
 			
 			//kmerl = null;
 			String name = f.getName();
-			CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, f.getParent(), true, name, kmerl);
+			CompareSequence cs = new CompareSequence(subjectObject, seq.toString(), quals, f.getParent(), true, name);
 			cs.setCurrentFile(f);
 			cs.setAndDetermineCorrectRange(maxError);
 			if(maskLowQuality){

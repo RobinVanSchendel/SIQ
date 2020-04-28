@@ -26,6 +26,7 @@ public class Subject {
 	private boolean exitOnError = false;
 	private RichSequence hdr;
 	private CompareSequence hdrCS;
+	private KMERLocation kmerl;
 	
 	public Subject(RichSequence subject) {
 		this.subject = subject.seqString().toString();
@@ -34,6 +35,7 @@ public class Subject {
 		if(subjectComments == null) {
 			this.subjectComments = subjectName;
 		}
+		kmerl = new KMERLocation(this.subject);
 	}
 	public Subject(RichSequence subject, String left, String right, boolean exitOnError) {
 		this(subject, left, right);
@@ -43,12 +45,7 @@ public class Subject {
 		}
 	}
 	public Subject(RichSequence subject, String left, String right) {
-		this.subject = subject.seqString().toString();
-		this.subjectName = subject.getName();
-		this.subjectComments = subject.getDescription();
-		if(subjectComments == null) {
-			this.subjectComments = subjectName;
-		}
+		this(subject);
 		if(left == null) {
 			left = "";
 		}
@@ -82,92 +79,100 @@ public class Subject {
 		return 0;
 	}
 	public void setRightFlank(String tempRightFlank) {
-		this.rightFlank = tempRightFlank.toLowerCase();
-		if(this.rightFlank.length()==0) {
-			this.rightFlank = null;
-			rightSet = false;
-			return;
-		}
-		if(subject.indexOf(rightFlank)<0) {
-			System.err.println("Cannot find rightFlank "+rightFlank);
-			//System.exit(0);
-			rightSet = false;
-		}
-		else {
-			this.startOfRightFlank = subject.indexOf(rightFlank);
-			this.endOfRightFlank = startOfRightFlank+rightFlank.length();
-			rightSet = true;
+		if(tempRightFlank!=null) {
+			this.rightFlank = tempRightFlank.toLowerCase();
+			if(this.rightFlank.length()==0) {
+				this.rightFlank = null;
+				rightSet = false;
+				return;
+			}
+			if(subject.indexOf(rightFlank)<0) {
+				System.err.println("Cannot find rightFlank "+rightFlank);
+				//System.exit(0);
+				rightSet = false;
+			}
+			else {
+				this.startOfRightFlank = subject.indexOf(rightFlank);
+				this.endOfRightFlank = startOfRightFlank+rightFlank.length();
+				rightSet = true;
+			}
 		}
 	}
 	public void setLeftPrimer(String tempLeftPrimer) {
-		this.leftPrimer = tempLeftPrimer.toLowerCase();
-		//can also be in reverse complement orientation
-		if(subject.indexOf(this.leftPrimer)<0) {
-			//check reverse complement
-			String leftPrimerRC = Utils.reverseComplement(leftPrimer);
-			//really cannot find it
-			if(subject.indexOf(leftPrimerRC)<0) {
-				System.err.println("Cannot find leftPrimer "+leftPrimer);
-				if(this.exitOnError) {
-					System.exit(0);
+		if(tempLeftPrimer !=null) {
+			this.leftPrimer = tempLeftPrimer.toLowerCase();
+			//can also be in reverse complement orientation
+			if(subject.indexOf(this.leftPrimer)<0) {
+				//check reverse complement
+				String leftPrimerRC = Utils.reverseComplement(leftPrimer);
+				//really cannot find it
+				if(subject.indexOf(leftPrimerRC)<0) {
+					System.err.println("Cannot find leftPrimer "+leftPrimer);
+					if(this.exitOnError) {
+						System.exit(0);
+					}
+					this.leftPrimerSet = false;
+					//still have to return otherwise primer gets set
+					return;
 				}
-				this.leftPrimerSet = false;
-				//still have to return otherwise primer gets set
-				return;
+				else {
+					this.leftPrimer = leftPrimerRC;
+				}
 			}
-			else {
-				this.leftPrimer = leftPrimerRC;
-			}
+			this.startOfLeftPrimer = subject.indexOf(leftPrimer);
+			this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
+			this.leftPrimerSet = true;
 		}
-		this.startOfLeftPrimer = subject.indexOf(leftPrimer);
-		this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
-		this.leftPrimerSet = true;
 	}
 	public void setRightPrimer(String tempRightPrimer) {
-		this.rightPrimer = tempRightPrimer.toLowerCase();
-		//take rc
-		if(rightPrimer!=null) {
-			this.rightPrimer = Utils.reverseComplement(rightPrimer);
-		}
-		if(subject.indexOf(this.rightPrimer)<0) {
-			//try normal orientation
-			String rightPrimerTemp = tempRightPrimer.toLowerCase();
-			if(subject.indexOf(rightPrimerTemp)<0) {
-				System.err.println("Cannot find rightPrimer "+rightPrimer);
-				this.rightPrimerSet = false;
-				if(this.exitOnError) {
-					System.exit(0);
+		if(tempRightPrimer!=null) {
+			this.rightPrimer = tempRightPrimer.toLowerCase();
+			//take rc
+			if(rightPrimer!=null) {
+				this.rightPrimer = Utils.reverseComplement(rightPrimer);
+			}
+			if(subject.indexOf(this.rightPrimer)<0) {
+				//try normal orientation
+				String rightPrimerTemp = tempRightPrimer.toLowerCase();
+				if(subject.indexOf(rightPrimerTemp)<0) {
+					System.err.println("Cannot find rightPrimer "+rightPrimer);
+					this.rightPrimerSet = false;
+					if(this.exitOnError) {
+						System.exit(0);
+					}
+					//still have to return here
+					return;
 				}
-				//still have to return here
-				return;
+				else {
+					this.rightPrimer = rightPrimerTemp;
+				}
+				//System.exit(0);
 			}
-			else {
-				this.rightPrimer = rightPrimerTemp;
-			}
-			//System.exit(0);
+			this.startOfRightPrimer = subject.indexOf(rightPrimer);
+			this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
+			this.rightPrimerSet = true;
 		}
-		this.startOfRightPrimer = subject.indexOf(rightPrimer);
-		this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
-		this.rightPrimerSet = true;
 	}
 	public void setLeftFlank(String tempLeftFlank) {
-		this.leftFlank = tempLeftFlank.toLowerCase();
-		if(this.leftFlank.length()==0) {
-			this.leftFlank = null;
-			leftSet = false;
-			return;
-		}
-		if(subject.indexOf(this.leftFlank)<0) {
-			System.err.println("Cannot find leftFlank "+leftFlank+" "+subject.indexOf(this.leftFlank));
-			//System.err.println(subject);
-			//System.err.println(subject.length());
-			//System.exit(0);
-			leftSet = false;
-		}
-		else {
-			this.endOfLeftFlank = subject.indexOf(leftFlank)+leftFlank.length();
-			//System.out.println("endOfLeftFlank "+endOfLeftFlank);
-			leftSet = true;
+		if(tempLeftFlank!=null) {
+			this.leftFlank = tempLeftFlank.toLowerCase();
+			if(this.leftFlank.length()==0) {
+				this.leftFlank = null;
+				leftSet = false;
+				return;
+			}
+			if(subject.indexOf(this.leftFlank)<0) {
+				System.err.println("Cannot find leftFlank "+leftFlank+" "+subject.indexOf(this.leftFlank));
+				System.err.println(subject);
+				//System.err.println(subject.length());
+				//System.exit(0);
+				leftSet = false;
+			}
+			else {
+				this.endOfLeftFlank = subject.indexOf(leftFlank)+leftFlank.length();
+				//System.out.println("endOfLeftFlank "+endOfLeftFlank);
+				leftSet = true;
+			}
 		}
 	}
 	public boolean hasLeft() {
@@ -301,7 +306,7 @@ public class Subject {
 		//make HDR object
 		if(hdrCS == null) {
 			KMERLocation kmerl = new KMERLocation(this.getString());
-			hdrCS = new CompareSequence(this,hdr.seqString(),null, null, true, "", kmerl);
+			hdrCS = new CompareSequence(this,hdr.seqString(),null, null, true, "");
 			hdrCS.determineFlankPositions(false);
 		}
 		if(hdrCS!=null) {
@@ -310,5 +315,8 @@ public class Subject {
 			}
 		}
 		return false;
+	}
+	public KMERLocation getKmerl() {
+		return kmerl;
 	}
 }
