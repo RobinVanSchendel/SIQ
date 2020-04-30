@@ -29,7 +29,7 @@ public class Subject {
 	private KMERLocation kmerl;
 	
 	public Subject(RichSequence subject) {
-		this.subject = subject.seqString().toString();
+		this.subject = subject.seqString().toString().toUpperCase();
 		this.subjectName = subject.getName();
 		this.subjectComments = subject.getDescription();
 		if(subjectComments == null) {
@@ -80,7 +80,7 @@ public class Subject {
 	}
 	public void setRightFlank(String tempRightFlank) {
 		if(tempRightFlank!=null) {
-			this.rightFlank = tempRightFlank.toLowerCase();
+			this.rightFlank = tempRightFlank.toUpperCase();
 			if(this.rightFlank.length()==0) {
 				this.rightFlank = null;
 				rightSet = false;
@@ -100,7 +100,7 @@ public class Subject {
 	}
 	public void setLeftPrimer(String tempLeftPrimer) {
 		if(tempLeftPrimer !=null) {
-			this.leftPrimer = tempLeftPrimer.toLowerCase();
+			this.leftPrimer = tempLeftPrimer.toUpperCase();
 			//can also be in reverse complement orientation
 			if(subject.indexOf(this.leftPrimer)<0) {
 				//check reverse complement
@@ -126,14 +126,14 @@ public class Subject {
 	}
 	public void setRightPrimer(String tempRightPrimer) {
 		if(tempRightPrimer!=null) {
-			this.rightPrimer = tempRightPrimer.toLowerCase();
+			this.rightPrimer = tempRightPrimer.toUpperCase();
 			//take rc
 			if(rightPrimer!=null) {
 				this.rightPrimer = Utils.reverseComplement(rightPrimer);
 			}
 			if(subject.indexOf(this.rightPrimer)<0) {
 				//try normal orientation
-				String rightPrimerTemp = tempRightPrimer.toLowerCase();
+				String rightPrimerTemp = tempRightPrimer.toUpperCase();
 				if(subject.indexOf(rightPrimerTemp)<0) {
 					System.err.println("Cannot find rightPrimer "+rightPrimer);
 					this.rightPrimerSet = false;
@@ -155,7 +155,7 @@ public class Subject {
 	}
 	public void setLeftFlank(String tempLeftFlank) {
 		if(tempLeftFlank!=null) {
-			this.leftFlank = tempLeftFlank.toLowerCase();
+			this.leftFlank = tempLeftFlank.toUpperCase();
 			if(this.leftFlank.length()==0) {
 				this.leftFlank = null;
 				leftSet = false;

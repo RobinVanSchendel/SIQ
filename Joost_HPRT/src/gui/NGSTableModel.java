@@ -9,10 +9,10 @@ import javax.swing.table.AbstractTableModel;
 
 public class NGSTableModel extends AbstractTableModel {
 	// holds the strings to be displayed in the column headers of our table
-	   final String[] columnNames = {"R1 file", "R2 file", "<html>assembled<br>file</html>","<html>unassembled<br>R1 file</html>","<html>unassembled<br>R2 file</html>", "reference", "alias", "left flank", "right flank", "left primer", "right primer", "<html>#bases past<br>primer</html>","%Complete", "#Reads", "#Correct","%Correct"};
+	   final String[] columnNames = {"R1 file", "R2 file", "reference", "alias", "left flank", "right flank", "left primer", "right primer", "<html>#bases past<br>primer</html>","%Complete", "#Reads", "#Correct","%Correct"};
 	  
 	   // holds the data types for all our columns
-	   Class[] columnClasses = {File.class, File.class, File.class,File.class,File.class,String.class, String.class, String.class, String.class, String.class, String.class, String.class, Float.class, Integer.class, Integer.class, Float.class};
+	   Class[] columnClasses = {File.class, File.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, Float.class, Integer.class, Integer.class, Float.class};
 	  
 	   // holds our data
 	   Vector<NGS> data = new Vector<NGS>();
@@ -68,20 +68,17 @@ public class NGSTableModel extends AbstractTableModel {
 	      NGS wine = (NGS) data.elementAt(row);
 	      if (col == 0)      return wine.getR1();
 	      else if (col == 1)      return wine.getR2();
-	      else if (col == 2)      return wine.getAssembledFile();
-	      else if (col == 3)      return wine.getUnassembledFileF();
-	      else if (col == 4)      return wine.getUnassembledFileR();
-	      else if (col == 5) return wine.getSubject();
-	      else if (col == 6) return wine.getAlias();
-	      else if (col == 7) return wine.getLeftFlank();
-	      else if (col == 8) return wine.getRightFlank();
-	      else if (col == 9) return wine.getLeftPrimer();
-	      else if (col == 10) return wine.getRightPrimer();
-	      else if (col == 11) return wine.getMinPassedPrimer();
-	      else if (col == 12) return wine.getStatus();
-	      else if (col == 13) return wine.getTotalReads();
-	      else if (col == 14) return wine.getCorrectReads();
-	      else if (col == 15) return wine.getCorrectPercentage();
+	      else if (col == 2) return wine.getSubject();
+	      else if (col == 3) return wine.getAlias();
+	      else if (col == 4) return wine.getLeftFlank();
+	      else if (col == 5) return wine.getRightFlank();
+	      else if (col == 6) return wine.getLeftPrimer();
+	      else if (col == 7) return wine.getRightPrimer();
+	      else if (col == 8) return wine.getMinPassedPrimer();
+	      else if (col == 9) return wine.getStatus();
+	      else if (col == 10) return wine.getTotalReads();
+	      else if (col == 11) return wine.getCorrectReads();
+	      else if (col == 12) return wine.getCorrectPercentage();
 	      else return null;
 	   }
 	  
@@ -132,52 +129,25 @@ public class NGSTableModel extends AbstractTableModel {
 				   wine.setR2(new File((String)aValue));
 		   }
 		   else if(columnIndex == 2) {
-			   if(aValue== null) {
-				   wine.setAssembled(null);
-			   }
-			   if(aValue instanceof File)
-				   wine.setAssembled((File)aValue);
-			   else if(aValue instanceof String) 
-				   wine.setAssembled(new File((String)aValue));
-		   }
-		   else if(columnIndex == 3) {
-			   if(aValue== null) {
-				   wine.setUnassembledF(null);
-			   }
-			   if(aValue instanceof File)
-				   wine.setUnassembledF((File)aValue);
-			   else if(aValue instanceof String) 
-				   wine.setUnassembledF(new File((String)aValue));
-		   }
-		   else if(columnIndex == 4) {
-			   if(aValue== null) {
-				   wine.setUnassembledR(null);
-			   }
-			   if(aValue instanceof File)
-				   wine.setUnassembledR((File)aValue);
-			   else if(aValue instanceof String) 
-				   wine.setUnassembledR(new File((String)aValue));
-		   }
-		   else if(columnIndex == 5) {
 			   wine.setSubject((String)aValue);
 		   }
-		   else if(columnIndex == 6) {
+		   else if(columnIndex == 3) {
 			   wine.setAlias((String)aValue);
 		   }
-		   else if(columnIndex == 7) {
+		   else if(columnIndex == 4) {
 			   System.out.println("setting leftFlank "+aValue);
 			   wine.setLeftFlank((String)aValue);
 		   }
-		   else if(columnIndex == 8) {
+		   else if(columnIndex == 5) {
 			   wine.setRightFlank((String)aValue);
 		   }
-		   else if(columnIndex == 9) {
+		   else if(columnIndex == 6) {
 			   wine.setLeftPrimer((String)aValue);
 		   }
-		   else if(columnIndex == 10) {
+		   else if(columnIndex == 7) {
 			   wine.setRightPrimer((String)aValue);
 		   }
-		   else if(columnIndex == 11) {
+		   else if(columnIndex == 8) {
 			   try {
 				   if(aValue == null) {
 					   wine.setMinPassedPrimer(5);
@@ -191,26 +161,26 @@ public class NGSTableModel extends AbstractTableModel {
 				   JOptionPane.showMessageDialog(null, "minPassedPrimer requires a number as input", "Error", JOptionPane.ERROR_MESSAGE);
 			   }
 		   }
-		   else if(columnIndex == 12) {
+		   else if(columnIndex == 9) {
 			   if(aValue !=null && aValue instanceof Float) {
 				   System.out.println("12["+aValue+"]");
 				   float status = ((Float)aValue);
 				   wine.setStatus(status);
 			   }
 		   }
-		   else if(columnIndex == 13) {
+		   else if(columnIndex == 10) {
 			   if(aValue !=null && aValue instanceof Integer) {
 					   int total = ((Integer)aValue);
 					   wine.setTotalReads(total);
 			   }
 		   }
-		   else if(columnIndex == 14) {
+		   else if(columnIndex == 11) {
 			   if(aValue !=null && aValue instanceof Integer) {
 					   int correct = ((Integer)aValue);
 					   wine.setCorrectReads(correct);
 			   }
 		   }
-		   else if(columnIndex == 15) {
+		   else if(columnIndex == 12) {
 			   if(aValue !=null && aValue instanceof Float) {
 				   float correct = ((Float)aValue);
 				   wine.setPercentage(correct);

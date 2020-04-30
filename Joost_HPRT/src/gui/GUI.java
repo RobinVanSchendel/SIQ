@@ -1451,15 +1451,6 @@ public class GUI implements ActionListener, MouseListener {
 					"<html>NGS file R2 containing all reads in .fastq(.gz) (optional)<br>"
 							+ "if R1 and R2 are provided, you need an external application to combine<br>"
 							+ "the reads. This program can launch FLASH to do just that if the executable is set</html>",
-                    "<html>Assembled reads file in .fastq(.gz)  (in fasta format)(optional)<br>"
-                    + "can be assembled by any program that can assemble paired end reads<br>"
-                    + "e.g. PEAR and FLASH</html>",
-                    "<html>unassembled R1 reads file in .fastq(.gz) (in fasta format) (optional)<br>"
-                            + "can be come from any program that can assemble paired end reads<br>"
-                            + "e.g. PEAR and FLASH</html>",
-                    "<html>unassembled R2 reads file in .fastq(.gz) (in fasta format) (optional)<br>"
-                                    + "can be assembled by any program that can assemble paired end reads<br>"
-                                    + "e.g. PEAR and FLASH</html>",
                     "Reference file (in fasta format)",
                     "Any Alias name that you want to give to this file",
                     "the left part of the cut site (>=15nt) (case insensitive)",

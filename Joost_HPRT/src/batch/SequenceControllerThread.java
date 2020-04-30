@@ -3,6 +3,7 @@ package batch;
 import java.awt.Component;
 import java.io.File;
 import java.util.Vector;
+import java.util.concurrent.Semaphore;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -70,6 +71,8 @@ public class SequenceControllerThread implements Runnable{
 				System.out.println("Starting assembled derived");
 				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
 			}
+			//leave out for now
+			/*
 			if(n.unAssembledFOK()) {
 				sft.setFileF(n.getUnassembledFileF());
 			}
@@ -82,6 +85,7 @@ public class SequenceControllerThread implements Runnable{
 			else {
 				sft.setFileR(n.getUnassembledRFileDerived());
 			}
+			*/
 			System.out.println("Setting minSupport "+minSupport);
 			System.out.println("Setting setMaximumReads "+maxReads);
 			
@@ -108,7 +112,32 @@ public class SequenceControllerThread implements Runnable{
 		int cores = Runtime.getRuntime().availableProcessors();
 		int maxFiles = vThreads.size();
 		System.out.println("Gonna start "+Math.min(cores, maxFiles)+" cpus");
-		
+		int cpus = Math.min(cores, maxFiles);
+		Semaphore mySemaphore = new Semaphore(cpus);
+		Thread t = null;
+		try {
+			while(vThreads.size()>0) {
+			    mySemaphore.acquire(); // This will hang until there is a vacancy
+			    //do_my_critical_stuff();
+			    t = vThreads.remove(0);
+			    t.start();
+			}
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+		    mySemaphore.release();
+		}
+		//keep waiting until they are done
+		while(t.isAlive()) {
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		/*
 		Vector<Thread> running = new Vector<Thread>();
 		Vector<Integer> toBeRemoved = new Vector<Integer>();
 		while(vThreads.size()>0 || running.size()>0){
@@ -134,6 +163,8 @@ public class SequenceControllerThread implements Runnable{
 				e.printStackTrace();
 			}
 		}
+		*/
+		//while(Thread.)
 		enableButtons(true);
 		//add button to export stuff to Combined file
 	}

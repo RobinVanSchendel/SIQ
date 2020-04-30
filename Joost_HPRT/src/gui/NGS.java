@@ -152,8 +152,9 @@ public class NGS {
 		}
 	}
 	public boolean R2OK() {
+		//changed this behaviour now. It does not need to be there
 		if(this.R2==null) {
-			return false;
+			return true;
 		}
 		else {
 			if(R2.exists()) {
@@ -248,6 +249,9 @@ public class NGS {
 		return maxError;
 	}
 	public File getAssembledFile() {
+		if(R1OK() && this.R2==null) {
+			return R1;
+		}
 		//TODO I broke the FLASH thingy now
 		//if(this.assembledOK()) {
 		return this.assembled;
@@ -279,7 +283,11 @@ public class NGS {
 		return null;
 	}
 	public boolean assembledOK() {
-		if(this.assembled == null) {
+		//use R1
+		if(R1OK() && this.R2 == null) {
+			return true;
+		}
+		else if(this.assembled == null) {
 			return false;
 		}
 		else {
@@ -337,9 +345,11 @@ public class NGS {
 		if(R1OK() && R2OK()) {
 			return true;
 		}
+		/*
 		else if(this.assembledOK()) {
 			return true;
 		}
+		*/
 		return false;
 	}
 	public boolean allOK() {

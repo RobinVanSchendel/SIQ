@@ -36,34 +36,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  setForeground(optional);
     	  }
       }
-      //ass
       else if (column == 2) {
-    	  if(wine.assembledOK()) {
-    		  setForeground(greenFont);
-    	  }
-    	  else {
-    		  setForeground(optional);
-    	  }
-      }
-      //unassF
-      else if (column == 3) {
-    	  if(wine.unAssembledFOK()) {
-    		  setForeground(greenFont);
-    	  }
-    	  else {
-    		  setForeground(optional);
-    	  }
-      }
-      ////unassF
-      else if (column == 4) {
-    	  if(wine.unAssembledROK()) {
-    		  setForeground(greenFont);
-    	  }
-    	  else {
-    		  setForeground(optional);
-    	  }
-      }
-      else if (column == 5) {
     	  if(wine.getSubjectOK()) {
     		  setForeground(greenFont);
     	  }
@@ -71,11 +44,11 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  setForeground(problem);
     	  }
       }
-      else if (column == 6) {
+      else if (column == 3) {
     	  setForeground(Color.white);
     	  setForeground(greenFont);
       }
-      else if (column == 7) {
+      else if (column == 4) {
     	  //System.out.println("rendering leftFlank "+wine.leftFlankOK());
     	  //System.out.println("rendering leftFlank "+wine.getLeftFlank());
     	  if(wine.leftFlankOK()) {
@@ -85,7 +58,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  setForeground(problem);
     	  }
       }
-      else if (column == 8) {
+      else if (column == 5) {
     	  if(wine.rightFlankOK()) {
     		  setForeground(greenFont);
     	  }
@@ -93,7 +66,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  setForeground(problem);
     	  }
       }
-      else if (column == 9) {
+      else if (column == 6) {
     	  if(wine.leftPrimerOK()) {
     		  setForeground(greenFont);
     	  }
@@ -101,7 +74,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  setForeground(problem);
     	  }
       }
-      else if (column == 10) {
+      else if (column == 7) {
     	  if(wine.rightPrimerOK()) {
     		  setForeground(greenFont);
     	  }
@@ -109,7 +82,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  setForeground(problem);
     	  }
       }
-      else if (column == 11) {
+      else if (column == 8) {
     	  if(wine.getMinPassedPrimer()>=0 && wine.getMinPassedPrimer()<=15) {
     		  setForeground(greenFont);
     	  }

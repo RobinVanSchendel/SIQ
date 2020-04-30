@@ -110,6 +110,8 @@ public class SequenceFileThread implements Runnable {
 		//	setCheckReverseOverwrite();
 		//}
 		AtomicLong start = new AtomicLong(System.nanoTime());
+		AtomicLong process = new AtomicLong(0);
+		AtomicLong processFlank = new AtomicLong(0);
 		AtomicInteger counter = new AtomicInteger(0);
 		AtomicInteger counterFR = new AtomicInteger(0);
 		AtomicInteger wrong = new AtomicInteger(0);
@@ -216,7 +218,8 @@ public class SequenceFileThread implements Runnable {
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
 				QualitySequence quals = fastqRecord.getQualitySequence();
-
+				
+				String seq = fastqRecord.getNucleotideSequence().toString();
 				boolean checkReverse = false;
 				if(counter.get()==0) {
 					checkReverse = true;
@@ -228,16 +231,18 @@ public class SequenceFileThread implements Runnable {
 				if(checkReverseOverwrite) {
 					checkReverse = true;
 				}
-				CompareSequence cs = new CompareSequence(subject, fastqRecord.getNucleotideSequence().toString(), quals, f.getParentFile().getName(), checkReverse, id);
+				CompareSequence cs = new CompareSequence(subject, seq, quals, f.getParentFile().getName(), checkReverse, id);
 				if(counter.get()==0 && cs.isReversed()) {
 					takeRc.set(true);
 				}
 				else if(takeRc.get()) {
 					cs.reverseRead();
 				}
+				AtomicLong tempProcess = new AtomicLong(System.nanoTime());
 				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemoveSingleRange();
 				cs.setAllowJump(this.allowJump);
+				process.set(System.nanoTime()-tempProcess.get()+process.get());
 				
 				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
@@ -258,7 +263,9 @@ public class SequenceFileThread implements Runnable {
 						cacheHit.getAndIncrement();
 					}
 					else {
+						AtomicLong tempProcessFlank = new AtomicLong(System.nanoTime());
 						cs.determineFlankPositions(true);
+						processFlank.set(System.nanoTime()-tempProcessFlank.get()+processFlank.get());
 						leftCorrect = cs.isCorrectPositionLeft();
 						rightCorrect = cs.isCorrectPositionRight();
 						if(leftCorrect && rightCorrect) {
@@ -348,8 +355,14 @@ public class SequenceFileThread implements Runnable {
 				if(counter.get()%10000==0){
 					long end = System.nanoTime();
 					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
+					long processDuration = TimeUnit.MILLISECONDS.convert(process.get(), TimeUnit.NANOSECONDS);
+					long processFlankDuration = TimeUnit.MILLISECONDS.convert(processFlank.get(), TimeUnit.NANOSECONDS);
 					start.set(end);
 					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
+					System.out.println("Thread: "+Thread.currentThread().getName()+" process "+processDuration+" costed (milliseconds)");//+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
+					System.out.println("Thread: "+Thread.currentThread().getName()+" processFlank "+processFlankDuration+" costed (milliseconds)");//+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
+					process.set(0);
+					processFlank.set(0);
 					if(lookupDoneCounter.size()>10000) {
 						System.out.println("Clearing cache");
 						lookupDone.clear();

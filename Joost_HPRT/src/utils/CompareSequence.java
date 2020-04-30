@@ -68,7 +68,7 @@ public class CompareSequence {
 	
 	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName) {
 		this.queryName = queryName;
-		this.query = query.toLowerCase();
+		this.query = query;//.toLowerCase();
 		this.dir = dir;
 		this.quals = quals;
 		this.subjectObject = subjectObject;
@@ -114,8 +114,10 @@ public class CompareSequence {
 
 		if(subjectObject.hasLeftRight()){
 			rightPos = subjectObject.getStartOfRightFlank();
-			
 			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump);
+			int indexRemain = -1;
+			String queryRemain = null;
+			
 			if(kmerFlankOne != null) {
 				this.jumpedLeft = kmerFlankOne.getJumped();
 			}
@@ -131,9 +133,9 @@ public class CompareSequence {
 			else {
 				seqRemain = query.replace(flankOne.getString(), replacementFlank);
 				//some error checking on the length of the rightFlank
-				int indexRemain = seqRemain.indexOf(replacementFlank);
-				if(indexRemain>0){
-					String queryRemain = seqRemain.substring(indexRemain+replacementFlank.length());
+				indexRemain = seqRemain.indexOf(replacementFlank);
+				if(indexRemain>=0){
+					queryRemain = seqRemain.substring(indexRemain+replacementFlank.length());
 					//System.out.println("here:"+queryRemain);
 					if(queryRemain.length() == 0 || queryRemain.startsWith("n") || queryRemain.startsWith("x")){
 						this.setRemarks("We have nothing to search for on the rightFlank");
@@ -141,16 +143,16 @@ public class CompareSequence {
 				}
 			}
 			//switched to minimumSizeWithLeftRight //15
-			int replacementIndex = seqRemain.indexOf(replacementFlank);
+			int replacementIndex = indexRemain;
 			//overrrule if we did not find the left flank
-			String seqRemainRightPart = "";
+			String seqRemainRightPart = null;
 			LCS flankTwoLCS = null;
 			if(replacementIndex == -1) {
 				seqRemainRightPart = query;
 				flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemainRightPart, 0, minimumSizeWithLeftRight, allowJump);
 			}
 			else {
-				seqRemainRightPart = seqRemain.substring(replacementIndex);
+				seqRemainRightPart = queryRemain;
 				flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemainRightPart, flankOne.getSubjectEnd(), minimumSizeWithLeftRight, allowJump);
 			}
 			if(flankTwoLCS!= null) {
@@ -945,6 +947,11 @@ public class CompareSequence {
 		this.minimumSizeWithoutLeftRight = min;
 	}
 	public void setAndDetermineCorrectRange(double relaxedMaxError) {
+		//speed up for high quality sequences
+		if(quals.getMinQuality().get().getErrorProbability()<=relaxedMaxError) {
+			this.masked = true;
+			return;
+		}
 		double maxError = relaxedMaxError;
 		long first = -1;
 		long last = quals.getLength()-1;
@@ -975,6 +982,9 @@ public class CompareSequence {
 		}
 	}
 	public void maskSequenceToHighQuality(String left, String right){
+		if(this.isMasked()) {
+			return;
+		}
 		if(ranges.size()==0){
 			System.out.println("here");
 			this.setRemarks("No high quality range found, unable to mask");
@@ -1007,6 +1017,9 @@ public class CompareSequence {
 		}
 	}
 	public void maskSequenceToHighQualityRemove(){
+		if(this.isMasked()) {
+			return;
+		}
 		if(ranges.size()==0){
 			this.setRemarks("No high quality range found, unable to mask");
 		}
@@ -1309,6 +1322,10 @@ public class CompareSequence {
 		}
 	}
 	public void maskSequenceToHighQualityRemoveSingleRange() {
+		//already done
+		if(this.isMasked()) {
+			return;
+		}
 		if(ranges.size()==0){
 			this.setRemarks("No high quality range found, unable to mask");
 		}
@@ -1353,6 +1370,11 @@ public class CompareSequence {
 	}
 	public ArrayList<CompareSequence> maskSequenceToHighQualityRemoveNoFlanks() {
 		ArrayList<CompareSequence> al = new ArrayList<CompareSequence>();
+		if(this.isMasked()) {
+			al.add(this);
+			return al;
+		}
+		
 		if(ranges.size()==0){
 			this.setRemarks("No high quality range found, unable to mask");
 			al.add(this);
