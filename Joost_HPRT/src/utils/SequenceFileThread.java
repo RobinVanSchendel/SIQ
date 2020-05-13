@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,6 +60,7 @@ public class SequenceFileThread implements Runnable {
 	private NGSTableModel tableModel;
 	private String flashExec;
 	private int cpus = 1;
+	private Semaphore semaphore;
 	
 	//private boolean takeRC = false;
 	
@@ -77,7 +79,15 @@ public class SequenceFileThread implements Runnable {
 	
 	@Override
 	public void run() {
-		runReal();
+		try {
+			semaphore.acquire();
+			runReal();
+			semaphore.release();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 	public void runReal() {
 		Thread.currentThread().setName(alias);
@@ -85,6 +95,15 @@ public class SequenceFileThread implements Runnable {
 		boolean collapseEvents = collapse;
 		PrintWriter writer = null, writerStats = null;
 		String type = "";
+		//reset NGSTable if needed
+		if(this.tableModel!= null) {
+			this.tableModel.setStatus(ngs, 0);
+			this.tableModel.setTotal(ngs, 0);
+			this.tableModel.setCorrect(ngs, 0);
+			this.tableModel.setPercentage(ngs, 0);
+		}
+		
+		
 		//Check if you need to assemble anything
 		if(!f.exists()) {
 			if(ngs!=null) {
@@ -238,11 +257,11 @@ public class SequenceFileThread implements Runnable {
 				else if(takeRc.get()) {
 					cs.reverseRead();
 				}
-				AtomicLong tempProcess = new AtomicLong(System.nanoTime());
+				//AtomicLong tempProcess = new AtomicLong(System.nanoTime());
 				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemoveSingleRange();
 				cs.setAllowJump(this.allowJump);
-				process.set(System.nanoTime()-tempProcess.get()+process.get());
+				//process.set(System.nanoTime()-tempProcess.get()+process.get());
 				
 				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
@@ -263,9 +282,9 @@ public class SequenceFileThread implements Runnable {
 						cacheHit.getAndIncrement();
 					}
 					else {
-						AtomicLong tempProcessFlank = new AtomicLong(System.nanoTime());
+						//AtomicLong tempProcessFlank = new AtomicLong(System.nanoTime());
 						cs.determineFlankPositions(true);
-						processFlank.set(System.nanoTime()-tempProcessFlank.get()+processFlank.get());
+						//processFlank.set(System.nanoTime()-tempProcessFlank.get()+processFlank.get());
 						leftCorrect = cs.isCorrectPositionLeft();
 						rightCorrect = cs.isCorrectPositionRight();
 						if(leftCorrect && rightCorrect) {
@@ -355,12 +374,12 @@ public class SequenceFileThread implements Runnable {
 				if(counter.get()%10000==0){
 					long end = System.nanoTime();
 					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
-					long processDuration = TimeUnit.MILLISECONDS.convert(process.get(), TimeUnit.NANOSECONDS);
-					long processFlankDuration = TimeUnit.MILLISECONDS.convert(processFlank.get(), TimeUnit.NANOSECONDS);
+					//long processDuration = TimeUnit.MILLISECONDS.convert(process.get(), TimeUnit.NANOSECONDS);
+					//long processFlankDuration = TimeUnit.MILLISECONDS.convert(processFlank.get(), TimeUnit.NANOSECONDS);
 					start.set(end);
-					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
-					System.out.println("Thread: "+Thread.currentThread().getName()+" process "+processDuration+" costed (milliseconds)");//+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
-					System.out.println("Thread: "+Thread.currentThread().getName()+" processFlank "+processFlankDuration+" costed (milliseconds)");//+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
+					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(float)counter.get())+" cacheHit: "+cacheHit);
+					//System.out.println("Thread: "+Thread.currentThread().getName()+" process "+processDuration+" costed (milliseconds)");//+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
+					//System.out.println("Thread: "+Thread.currentThread().getName()+" processFlank "+processFlankDuration+" costed (milliseconds)");//+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
 					process.set(0);
 					processFlank.set(0);
 					if(lookupDoneCounter.size()>10000) {
@@ -454,7 +473,7 @@ public class SequenceFileThread implements Runnable {
 		}
 		long end = System.nanoTime();
 		long duration = TimeUnit.SECONDS.convert((end-realStart), TimeUnit.NANOSECONDS);
-		System.out.println("duration "+duration);
+		System.out.println("Thread: "+Thread.currentThread().getName()+" duration "+duration+" seconds");
 	}
 	/*
 	private ArrayList<SetAndPosition> createSetAndPosition() {
@@ -638,11 +657,6 @@ public class SequenceFileThread implements Runnable {
             	System.err.println("Something went wrong with the assembly "+flashOutputunassR.getName());
             	System.err.println(flashOutputunassR.getAbsolutePath());
             }
-            
-            
-            
-            //System.exit(0);
-            //return outputGobbler.getBlastResult();
 			
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
@@ -655,6 +669,10 @@ public class SequenceFileThread implements Runnable {
 	public void setFlash(String flashExec, int cpus) {
 		this.flashExec = flashExec;
 		this.cpus = cpus;
+		
+	}
+	public void setSemaphore(Semaphore mySemaphore) {
+		this.semaphore = mySemaphore;
 		
 	}
 }

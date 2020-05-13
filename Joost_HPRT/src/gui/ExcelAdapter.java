@@ -86,7 +86,6 @@ sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
       }
       if (e.getActionCommand().compareTo("Paste")==0)
       {
-          System.out.println("Trying to Paste");
           int startRow=(jTable1.getSelectedRows())[0];
           int startCol=(jTable1.getSelectedColumns())[0];
           try

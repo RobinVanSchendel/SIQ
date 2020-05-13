@@ -74,13 +74,34 @@ public class KMERLocation {
 	}
 	public Left getMatchLeft(String seq, int leftPos, boolean allowJump) {
 		if(!hasQuery(seq)) {
-			//System.out.println("replaced");
+			//System.out.println("replacing");
+			//long start = System.nanoTime();
 			fillLCS(seq);
+			//long stop = System.nanoTime();
+			//long duration = stop-start;
+			//System.out.println("fillLCS "+duration);
+			//System.out.println("replaced");
 		}
+		/*
+		else {
+			System.out.println("not replacing");
+		}
+		*/
 		//System.out.println(seq);
 		if(lcss.size()==0) {
 			return null;
 		}
+		//System.out.println(lcss.size());
+		/*
+		if(lcss.size()>=24) {
+			System.out.println(seq);
+			for(LCS lcs: lcss) {
+				System.out.println(lcs);
+				
+			}
+			System.exit(0);
+		}
+		*/
 		if(lcss.size()==1) {
 			LCS one = lcss.get(0);
 			int start = one.getSubjectStart();
@@ -105,14 +126,16 @@ public class KMERLocation {
 		int longest = -1;
 		LCS max = null;
 		for(LCS lcs: lcss) {
-			//recalculate the length based on the part that we can actually search for
-			//based on leftPos
-			int end = Math.min(lcs.getSubjectEnd(), leftPos);
-			int length = end - lcs.getSubjectStart();
-			if(length>longest && lcs.getSubjectStart()<leftPos) {
-				longest = lcs.length();
-				max = lcs;
-			}
+			//if(lcs.getSubjectStart()<leftPos) {
+				//recalculate the length based on the part that we can actually search for
+				//based on leftPos
+				int end = Math.min(lcs.getSubjectEnd(), leftPos);
+				int length = end - lcs.getSubjectStart();
+				if(length>longest && lcs.getSubjectStart()<leftPos) {
+					longest = lcs.length();
+					max = lcs;
+				}
+			//}
 		}
 		//System.out.println("found max:"+max);
 		if(max == null) {
@@ -363,21 +386,24 @@ public class KMERLocation {
 			fillLCS(seq);
 			//System.out.println("filled "+lcss.size());
 		}
+	
 		if(lcss.size()==0) {
 			return null;
 		}
 		int longest = -1;
 		LCS max = null;
 		for(LCS lcs: lcss) {
-			//calculate the length on what we can actually use
-			int start = Math.max(lcs.getSubjectStart(), startPos);
-			int length = lcs.getSubjectEnd()-start;
-			if(lcs.getSubjectEnd()>startPos && length>=minSize) {
-				if(length>longest) {
-					longest = lcs.getString().length();
-					max = lcs;
+			//if(lcs.getSubjectEnd()>startPos) {
+				//calculate the length on what we can actually use
+				int start = Math.max(lcs.getSubjectStart(), startPos);
+				int length = lcs.getSubjectEnd()-start;
+				if(lcs.getSubjectEnd()>startPos && length>=minSize) {
+					if(length>longest) {
+						longest = lcs.getString().length();
+						max = lcs;
+					}
 				}
-			}
+			//}
 		}
 		if(max == null) {
 			return max;

@@ -3,6 +3,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -114,7 +115,11 @@ public class CompareSequence {
 
 		if(subjectObject.hasLeftRight()){
 			rightPos = subjectObject.getStartOfRightFlank();
+			//long start = System.nanoTime();
 			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump);
+			//long stop = System.nanoTime();
+			//long duration = stop-start;
+			//System.out.println("getMatchLeft "+duration);
 			int indexRemain = -1;
 			String queryRemain = null;
 			

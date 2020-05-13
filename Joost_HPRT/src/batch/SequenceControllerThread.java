@@ -2,6 +2,7 @@ package batch;
 
 import java.awt.Component;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Vector;
 import java.util.concurrent.Semaphore;
 
@@ -37,18 +38,24 @@ public class SequenceControllerThread implements Runnable{
 			return;
 		}
 		readyToRun = true;
+		
 		//this can als be a user defined maximum
 		int cores = Runtime.getRuntime().availableProcessors();
-		if(v.size()>=cores) {
-			this.cpus = 1;
+		if(v.size()<=cores) {
+			this.cpus = v.size();
 		}
 		else {
-			this.cpus = cores/v.size();
-			if(this.cpus<1) {
-				this.cpus = 1;
-			}
+			this.cpus = cores;
 		}
 		
+		//Thread stuff
+		System.out.println("Gonna start "+cpus+" cpus");
+		Semaphore mySemaphore = new Semaphore(cpus);
+		
+		int cpusForAssembly = 1;
+		if(v.size()<cores) {
+			cpusForAssembly = cores/v.size();
+		}
 		for(NGS n: v) {
 			//not really perfect, but this will do
 			System.out.println("Setting setMaxError "+maxError);
@@ -96,7 +103,8 @@ public class SequenceControllerThread implements Runnable{
 			sft.setAllowJump(false);
 			sft.setTableModel(m);
 			sft.setMaximumReads(maxReads);
-			sft.setFlash(flashExec,cpus);
+			sft.setFlash(flashExec,cpusForAssembly);
+			sft.setSemaphore(mySemaphore);
 			Thread newThread = new Thread(sft);
 			vThreads.add(newThread);
 		}
@@ -109,29 +117,17 @@ public class SequenceControllerThread implements Runnable{
 			return;
 		}
 		enableButtons(false);
-		int cores = Runtime.getRuntime().availableProcessors();
-		int maxFiles = vThreads.size();
-		System.out.println("Gonna start "+Math.min(cores, maxFiles)+" cpus");
-		int cpus = Math.min(cores, maxFiles);
-		Semaphore mySemaphore = new Semaphore(cpus);
-		Thread t = null;
-		try {
-			while(vThreads.size()>0) {
-			    mySemaphore.acquire(); // This will hang until there is a vacancy
-			    //do_my_critical_stuff();
-			    t = vThreads.remove(0);
-			    t.start();
-			}
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} finally {
-		    mySemaphore.release();
+		ArrayList<Thread> threads = new ArrayList<Thread>();
+		while(vThreads.size()>0) {
+			Thread t = vThreads.remove(0);
+		    t.start();
+		    threads.add(t);
 		}
+		
 		//keep waiting until they are done
-		while(t.isAlive()) {
+		for(Thread t: threads) {
 			try {
-				Thread.sleep(1000);
+				t.join();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

@@ -18,9 +18,9 @@ public class NGSPair {
 			if(done.contains(f)) {
 				continue;
 			}
-			if(f.getName().contains("R1.fastq")) {
+			if(f.getName().contains("R1") && f.getName().contains("fastq")) {
 				File R1 = f;
-				String R2name = R1.getName().replace("R1.fastq", "R2.fastq");
+				String R2name = R1.getName().replace("R1", "R2");
 				File R2 = new File(R1.getAbsolutePath().replace(R1.getName(), R2name));
 				//search for R2
 				for(File tempFile: v) {

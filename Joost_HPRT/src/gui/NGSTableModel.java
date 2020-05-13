@@ -135,7 +135,6 @@ public class NGSTableModel extends AbstractTableModel {
 			   wine.setAlias((String)aValue);
 		   }
 		   else if(columnIndex == 4) {
-			   System.out.println("setting leftFlank "+aValue);
 			   wine.setLeftFlank((String)aValue);
 		   }
 		   else if(columnIndex == 5) {
@@ -163,7 +162,6 @@ public class NGSTableModel extends AbstractTableModel {
 		   }
 		   else if(columnIndex == 9) {
 			   if(aValue !=null && aValue instanceof Float) {
-				   System.out.println("12["+aValue+"]");
 				   float status = ((Float)aValue);
 				   wine.setStatus(status);
 			   }
