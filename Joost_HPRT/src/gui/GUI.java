@@ -758,6 +758,9 @@ public class GUI implements ActionListener, MouseListener {
 				else if(o instanceof Integer) {
 					cell.setCellValue((Integer)o);
 				}
+				else if(o instanceof Float) {
+					cell.setCellValue((Float)o);
+				}
 			}
 		}
 		try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {

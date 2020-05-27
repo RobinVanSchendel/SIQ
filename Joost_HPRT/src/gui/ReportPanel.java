@@ -372,7 +372,7 @@ public class ReportPanel extends JFrame implements ActionListener {
         	counter++;
         }
         Vector<Vector<Object>> w = this.getResultVector();
-        System.out.println("remarkColumn "+remarkColumn);
+        //System.out.println("remarkColumn "+remarkColumn);
         for(Vector<Object> rowV :w) {
         	row = sheet.createRow(rowCount++);
         	columnCount = 0;
