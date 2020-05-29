@@ -245,7 +245,6 @@ public class HPRTFastQ {
 				.longOpt("hdr")
                 .hasArg()
                 .desc("The fasta file representing an HR event" )
-                .required()
                 .build();
 				o.addOption(hr);
 		

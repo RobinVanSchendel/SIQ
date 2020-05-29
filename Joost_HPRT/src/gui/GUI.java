@@ -148,7 +148,7 @@ public class GUI implements ActionListener, MouseListener {
 	private JButton run;
 	private JSpinner maxReads;
 	private JButton excelNGS, switchToAB1;
-	private JSpinner baseError;
+	private JSpinner baseError, cpus, tinsDist;
 	private File lastSavedExcel;
 	
 	
@@ -423,7 +423,11 @@ public class GUI implements ActionListener, MouseListener {
 			int maxReadsInt = ((Double)maxReads.getValue()).intValue();
 			int minSupportInt = ((Integer)minSupport.getValue()).intValue();
 			double maxErrorDouble = ((Double)baseError.getValue()).doubleValue();
-			sct.setNGSfromGUI(v, ngsModel, guiFrame, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"));
+			int cores = ((Integer)cpus.getValue()).intValue();
+			int tinsDistValue = ((Integer)tinsDist.getValue()).intValue();
+			
+			
+			sct.setNGSfromGUI(v, ngsModel, guiFrame, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"), cores, tinsDistValue);
 			
 			//check if requirements are met
 			if(sct.isAssemblyRequired()) {
@@ -1340,7 +1344,7 @@ public class GUI implements ActionListener, MouseListener {
         maxReads.setPreferredSize(new Dimension(80, 16));
         //maxReads.setBounds(400, 22, 100, 25);
         placeComp(maxReads,guiFrame,6,1,1,1);
-        placeComp(new JLabel("           "), guiFrame,7,0,1,1);
+        placeComp(new JLabel("           "), guiFrame,9,0,1,1);
         
         JLabel minNumberReadstoCallEvent = new JLabel("Min support");
         minNumberReadstoCallEvent.setToolTipText("Set the minimum number of reads required for an event to be included in the output");
@@ -1358,6 +1362,29 @@ public class GUI implements ActionListener, MouseListener {
         baseError = new JSpinner(model3);
         baseError.setPreferredSize(new Dimension(80, 16));
         placeComp(baseError,guiFrame,6,3,1,1);
+        
+        //CPUs
+        JLabel cpu = new JLabel("Max cpus");
+        cpu.setToolTipText("The maximum number of cpus used (default: all)");
+        placeComp(cpu,guiFrame,7,1,1,1);
+        int cores = Runtime.getRuntime().availableProcessors(); 
+        SpinnerModel model4 = new SpinnerNumberModel(cores, 1, cores, 1);
+        cpus = new JSpinner(model4);
+        cpus.setPreferredSize(new Dimension(80, 16));
+        placeComp(cpus,guiFrame,8,1,1,1);
+        
+        //TINS search space
+        JLabel tins = new JLabel("TINS search distance");
+        tins.setToolTipText("<html>The maximum search space used to call something a Templated Insert (TINS) (default: 100)<br>"
+        		+ "Both junctions will be searched in forward and reverse complement direction.<br>"
+        		+ "e.g. 100 means 100 until -100 relative to the lefFlank<br>"
+        		+ "and -100 until 100 relative to the rightFlank<br>"
+        		+ "Note that a smaller search space may increase the number of called TINS, but could also lead to TINS not being found away from the junctions</html>");
+        placeComp(tins,guiFrame,7,2,1,1);
+        SpinnerModel model5 = new SpinnerNumberModel(100, 10, 1000, 1);
+        tinsDist = new JSpinner(model5);
+        tinsDist.setPreferredSize(new Dimension(80, 16));
+        placeComp(tinsDist,guiFrame,8,2,1,1);
         
         
         //maxReadsL.setBounds(510, 22, 120, 25);

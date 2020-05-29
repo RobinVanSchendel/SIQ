@@ -205,7 +205,11 @@ public class MyOptions {
 	}
 	public File getHDR() {
 		if(cmd.hasOption("hdr")) {
-			return new File(cmd.getOptionValue("hdr"));
+			String hdr = cmd.getOptionValue("hdr");
+			//can be that the option was given, but no file is there (a cromwell issue)
+			if(hdr.length()>0) {
+				return new File(hdr);
+			}
 		}
 		return null;
 	}

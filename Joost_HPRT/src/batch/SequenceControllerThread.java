@@ -24,7 +24,7 @@ public class SequenceControllerThread implements Runnable{
 	private boolean assembleRequired;
 	private boolean readyToRun = false;
 	
-	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, JFrame GUI, int maxReads, int minSupport, double maxError, String flashExec) {
+	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, JFrame GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue) {
 		this.GUI = GUI;
 		Vector<NGS> notOK = new Vector<NGS>();
 		for(NGS n: v) {
@@ -38,8 +38,11 @@ public class SequenceControllerThread implements Runnable{
 			return;
 		}
 		readyToRun = true;
+		this.cpus = cpus;
 		
 		//this can als be a user defined maximum
+		//now it is
+		/*
 		int cores = Runtime.getRuntime().availableProcessors();
 		if(v.size()<=cores) {
 			this.cpus = v.size();
@@ -47,14 +50,15 @@ public class SequenceControllerThread implements Runnable{
 		else {
 			this.cpus = cores;
 		}
+		*/
 		
 		//Thread stuff
 		System.out.println("Gonna start "+cpus+" cpus");
 		Semaphore mySemaphore = new Semaphore(cpus);
 		
 		int cpusForAssembly = 1;
-		if(v.size()<cores) {
-			cpusForAssembly = cores/v.size();
+		if(v.size()<cpus) {
+			cpusForAssembly = cpus/v.size();
 		}
 		for(NGS n: v) {
 			//not really perfect, but this will do
@@ -105,6 +109,7 @@ public class SequenceControllerThread implements Runnable{
 			sft.setMaximumReads(maxReads);
 			sft.setFlash(flashExec,cpusForAssembly);
 			sft.setSemaphore(mySemaphore);
+			sft.setTinsDistance(tinsDistValue);
 			Thread newThread = new Thread(sft);
 			vThreads.add(newThread);
 		}
@@ -123,7 +128,6 @@ public class SequenceControllerThread implements Runnable{
 		    t.start();
 		    threads.add(t);
 		}
-		
 		//keep waiting until they are done
 		for(Thread t: threads) {
 			try {
@@ -179,4 +183,5 @@ public class SequenceControllerThread implements Runnable{
 	public boolean isAssemblyRequired() {
 		return assembleRequired;
 	}
+
 }

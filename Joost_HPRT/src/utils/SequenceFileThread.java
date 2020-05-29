@@ -56,11 +56,11 @@ public class SequenceFileThread implements Runnable {
 	private NGS ngs;
 	
 	private HashMap<String, String> lookupDone = new HashMap<String, String>();
-	private HashMap<String, Integer> lookupDoneCounter = new HashMap<String, Integer>();
 	private NGSTableModel tableModel;
 	private String flashExec;
 	private int cpus = 1;
 	private Semaphore semaphore;
+	private int tinsDistValue;
 	
 	//private boolean takeRC = false;
 	
@@ -129,8 +129,6 @@ public class SequenceFileThread implements Runnable {
 		//	setCheckReverseOverwrite();
 		//}
 		AtomicLong start = new AtomicLong(System.nanoTime());
-		AtomicLong process = new AtomicLong(0);
-		AtomicLong processFlank = new AtomicLong(0);
 		AtomicInteger counter = new AtomicInteger(0);
 		AtomicInteger counterFR = new AtomicInteger(0);
 		AtomicInteger wrong = new AtomicInteger(0);
@@ -257,11 +255,9 @@ public class SequenceFileThread implements Runnable {
 				else if(takeRc.get()) {
 					cs.reverseRead();
 				}
-				//AtomicLong tempProcess = new AtomicLong(System.nanoTime());
 				cs.setAndDetermineCorrectRange(maxError);
 				cs.maskSequenceToHighQualityRemoveSingleRange();
 				cs.setAllowJump(this.allowJump);
-				//process.set(System.nanoTime()-tempProcess.get()+process.get());
 				
 				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
@@ -275,9 +271,10 @@ public class SequenceFileThread implements Runnable {
 				//at this point has to be true because of earlier check
 				if(cs.isMasked()) {
 					//check if exists in cache
-					if(lookupDone.containsKey(cs.getQuery())) {
-						String key = lookupDone.get(cs.getQuery());
-						countEvents.put(key, countEvents.get(key)+1);
+					String lookupDoneKey = lookupDone.get(cs.getQuery());
+					if(lookupDoneKey != null) {
+						//String key = lookupDone.get(cs.getQuery());
+						countEvents.put(lookupDoneKey, countEvents.get(lookupDoneKey)+1);
 						correct.getAndIncrement();
 						cacheHit.getAndIncrement();
 					}
@@ -335,18 +332,12 @@ public class SequenceFileThread implements Runnable {
 						if(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect){
 							correct.getAndIncrement();
 							String key = cs.getKey(includeStartEnd);
-							
 							//this is for the cache
 							lookupDone.put(cs.getQuery(),key);
-							if(lookupDoneCounter.containsKey(cs.getQuery())) {
-								lookupDoneCounter.put(cs.getQuery(), lookupDoneCounter.get(cs.getQuery()+1));
-							}
-							else {
-								lookupDoneCounter.put(cs.getQuery(), 1);
-							}
 							//now really count the event
-							if(countEvents.containsKey(key)){
-								countEvents.put(key, countEvents.get(key)+1);
+							Integer countEventsNr = countEvents.get(key);
+							if(countEventsNr!=null){
+								countEvents.put(key, countEventsNr+1);
 								//while this works, it might be slow and/or incorrect!
 								//the best would be to give the majority here
 								//replaced not so great sequences with more accurate ones
@@ -374,20 +365,15 @@ public class SequenceFileThread implements Runnable {
 				if(counter.get()%10000==0){
 					long end = System.nanoTime();
 					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
-					//long processDuration = TimeUnit.MILLISECONDS.convert(process.get(), TimeUnit.NANOSECONDS);
-					//long processFlankDuration = TimeUnit.MILLISECONDS.convert(processFlank.get(), TimeUnit.NANOSECONDS);
 					start.set(end);
 					System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+counter+" reads, costed (milliseconds): "+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(float)counter.get())+" cacheHit: "+cacheHit);
-					//System.out.println("Thread: "+Thread.currentThread().getName()+" process "+processDuration+" costed (milliseconds)");//+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
-					//System.out.println("Thread: "+Thread.currentThread().getName()+" processFlank "+processFlankDuration+" costed (milliseconds)");//+duration+" correct: "+correct+" wrong: "+wrong+" wrongPosition: "+wrongPosition+ " correct fraction: "+(correct.get()/(double)(correct.get()+wrong.get()))+" cacheHit: "+cacheHit);
-					process.set(0);
-					processFlank.set(0);
-					if(lookupDoneCounter.size()>10000) {
+					//should be set based on memory usage rather
+					//TODO
+					if(lookupDone.size()>10000) {
 						System.out.println("Clearing cache");
 						lookupDone.clear();
-						lookupDoneCounter.clear();
 					}
-					//update GUI stuff
+					//update GUI stuff if applicable
 					if(this.tableModel!= null) {
 						float perc = counter.get()/(float)totalReads.get();
 						this.tableModel.setStatus(ngs, perc);
@@ -439,6 +425,8 @@ public class SequenceFileThread implements Runnable {
 					//only output if we saw it minimalCount times
 					if(countEvents.get(key)>=minimalCount) {
 						double fraction = countEvents.get(key)/total;
+						CompareSequence cs = csEvents.get(key);
+						cs.setTINSSearchDistance(this.tinsDistValue);
 						writer.println(countEvents.get(key)+"\t"+fraction+"\t"+csEvents.get(key).toStringOneLine().replace("\n", "_"));
 						count++;
 					}
@@ -674,5 +662,8 @@ public class SequenceFileThread implements Runnable {
 	public void setSemaphore(Semaphore mySemaphore) {
 		this.semaphore = mySemaphore;
 		
+	}
+	public void setTinsDistance(int tinsDistValue) {
+		this.tinsDistValue = tinsDistValue;
 	}
 }

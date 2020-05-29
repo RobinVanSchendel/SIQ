@@ -65,6 +65,7 @@ public class CompareSequence {
 	private Subject subjectObject;
 	private File file;
 	private boolean isSplit = false;
+	private int tinsDistValue = -1;
 	
 	
 	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName) {
@@ -418,7 +419,12 @@ public class CompareSequence {
 		//only do it when no weird things found
 		if(this.remarks.length() == 0 && insert.length()>0 && is == null){
 			//currently fixed value
-			solveInsertion(solveInsertStart,solveInsertEnd, MAXIMUMTRIESSOLVING);
+			if(this.tinsDistValue==-1) {
+				solveInsertion(solveInsertStart,solveInsertEnd, MAXIMUMTRIESSOLVING);
+			}
+			else {
+				solveInsertion(-tinsDistValue,tinsDistValue, MAXIMUMTRIESSOLVING);
+			}
 		}
 		if(del.length()>0 && insert.length() == 0){
 			homology = Utils.getHomologyAtBreak(leftFlank.getString(), del, rightFlank);
@@ -1439,5 +1445,9 @@ public class CompareSequence {
 			return true;
 		}
 		return false;
+	}
+	public void setTINSSearchDistance(int tinsDistValue) {
+		this.tinsDistValue  = tinsDistValue;
+		
 	}
 }

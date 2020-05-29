@@ -305,8 +305,8 @@ public class Subject {
 		}
 		//make HDR object
 		if(hdrCS == null) {
-			KMERLocation kmerl = new KMERLocation(this.getString());
-			hdrCS = new CompareSequence(this,hdr.seqString(),null, null, true, "");
+			//bug as RichSequence will return lowercase DNA, so make it uppercase
+			hdrCS = new CompareSequence(this,hdr.seqString().toUpperCase(),null, null, true, "");
 			hdrCS.determineFlankPositions(false);
 		}
 		if(hdrCS!=null) {

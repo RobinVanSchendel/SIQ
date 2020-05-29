@@ -75,7 +75,8 @@ public void actionPerformed(ActionEvent e)
          {
             for (int j=0;j<numcols;j++)
             {
-sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
+            	Object o = jTable1.getValueAt(rowsselected[i],colsselected[j]);
+           		sbf.append(o);
                if (j<numcols-1) sbf.append("\t");
             }
             sbf.append("\n");
@@ -120,7 +121,12 @@ sbf.append(jTable1.getValueAt(rowsselected[i],colsselected[j]));
                        startCol+j< jTable1.getColumnCount()) {
                 	   //jTable1.getModel().setValueAt(aValue, rowIndex, columnIndex);
                 	   //System.out.println(jTable1.getModel());
-                      jTable1.setValueAt(value,startRow+i,startCol+j);
+                	   if(value.contentEquals("null")) {
+                		   jTable1.setValueAt(null,startRow+i,startCol+j);
+                	   }
+                	   else {
+                		   jTable1.setValueAt(value,startRow+i,startCol+j);
+                	   }
                       //System.out.println("Putting "+ value+" at row="+startRow+i+" column="+startCol+j);
                    }
                    else if(startRow+1> jTable1.getRowCount()) {
