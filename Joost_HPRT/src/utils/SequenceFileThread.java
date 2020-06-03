@@ -23,7 +23,6 @@ import org.jcvi.jillion.core.util.iter.StreamingIterator;
 import org.jcvi.jillion.trace.fastq.FastqDataStore;
 import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
 import org.jcvi.jillion.trace.fastq.FastqFileReader;
-import org.jcvi.jillion.trace.fastq.FastqFileReader.Results;
 import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 
@@ -130,7 +129,6 @@ public class SequenceFileThread implements Runnable {
 		//}
 		AtomicLong start = new AtomicLong(System.nanoTime());
 		AtomicInteger counter = new AtomicInteger(0);
-		AtomicInteger counterFR = new AtomicInteger(0);
 		AtomicInteger wrong = new AtomicInteger(0);
 		AtomicInteger wrongPosition = new AtomicInteger(0);
 		AtomicInteger wrongPositionL = new AtomicInteger(0);
@@ -142,6 +140,7 @@ public class SequenceFileThread implements Runnable {
 		AtomicInteger correct = new AtomicInteger(0);
 		AtomicInteger cacheHit = new AtomicInteger(0);
 		AtomicBoolean takeRc = new AtomicBoolean(false);
+		AtomicInteger totalRawReadsCounter = new AtomicInteger(0);
 		HashMap<String, Integer> remarks = new HashMap<String, Integer>();
 		
 		try {
@@ -158,8 +157,7 @@ public class SequenceFileThread implements Runnable {
 					FastqRecord F = itF.next();
 					FastqRecord R = itR.next();
 					count++;
-					counterFR.getAndIncrement();
-					
+					totalRawReadsCounter.getAndIncrement();
 					//Forward
 					boolean checkReverse = false;
 					if(first) {
@@ -186,13 +184,18 @@ public class SequenceFileThread implements Runnable {
 						boolean leftCorrect = cs.isCorrectPositionLeft();
 						//speedup
 						if(leftCorrect) {
-							//Reverse
 							cs = new CompareSequence(subject, R.getNucleotideSequence().toString(), R.getQualitySequence(), f.getParentFile().getName(), checkReverse, R.getId());
+							//bug, needs to be opposite orientation of forward read
+							if(!takeRc.get()) {
+								cs.reverseRead();
+							}
 							cs.setAndDetermineCorrectRange(maxError);
 							cs.maskSequenceToHighQualityRemove();
 							cs.setAllowJump(this.allowJump);
 							cs.determineFlankPositions(false);
 							boolean rightCorrect = cs.isCorrectPositionRight();
+							//System.out.println(rightCorrect);
+							//System.out.println(R.getNucleotideSequence());
 							if(leftCorrect && rightCorrect) {
 								correctPositionFR.getAndIncrement();
 								//System.out.println("correct "+Thread.activeCount());
@@ -201,16 +204,16 @@ public class SequenceFileThread implements Runnable {
 								//System.out.println("not correct "+leftCorrect+":"+rightCorrect+" - "+Thread.activeCount());
 							}
 						}
-						if(count>=maxReads) {
-							break;
-						}
-						if(count%10000==0 && count>0){
-							long end = System.nanoTime();
-							long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
-							//System.out.println("So far took :"+duration+" milliseconds");
-							start.set(end);
-							System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+count+" reads, costed (milliseconds): "+duration+" correct: "+correctPositionFR+" correct fraction: "+(correctPositionFR.get()/(double)(count)));
-						}
+					}
+					if(count>=maxReads) {
+						break;
+					}
+					if(count%10000==0 && count>0){
+						long end = System.nanoTime();
+						long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
+						//System.out.println("So far took :"+duration+" milliseconds");
+						start.set(end);
+						System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+count+" reads, costed (milliseconds): "+duration+" correct: "+correctPositionFR+" correct fraction: "+(correctPositionFR.get()/(double)(count)));
 					}
 				}
 				System.out.println("CorrectPositions:\t"+correctPositionFR);
@@ -234,6 +237,7 @@ public class SequenceFileThread implements Runnable {
 			}
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
+			    totalRawReadsCounter.getAndIncrement();
 				QualitySequence quals = fastqRecord.getQualitySequence();
 				
 				String seq = fastqRecord.getNucleotideSequence().toString();
@@ -277,6 +281,10 @@ public class SequenceFileThread implements Runnable {
 						countEvents.put(lookupDoneKey, countEvents.get(lookupDoneKey)+1);
 						correct.getAndIncrement();
 						cacheHit.getAndIncrement();
+						
+						//for stats purposes!
+						leftCorrect = true;
+						rightCorrect = true;
 					}
 					else {
 						//AtomicLong tempProcessFlank = new AtomicLong(System.nanoTime());
@@ -354,10 +362,11 @@ public class SequenceFileThread implements Runnable {
 								csEvents.put(key, cs);
 							}
 						}
-						else {
-							wrong.getAndIncrement();
-						}
 					}
+				}
+				
+				if(!(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect)){
+					wrong.getAndIncrement();
 				}
 				//System.out.println(cs.toStringOneLine());
 				//no masking
@@ -438,19 +447,24 @@ public class SequenceFileThread implements Runnable {
 			writer.close();
 		}
 		if(writerStats!= null) {
-			writerStats.println(f.getName()+"\treads\t"+counter);
-			writerStats.println(f.getName()+"\tcorrect\t"+correct);
-			writerStats.println(f.getName()+"\twrong\t"+wrong);
-			writerStats.println(f.getName()+"\twrongPosition\t"+wrongPosition);
-			writerStats.println(f.getName()+"\twrongPositionL\t"+wrongPositionL);
-			writerStats.println(f.getName()+"\twrongPositionR\t"+wrongPositionR);
+			double correctFraction = correct.get()/(double)totalRawReadsCounter.get();
+			double correctFractionMerged = correct.get()/(double)counter.get();
+			writerStats.println(f.getName()+"\tTotalReads\t"+totalRawReadsCounter);
+			writerStats.println(f.getName()+"\tMergedReads\t"+counter);
+			writerStats.println(f.getName()+"\tMergedCorrect\t"+correct);
+			writerStats.println(f.getName()+"\tCorrectFractionTotal\t"+correctFraction);
+			writerStats.println(f.getName()+"\tCorrectFractionMerged\t"+correctFractionMerged);
+			writerStats.println(f.getName()+"\tMergedButWrong\t"+wrong);
+			writerStats.println(f.getName()+"\tMergedButWrongPositionTotal\t"+wrongPosition);
+			writerStats.println(f.getName()+"\tMergedButWrongPositionL\t"+wrongPositionL);
+			writerStats.println(f.getName()+"\tMergedButWrongPositionR\t"+wrongPositionR);
 			if(singleFileF != null && singleFileR != null) {
-				writerStats.println(f.getName()+"\tcorrectPositionFR\t"+correctPositionFR);
+				writerStats.println(f.getName()+"\tUnmergedCorrectPositionFR\t"+correctPositionFR);
 			}
-			writerStats.println(f.getName()+"\tcorrectPositionFRassembled\t"+correctPositionFRassembled);
+			writerStats.println(f.getName()+"\tMergedCorrectPositionFR\t"+correctPositionFRassembled);
 			
-			writerStats.println(f.getName()+"\tbadQual\t"+badQual);
-			writerStats.println(f.getName()+"\tcontainsN\t"+containsN);
+			writerStats.println(f.getName()+"\tMergedBadQual\t"+badQual);
+			writerStats.println(f.getName()+"\tMergedcontainsN\t"+containsN);
 			
 			
 			for(String key: remarks.keySet()) {
