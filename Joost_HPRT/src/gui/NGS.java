@@ -28,6 +28,7 @@ public class NGS {
 	private int totalReads;
 	private int correctReads;
 	private float percentage;
+	private File outputDir;
 	
 	
 	public NGS(File R1, File R2, String Subject, String alias, String leftFlank, String rightFlank
@@ -300,9 +301,15 @@ public class NGS {
 	}
 	//output needs to be unique, so add the rowNumber. Shitty solution, but ok
 	public File getOutput() {
+		if(outputDir!=null) {
+			return new File(outputDir.getAbsolutePath()+File.separator+getAssembledFile().getName()+"_"+this.getRowNumber()+"_output.txt");
+		}
 		return new File(getAssembledFile()+"_"+this.getRowNumber()+"_output.txt");
 	}
 	public File getOutputStats() {
+		if(outputDir!=null) {
+			return new File(outputDir.getAbsolutePath()+File.separator+getAssembledFile().getName()+"_"+this.getRowNumber()+"_stats_output.txt");
+		}
 		return new File(getAssembledFile()+"_"+this.getRowNumber()+"_stats_output.txt");
 	}
 	
@@ -414,5 +421,11 @@ public class NGS {
 			return;
 		}
 		this.maxError = maxError;
+	}
+	public void setOutputDir(File outputDir) {
+		this.outputDir = outputDir;
+	}
+	public File getOutputDir() {
+		return this.outputDir;
 	}
 }

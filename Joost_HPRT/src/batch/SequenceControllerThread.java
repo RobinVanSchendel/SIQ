@@ -1,7 +1,9 @@
 package batch;
 
 import java.awt.Component;
+import java.awt.Desktop;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Vector;
 import java.util.concurrent.Semaphore;
@@ -11,32 +13,28 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 import gui.NGS;
+import gui.GUI;
 import gui.NGSTableModel;
+import gui.ReportPanel;
 import utils.KMERLocation;
 import utils.SequenceFileThread;
 import utils.Subject;
 
 public class SequenceControllerThread implements Runnable{
-	private Vector<Thread> vThreads = new Vector<Thread>();
+	private Vector<SequenceFileThread> vThreads = new Vector<SequenceFileThread>();
 	private boolean includeStartEnd = false;
-	private JFrame GUI;
+	private GUI GUI;
 	private int cpus;
 	private boolean assembleRequired;
 	private boolean readyToRun = false;
+	private volatile boolean exit = false;
+	private File outputDir;
+	private Vector<NGS> v;
+	private File excelFile;
 	
-	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, JFrame GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue) {
+	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, GUI GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue) {
 		this.GUI = GUI;
-		Vector<NGS> notOK = new Vector<NGS>();
-		for(NGS n: v) {
-			if(!n.allOK()) {
-				notOK.add(n);
-			}
-		}
-		if(notOK.size()>0) {
-			//add info message
-			JOptionPane.showMessageDialog(null, notOK.size()+" NGS entries have incorrect/incomplete info, please correct the red cells in the table", "A problem was found with your input", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
+		this.v = v;
 		readyToRun = true;
 		this.cpus = cpus;
 		
@@ -110,8 +108,7 @@ public class SequenceControllerThread implements Runnable{
 			sft.setFlash(flashExec,cpusForAssembly);
 			sft.setSemaphore(mySemaphore);
 			sft.setTinsDistance(tinsDistValue);
-			Thread newThread = new Thread(sft);
-			vThreads.add(newThread);
+			vThreads.add(sft);
 		}
 	}
 	
@@ -131,12 +128,38 @@ public class SequenceControllerThread implements Runnable{
 		//keep waiting until they are done
 		for(Thread t: threads) {
 			try {
-				t.join();
+				while(t.isAlive() && !exit) {
+					Thread.sleep(500);
+					System.out.println("sleeping "+t.getName());
+				}
+				if(exit) {
+					System.out.println("interrupting "+t.getName());
+					t.interrupt();
+				}
+				System.out.println("called joined "+t.getName());
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
+		//all threads are done here
+		if(excelFile!=null){
+			GUI.exportToExcel(excelFile);
+			ReportPanel.runR(excelFile, false);
+			ReportPanel.runR(excelFile, true);
+		}
+		if(v.size()>0) {
+			File dir = v.get(0).getOutputDir();
+			System.out.println(dir);
+			try {
+				Desktop.getDesktop().open(dir);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		
 		/*
 		Vector<Thread> running = new Vector<Thread>();
 		Vector<Integer> toBeRemoved = new Vector<Integer>();
@@ -168,13 +191,18 @@ public class SequenceControllerThread implements Runnable{
 		enableButtons(true);
 		//add button to export stuff to Combined file
 	}
+	public void stop(){
+        exit = true;
+    }
 
 
 	private void enableButtons(boolean b) {
 		if(GUI!=null) {
-			for(Component c: GUI.getContentPane().getComponents()) {
+			for(Component c: GUI.guiFrame.getContentPane().getComponents()) {
 				if(c instanceof JButton) {
-					c.setEnabled(b);
+					if(!((JButton) c).getActionCommand().contentEquals("stop")) {
+						c.setEnabled(b);
+					}
 				}
 			}
 		}
@@ -184,4 +212,25 @@ public class SequenceControllerThread implements Runnable{
 		return assembleRequired;
 	}
 
+
+	public void setExportToExcel(File excelFile) {
+		this.excelFile = excelFile;
+	}
+
+
+	public static boolean isOK(Vector<NGS> v2) {
+		Vector<NGS> notOK = new Vector<NGS>();
+		for(NGS n: v2) {
+			if(!n.allOK()) {
+				notOK.add(n);
+			}
+		}
+		if(notOK.size()>0) {
+			//add info message
+			JOptionPane.showMessageDialog(null, notOK.size()+" NGS entries have incorrect/incomplete info, please correct the red cells in the table", "A problem was found with your input", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}
+		return true;
+		
+	}
 }

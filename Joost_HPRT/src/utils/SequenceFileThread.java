@@ -31,7 +31,7 @@ import dnaanalysis.Utils;
 import gui.NGS;
 import gui.NGSTableModel;
 
-public class SequenceFileThread implements Runnable {
+public class SequenceFileThread extends Thread {
 
 	private File f, output, outputStats;
 	private boolean writeToOutput;
@@ -59,7 +59,7 @@ public class SequenceFileThread implements Runnable {
 	private String flashExec;
 	private int cpus = 1;
 	private Semaphore semaphore;
-	private int tinsDistValue;
+	private int tinsDistValue = -1;
 	
 	//private boolean takeRC = false;
 	
@@ -214,6 +214,9 @@ public class SequenceFileThread implements Runnable {
 						//System.out.println("So far took :"+duration+" milliseconds");
 						start.set(end);
 						System.out.println("Thread: "+Thread.currentThread().getName()+" processed "+count+" reads, costed (milliseconds): "+duration+" correct: "+correctPositionFR+" correct fraction: "+(correctPositionFR.get()/(double)(count)));
+					}
+					if(this.isInterrupted()) {
+						break;
 					}
 				}
 				System.out.println("CorrectPositions:\t"+correctPositionFR);
@@ -393,6 +396,11 @@ public class SequenceFileThread implements Runnable {
 				}
 				if(maxReads>0 && counter.get()>= this.maxReads) {
 					System.out.println(counter.get()+" >= "+this.maxReads);
+					throw new BreakException();
+				}
+				//forced stop
+				if(this.isInterrupted()) {
+					System.out.println("INTERUPTED");
 					throw new BreakException();
 				}
 			});

@@ -23,7 +23,9 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
@@ -116,7 +118,7 @@ public class GUI implements ActionListener, MouseListener {
 	        super.approveSelection();
 	    }        
 	};
-	JFrame guiFrame = new JFrame();
+	public JFrame guiFrame = new JFrame();
 	DefaultListModel<File> model = new DefaultListModel<File>();
 	JList<File> jFiles = new JList<File>(model);
 	File subject;
@@ -150,6 +152,9 @@ public class GUI implements ActionListener, MouseListener {
 	private JButton excelNGS, switchToAB1;
 	private JSpinner baseError, cpus, tinsDist;
 	private File lastSavedExcel;
+	private JButton stop;
+	private SequenceControllerThread sct;
+	private JButton dirChooserPanel;
 	
 	
 	@SuppressWarnings("serial")
@@ -419,26 +424,67 @@ public class GUI implements ActionListener, MouseListener {
 			
 			//still need to make sure that all rows are ok
 			Vector<NGS> v = ngsModel.getData();
-			SequenceControllerThread sct = new SequenceControllerThread();
+			sct = new SequenceControllerThread();
 			int maxReadsInt = ((Double)maxReads.getValue()).intValue();
 			int minSupportInt = ((Integer)minSupport.getValue()).intValue();
 			double maxErrorDouble = ((Double)baseError.getValue()).doubleValue();
 			int cores = ((Integer)cpus.getValue()).intValue();
 			int tinsDistValue = ((Integer)tinsDist.getValue()).intValue();
 			
-			
-			sct.setNGSfromGUI(v, ngsModel, guiFrame, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"), cores, tinsDistValue);
-			
-			//check if requirements are met
-			if(sct.isAssemblyRequired()) {
-				if(pm.getProperty("flash")==null) {
-					JOptionPane.showMessageDialog(guiFrame, "FLASH is not set, please set the flash executable using the set FLASH button", "FLASH not set", JOptionPane.ERROR_MESSAGE);
-					return;
+			boolean isOK = SequenceControllerThread.isOK(v);
+			if(isOK) {
+				JPanel panel = new JPanel(new GridLayout(3,2));
+				
+				String dirString = "<dir>";
+				if(pm.getProperty("lastDir") != null) {
+					File dir = new File(pm.getProperty("lastDir"));
+					if(dir !=null && dir.isDirectory()) {
+						dirString = dir.getAbsolutePath();
+					}
+				}
+				dirChooserPanel = new JButton(dirString);
+				dirChooserPanel.setActionCommand("dirChooserPanel");
+				dirChooserPanel.addActionListener(this);
+				SimpleDateFormat sdfDate = new SimpleDateFormat("yyyyMMdd_HHmmss");
+			    Date now = new Date();
+			    String strDate = sdfDate.format(now);
+				JTextField name = new JTextField(strDate);
+				JTextField excelName = new JTextField(strDate+"_SIQ.xlsx");
+				panel.add(new JLabel("Select output directory"));
+				panel.add(dirChooserPanel);
+				panel.add(new JLabel("Set output prefix:"));
+				panel.add(name);
+				panel.add(new JLabel("Set Excel name:"));
+				panel.add(excelName);
+				int result = JOptionPane.showConfirmDialog(guiFrame, panel);
+				if(result == JOptionPane.OK_OPTION) {
+					File outputDir = new File(dirChooserPanel.getText()+File.separator+name.getText());
+					if(outputDir.mkdir()) {
+						System.out.println("Output directory "+outputDir.getAbsolutePath()+" created");
+					}
+					else {
+						System.out.println("Output directory "+outputDir.getAbsolutePath()+" NOT created");
+					}
+					for(NGS ngs: v) {
+						ngs.setOutputDir(outputDir);
+					}
+					sct.setNGSfromGUI(v, ngsModel, this, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"), cores, tinsDistValue);
+					
+					//check if requirements are met
+					if(sct.isAssemblyRequired()) {
+						if(pm.getProperty("flash")==null) {
+							JOptionPane.showMessageDialog(guiFrame, "FLASH is not set, please set the flash executable using the set FLASH button", "FLASH not set", JOptionPane.ERROR_MESSAGE);
+							return;
+						}
+					}
+					File excelFile = new File(outputDir+File.separator+excelName.getText());
+					sct.setExportToExcel(excelFile);
+					
+					Thread newThread = new Thread(sct);
+					newThread.start();
+					
 				}
 			}
-			
-			Thread newThread = new Thread(sct);
-			newThread.start();
 		}
 		else if(e.getActionCommand().contentEquals("ExcelNGS")) {
 			exportToExcel();
@@ -523,7 +569,25 @@ public class GUI implements ActionListener, MouseListener {
 				}
 			}
 		}
-		
+		else if(e.getActionCommand().contentEquals("stop")) {
+			if(sct != null) {
+				System.out.println("Stopping!");
+				sct.stop();
+			}
+		}
+		else if(e.getActionCommand().contentEquals("dirChooserPanel")) {
+			chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+			chooser.setMultiSelectionEnabled(false);
+			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+				File dir = chooser.getSelectedFile();
+				if(dir.isDirectory()) {
+					pm.setProperty("lastDir", dir.getAbsolutePath());
+				}
+				this.dirChooserPanel.setText(dir.getAbsolutePath());
+			}
+			chooser.setMultiSelectionEnabled(false);
+			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+		}
 		System.out.println("ActionCommand: "+e.getActionCommand());
 	}
 
@@ -644,7 +708,6 @@ public class GUI implements ActionListener, MouseListener {
 	}
 	*/
 
-
 	private void exportToExcel() {
 		chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		chooser.setMultiSelectionEnabled(false);
@@ -675,7 +738,7 @@ public class GUI implements ActionListener, MouseListener {
 		}
 	}
 
-	private void exportToExcel(File outputFile) {
+	public void exportToExcel(File outputFile) {
 		// TODO Auto-generated method stub
 		Vector<NGS> v = ngsModel.getData();
 		boolean firstFile = true;
@@ -1415,6 +1478,11 @@ public class GUI implements ActionListener, MouseListener {
         Rin.setActionCommand("Rin");
         Rin.addActionListener(this);
         placeComp(Rin, guiFrame, 5,5,1,1);
+        
+        stop = new JButton("Stop");
+        stop.setActionCommand("stop");
+        stop.addActionListener(this);
+        placeComp(stop, guiFrame, 6,5,1,1);
         
         
         switchToAB1 = new JButton("Switch to Sanger mode");
