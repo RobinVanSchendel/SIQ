@@ -3,6 +3,7 @@ package data;
 import java.util.ArrayList;
 import java.util.List;
 
+import controller.G4Controller;
 import dnaanalysis.InsertionSolverTwoSides;
 import dnaanalysis.RandomInsertionSolverTwoSides;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
@@ -31,7 +32,7 @@ public class StructuralVariation {
 		}
 		this.origCaller = caller;
 	}
-	public void addMetaData(ReferenceSequenceFile rsf) {
+	public void addMetaData(ReferenceSequenceFile rsf, G4Controller g4s) {
 		metadata = new ArrayList<MetaData>();
 		setHomology(rsf);
 		//maybe these should be configurable??
@@ -41,8 +42,25 @@ public class StructuralVariation {
 		setHighestGriddCall();
 		setADCallGATK();
 		setHetCallGATK();
+		if(g4s!=null) {
+			setG4s(g4s);
+		}
 	}
 	
+	private void setG4s(G4Controller g4s) {
+		MetaData g4 = new MetaData("Nearest_G4");
+		MetaData g4Distance = new MetaData("Distance_G4");
+		G4 closest = g4s.getClosest(this);
+		if(closest!=null) {
+			g4.setValue(closest.toString());
+		}
+		int distance = g4s.getDistanceClosest(this);
+		g4Distance.setValue(distance);
+		metadata.add(g4);
+		metadata.add(g4Distance);
+		
+		
+	}
 	private void setHetCallGATK() {
 		MetaData vf = new MetaData("GATK_HETCall");
 		boolean het = false;

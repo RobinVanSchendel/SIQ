@@ -56,6 +56,10 @@ public class PindelCall extends GeneralCaller{
 
 	        //getRawData
 	        Sheet rawData = workbook.getSheet("rawData");
+	        if(rawData == null) {
+	        	System.err.println("Worksheet rawData does not exist");
+	        	System.exit(0);
+	        }
 	        HashMap<String, Integer> headerLookup = new HashMap<String, Integer>();
 	        int counter = 0;
 	        for (Row row: rawData) {
@@ -64,6 +68,7 @@ public class PindelCall extends GeneralCaller{
 	        		int colCounter = 0;
 	        		for(Cell cell: row) {
 	        			headerLookup.put(cell.toString(),colCounter);
+	        			//System.out.println(colCounter+":"+cell.toString());
 	        			colCounter++;
 	        		}
 	        	}
@@ -78,12 +83,18 @@ public class PindelCall extends GeneralCaller{
 	        		Location end = new Location(chr, (int) endD);
 	        		String type = row.getCell(headerLookup.get("SVType")).toString();
 	        		SVType svType = getSVType(type);
-	        		String insert = row.getCell(headerLookup.get("InsertInDeletion")).toString();
+	        		Cell cell = row.getCell(headerLookup.get("InsertInDeletion"));
+	        		String insert = "";
+	        		if(cell !=null) {
+	        			insert = cell.toString();
+	        		}
 	        		StructuralVariation sv = new StructuralVariation(svType, start, end, PindelCaller.nameCaller);
 	        		if(!insert.contentEquals("NA")) {
 	        			sv.setInsert(insert);
 	        		}
 	        		String sample = row.getCell(headerLookup.get("Sample")).toString();
+	        		//Pindel does not remove .sorted.bam
+	        		sample = sample.replace(".sorted.bam", "");
 	        		Sample s = new Sample(sample);
 	        		PindelCaller m = new PindelCaller(null);
 	    			m.process();

@@ -16,10 +16,11 @@ public class GridssCaller extends Caller {
 	}
 	@Override
 	public void process() {
-		String rpString = (String)gt.getExtendedAttribute("VF");
-		double rp = Double.parseDouble(rpString);
+		String vfString = (String)gt.getExtendedAttribute("VF");
+		double vf = Double.parseDouble(vfString);
 		//remove if nothing is there, or VF=1
-		if(rp <=1) {
+		//20200617 changed it to 2!
+		if(vf <=2) {
 			this.gt = null;
 		}
 		// TODO Auto-generated method stub

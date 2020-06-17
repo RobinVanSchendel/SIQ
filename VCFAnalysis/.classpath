@@ -17,5 +17,6 @@
 	<classpathentry kind="lib" path="C:/javaLib/poi-4.1.1/poi-scratchpad-4.1.1.jar"/>
 	<classpathentry kind="src" path="/DNAToolAnalysis"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/TM_allele"/>
+	<classpathentry kind="src" path="/MMR_java"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

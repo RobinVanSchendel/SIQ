@@ -13,6 +13,10 @@ public class Location {
 		return chr;
 	}
 	public void setChr(String chr) {
+		//not sure if this is always correct, but keep it for now
+		if(chr.endsWith(".0")) {
+			chr = chr.replace(".0", "");
+		}
 		this.chr = chr;
 	}
 	public int getPosition() {

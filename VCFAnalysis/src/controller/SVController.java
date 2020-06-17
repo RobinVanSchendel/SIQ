@@ -5,8 +5,8 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
-import java.util.Set;
 
+import data.G4;
 import data.Sample;
 import data.StructuralVariation;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
@@ -19,6 +19,7 @@ public class SVController {
 	private int maxSupportingSamples;
 	private HashMap<String, String> names = new HashMap<String, String>();
 	private int debugLocation = -1;
+	private G4Controller g4s;
 	
 	public SVController(ReferenceSequenceFile rsf, int maxSupportingSamples) {
 		this.rsf = rsf;
@@ -26,11 +27,12 @@ public class SVController {
 	}
 	//only add SVs if they are not yet in
 	public void addSV(StructuralVariation sv) {
-		if(debugLocation >0 && sv.getStart().getPosition()>(debugLocation-100) && sv.getStart().getPosition()<(debugLocation+100)) {
+		if(debugLocation >0 && sv.getStart().getPosition()>(debugLocation-1000) && sv.getStart().getPosition()<(debugLocation+1000)) {
 			System.out.println("DEBUG");
 			System.out.println(sv.toOneLineString());
 			System.out.println("Supports "+sv.getNrSampleSupport());
 			System.out.println("Supports "+sv.getSupportingSamples());
+			System.out.println("Supports "+sv.getSamples());
 			System.out.println("END DEBUG");
 		}
 		//check if not too many support
@@ -43,11 +45,6 @@ public class SVController {
 		for(Sample s: sv.getSamples()) {
 			s.setName(lookupName(s.getName()));
 		}
-		if(sv.getStart().getPosition()<16454679 && sv.getStart().getPosition()>16454879) {
-			System.out.println(sv);
-			System.exit(0);
-		}
-		
 		
 		if(!callers.contains(sv.getOrigCaller())) {
 			callers.add(sv.getOrigCaller());
@@ -139,7 +136,7 @@ public class SVController {
 		System.out.println("Adding metadata "+svs.size() );
 		int counter = 0;
 		for(String key: svs.keySet()) {
-			svs.get(key).addMetaData(rsf);
+			svs.get(key).addMetaData(rsf, g4s);
 			if(counter%1000==0) {
 				System.out.println("Already processed "+counter+ " keys");
 			}
@@ -253,5 +250,8 @@ public class SVController {
 			e.printStackTrace();
 		}
 		
+	}
+	public void setG4Controller(G4Controller g4s) {
+		this.g4s = g4s;
 	}
 }

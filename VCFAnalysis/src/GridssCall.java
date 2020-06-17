@@ -42,6 +42,9 @@ public class GridssCall extends GeneralCaller {
 		this.vcf = vcf;
 	}
 	public void parseFile(SVController svc) {
+		if(vcf==null) {
+			return;
+		}
 		VCFFileReader reader = new VCFFileReader(vcf, false);
         CloseableIterator<VariantContext> it = reader.iterator();
         int counter = 0;
@@ -503,7 +506,7 @@ public class GridssCall extends GeneralCaller {
 				sv.addSample(s);
 			}
 			/*
-			if(sv.getStart().getPosition()>1330028 && sv.getStart().getPosition()<1330428) {
+			if(sv.getStartEndLocation().contentEquals("CHROMOSOME_IV:1279174-1279196")) {
 				System.out.println(vc.toString());
 				for(Genotype gt: vc.getGenotypes()) {
 					System.out.println(gt);

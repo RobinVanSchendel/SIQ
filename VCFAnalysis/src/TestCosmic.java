@@ -10,7 +10,9 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import utils.CompareSequence;
+import utils.CompareSequence.Type;
 import utils.KMERLocation;
+import utils.Subject;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -30,7 +32,7 @@ public class TestCosmic {
 
 	public static void main(String[] args) {
 		//File vcf = new File("E:/Project_Genome_Scan_Brd_Rtel_Brc_RB873/multisample.final.vcf");
-		File vcf = new File("E:\\Project_Cosmic\\CosmicCodingMuts.vcf");
+		File vcf = new File("E:\\Project_Cosmic\\20200428_CosmicCodingMuts.vcf.gz");
         VCFFileReader reader = new VCFFileReader(vcf, false);
         VCFHeader header = reader.getFileHeader();
         VCFHeaderLine refGenome = header.getOtherHeaderLine("reference");
@@ -57,7 +59,7 @@ public class TestCosmic {
 		}
         while(it.hasNext()){
         	VariantContext vc = it.next();
-        	if(vc.getAttribute("GENE").equals("FLT3") || vc.getAttribute("GENE").equals("CEBPA") ){
+        	if(vc.getAttribute("GENE").equals("FLT3") ){
         		//System.out.println(vc.getReference().getBaseString());
         		//String dna = vc.getContig()
         		//ReferenceSequence rs = rsf.getSubsequenceAt(vc.getContig(), vc.getStart(), vc.getEnd());
@@ -66,7 +68,7 @@ public class TestCosmic {
         		//System.exit(0);
         		int start = vc.getStart()-1;
         		int end = vc.getEnd()+1;
-        		String dna = rsf.getSubsequenceAt(vc.getContig(), vc.getStart()-sizeFlank, vc.getEnd()+sizeFlank).getBaseString();
+        		String dna = rsf.getSubsequenceAt(vc.getContig(), start-sizeFlank, end+sizeFlank).getBaseString();
         		String left = rsf.getSubsequenceAt(vc.getContig(), start-sizeFlank, start).getBaseString();
         		String leftFlank = left;
         		String rightFlank = rsf.getSubsequenceAt(vc.getContig(), start+1, start+30).getBaseString();
@@ -86,12 +88,13 @@ public class TestCosmic {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+        		Subject subjectObject = new Subject(subject, leftFlank, rightFlank);
         		String query = left+ins+right;
-        		CompareSequence cs = new CompareSequence(subject, query, null, leftFlank, rightFlank, null, null, false, vc.getID(), null);
+        		CompareSequence cs = new CompareSequence(subjectObject, query, null, null, true, vc.getID());
         		cs.determineFlankPositions(true);
-        		cs.setCutType(vc.getContig()+":"+vc.getStart()+"-"+vc.getEnd());
-        		cs.setCurrentAlias(""+vc.getAttribute("GENE"),"");
-        		cs.setCurrentFile(""+vc.getAttribute("CNT"));
+        		cs.setCurrentAlias(vc.getContig()+":"+vc.getStart()+"-"+vc.getEnd()+"|"+vc.getAttribute("CNT"), null);
+        		//cs.setCurrentAlias(""+vc.getAttribute("GENE"),"");
+        		//cs.setCurrentFile(""+vc.getAttribute("CNT"));
         		try {
         			if(cs.getRemarks().length()==0) {
         				b.write(cs.toStringOneLine()+"\n");
@@ -107,11 +110,12 @@ public class TestCosmic {
         			
         		//}
         		count++;
+        		if(count%100 == 0) {
+        			System.out.println("Already processed "+count+" reads");
+        		}
         	}
         	//System.out.println(vc.getContig());
-        		if(count%100000 == 0) {
-        			//System.out.println("Already processed "+count+" reads");
-        		}
+        		
         }
         reader.close();
         System.out.println(count+ " mutations" );

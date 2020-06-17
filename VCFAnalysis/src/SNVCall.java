@@ -13,9 +13,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Scanner;
 
 import controller.PindelController;
@@ -32,10 +34,10 @@ public class SNVCall {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\20190313_gvcf_brc-1_project.genotyped.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20190920_gvcf_LUMC-003-001_worms_filtered.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20190920_gvcf_LUMC-003-001_arab_filtered.vcf");
-		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
+		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
 		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
-		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20200403_gvcf_LUMC-003-001_arab_filtered.vcf");
+		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20200403_gvcf_LUMC-003-001_arab_filtered.vcf");
 		//cross check locations with SVs
 		//File pindel = new File("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\NGS data\\Pindel_Analysis.txt");
 		Scanner scan = new Scanner(new File("printToVCF.txt"));
@@ -49,6 +51,7 @@ public class SNVCall {
 		boolean excludeINVandTD = true;
 		
 		pc.parsePindel(excludeINVandTD);
+		HashMap<String,Integer> snvCounts = new HashMap<String,Integer>();
 		
 		
 		VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder().clearOptions()
@@ -88,11 +91,11 @@ public class SNVCall {
         	VariantContext vc = it.next();
         	//only SNPs at the moment!
         	if(!vc.isSNP()) {
-        		System.out.println(vc);
+        		//System.out.println(vc);
         		continue;
         		
         	}
-        	String locationS = vc.getContig()+":"+vc.getStart()+"-"+vc.getEnd()+"["+vc.getReference()+"]";
+        	String locationS = vc.getContig()+":"+vc.getStart()+"-"+vc.getEnd()+"["+vc.getReference().getBaseString()+"]";
         	if(locs.contains(locationS)) {
         		//System.out.println(vc.toStringWithoutGenotypes());
         		vcw.add(vc);
@@ -282,6 +285,99 @@ public class SNVCall {
         			}
         		}
         	}
+        	//System.out.println(vc);
+        	if(vc.getAltAlleleWithHighestAlleleCount().getBaseString().contentEquals("*")) {
+        		continue;
+        	}
+        	String locationSNV = vc.getContig()+":"+vc.getStart()+"["+vc.getReference().getBaseString()+">"+vc.getAltAlleleWithHighestAlleleCount().getBaseString()+"]";
+        	String output = locationSNV;
+        	int totalSNV = 0;
+        	int totalGroupsHaveSNV = 0;
+        	int totalSample = 0;
+        	for(String key: strains.keySet()) {
+        		ArrayList<String> names = strains.get(key);
+        		int snpCounter = 0;
+        		int motherSNPCounter = 0;
+        		//System.out.println(key);
+        		for(String name: strains.get(key)) {
+        			if(name.contentEquals("atku80-SALK-016627-5-2") || name.contentEquals("atbrca1-1-SALK-014731-5-16")) {
+            			continue;
+            		}
+        			totalSample++;
+        			Genotype gt = vc.getGenotype(name);
+        			if(gt.isHomVar()) {
+        				snpCounter++;
+        				totalSNV++;
+        				//System.out.println(name);
+        				if(isZeroStrain(name)) {
+        					motherSNPCounter++;
+            			}
+        			}
+        			//System.out.println("\t"+name);
+        		}
+        		if(snpCounter>0) {
+        			totalGroupsHaveSNV++;
+        		}
+        		output+="\t"+key+"\t"+motherSNPCounter+"\t"+snpCounter+"\t"+names.size();
+        	}
+        	if(totalSNV>0) {
+        		double fractionSNV = totalSNV/(double)totalSample;
+        		//System.out.print(fractionSNV+"\t"+totalSNV+"\t"+totalGroupsHaveSNV+"\t"+output+"\n");
+        	}
+        	
+        	//compare pairwise
+        	if(vc.getAltAlleleWithHighestAlleleCount().getBaseString().contentEquals("*")) {
+        		continue;
+        	}
+        	ArrayList<String> tempNames = new ArrayList<String>();
+        	ArrayList<String> totalNames = new ArrayList<String>();
+        	int maxGQ = 0 ;
+        	for(String name: vc.getSampleNamesOrderedByName()) {
+        		if(name.contentEquals("atku80-SALK-016627-5-2") || name.contentEquals("atbrca1-1-SALK-014731-5-16")) {
+        			continue;
+        		}
+        		totalNames.add(name);
+        		Genotype gt = vc.getGenotype(name);
+        		//add some depth
+    			if(gt.isHomVar()) {
+    				tempNames.add(name);
+    				if(gt.getGQ()>maxGQ) {
+    					maxGQ = gt.getGQ();
+    				}
+    			}
+        	}
+        	//should be done only once, but ok
+        	if(snvCounts.size()==0) {
+	        	for(String n: totalNames) {
+	        		//System.out.println(n);
+	        		for(String m: totalNames) {
+	        			String tempName = n+"|"+m;
+	        			if(!snvCounts.containsKey(tempName)) {
+	        				snvCounts.put(tempName,0);
+	        			}
+	        		}
+	        	}
+        	}
+        	
+        	if(totalGroupsHaveSNV == 1 && maxGQ>90) {// && tempNames.size()<vc.getSampleNames().size()) {
+	        	for(String n: tempNames) {
+	        		if(n.contentEquals("atku80-SALK-016627-5-2") || n.contentEquals("atbrca1-1-SALK-014731-5-16")) {
+	        			continue;
+	        		}
+	        		for(String m: tempNames) {
+	        			if(m.contentEquals("atku80-SALK-016627-5-2") || m.contentEquals("atbrca1-1-SALK-014731-5-16")) {
+	            			continue;
+	            		}
+	        			String tempName = n+"|"+m;
+	    				//if(!snvCounts.containsKey(tempName)) {
+	    				//	snvCounts.put(tempName, 0);
+	    				//}
+	    				snvCounts.put(tempName, snvCounts.get(tempName)+1);
+	        		}
+	        	}
+        	}
+        	
+        	//System.exit(0);
         	/*
         	if( noOtherCall == 0 && nrCalles > 0 && vc.getNAlleles() == 2){
         		//System.out.println(vc.getStart());
@@ -301,6 +397,50 @@ public class SNVCall {
         	}
         	*/
         }
+        //process snvCounts
+        //getNames
+        ArrayList<String> names = new ArrayList<String>();
+        for(String key: snvCounts.keySet()) {
+        	//System.out.println(key);
+        	String name = key.split("\\|")[0];
+        	if(!names.contains(name)) {
+        		names.add(name);
+        	}
+        }
+        Collections.sort(names);
+        String headerStr = "\t";
+        for(String name: names) {
+        	headerStr+=name+"\t";
+        }
+        System.out.println(headerStr);
+        for(String name: names) {
+        	int max = 0;
+        	for(String name2: names) {
+        		String tempKey = name+"|"+name2;
+        		if(snvCounts.containsKey(tempKey)) {
+        			if(snvCounts.get(tempKey)>max) {
+        				max = snvCounts.get(tempKey);
+        			}
+        		}
+        	}
+        	//again and print
+        	String print = name;
+        	for(String name2: names) {
+        		String tempKey = name+"|"+name2;
+        		if(snvCounts.containsKey(tempKey)) {
+        			//double fraction = (snvCounts.get(tempKey)/(double)max); 
+        			double fraction = snvCounts.get(tempKey);
+        			print+="\t"+String.format(Locale.ROOT,"%.2f", fraction);
+        		}
+        		else {
+        			print+="\t"+0;
+        		}
+        	}
+        	System.out.println(print);
+        }
+        for(String key: snvCounts.keySet()) {
+        	//System.out.println(key+"\t"+snvCounts.get(key));
+        }
         vcw.close();
         reader.close();
         outputAllWriter.close();
@@ -310,6 +450,14 @@ public class SNVCall {
         System.out.println("written "+uniqueCounter+" UNIQUE to "+outputUnique.getAbsolutePath());
         System.out.println("written outputDiffFromZeroWriter to "+outputNonUnique.getAbsolutePath());
         
+	}
+
+	private static boolean isZeroStrain(String name) {
+		if(name.contains("mother")) {
+			return true;
+		}
+		//TODO add the worm syntax
+		return false;
 	}
 
 	private static boolean isHet(Genotype gt) {

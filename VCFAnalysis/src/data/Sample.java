@@ -31,7 +31,7 @@ public class Sample {
 				sb.append("["+call.getCaller()+"]");
 				sb.append("\t");
 				//sb.append(" ");
-				//sb.append(call.getGt()).append("\t");
+				sb.append(call.getGt()).append("\t");
 			}
 		}
 		return sb.toString();

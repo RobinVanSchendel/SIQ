@@ -56,7 +56,7 @@ public class Manta extends GeneralCaller{
 		ReferenceSequenceFile rsf = ReferenceSequenceFileFactory.getReferenceSequenceFile(genomeFile);
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\Gridss\\gridss.vcf");
 		Manta manta = new Manta(vcf);
-		SVController svc = new SVController(rsf);
+		SVController svc = new SVController(rsf, 5);
 		manta.parseFile(svc);
 		//svc.addMetaData();
 		int maxSupportingFiles = 2;
@@ -540,6 +540,9 @@ public class Manta extends GeneralCaller{
 		//System.out.println(vc);
 		StructuralVariation sv = null;
 		Location start = new Location(vc.getContig(),vc.getStart());
+		if(start.getPosition()>(13163069-1000) && start.getPosition()<(13163069+1000)) {
+			System.out.println(vc.toString());
+		}
     	//System.out.println(vc.toStringDecodeGenotypes());
     	String svType = (String) vc.getAttribute("SVTYPE");
     	String svLenString = ((String) vc.getAttribute("SVLEN"));
