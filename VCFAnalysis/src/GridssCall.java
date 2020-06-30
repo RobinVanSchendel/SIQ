@@ -494,6 +494,10 @@ public class GridssCall extends GeneralCaller {
 				type = SVType.TRANS;
 			}
 			StructuralVariation sv = new StructuralVariation(type,start,end, getName());
+			//bug GRIDSS does not become a SINS when delSize == 0
+			if(sv.getSize()==0 && insert!= null && insert.length()>0) {
+				sv.setType(SVType.SINS);
+			}
 			sv.setInsert(insert);
 			
 			for(String name: vc.getSampleNamesOrderedByName()) {

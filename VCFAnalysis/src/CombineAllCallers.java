@@ -21,10 +21,10 @@ public class CombineAllCallers {
 		}
 		
 		int maxSupportingSamples = 1;
-		int debugLocation = 12048395;
+		int debugLocation = 4809245;
 		
 		SVController svc = new SVController(rsf, maxSupportingSamples);
-		//svc.setDebugLocation(debugLocation);
+		svc.setDebugLocation(debugLocation);
 		try {
 			svc.addLookupNames("mappingNames.txt");
 		} catch (FileNotFoundException e) {

@@ -2,6 +2,7 @@ package data;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Vector;
 
 import controller.G4Controller;
 import dnaanalysis.InsertionSolverTwoSides;
@@ -20,6 +21,7 @@ public class StructuralVariation {
 	private String info;
 	private String origCaller;
 	private boolean neigbourhood = false;
+	private String neighbourhoodString = "";
 	
 	public StructuralVariation(SVType type, Location start, Location end, String caller) {
 		setType(type);
@@ -42,22 +44,74 @@ public class StructuralVariation {
 		setHighestGriddCall();
 		setADCallGATK();
 		setHetCallGATK();
+		setTrueEvent();
 		if(g4s!=null) {
 			setG4s(g4s);
 		}
 	}
 	
+	private void setTrueEvent() {
+		ArrayList<String> callers = new ArrayList<String>();
+		for(Sample s: samples) {
+			ArrayList<String> tempCallers = s.getCallers();
+			for(String caller: tempCallers) {
+				if(!callers.contains(caller)) {
+					callers.add(caller);
+				}
+			}
+		}
+		MetaData trueEvent = new MetaData("TRUE_event");
+		if(callers.contains("Pindel") || callers.size()>1) {
+			trueEvent.setValue(true);
+		}
+		else {
+			trueEvent.setValue(false);
+		}
+		metadata.add(trueEvent);
+	}
 	private void setG4s(G4Controller g4s) {
-		MetaData g4 = new MetaData("Nearest_G4");
+		MetaData g4near = new MetaData("Nearest_G4");
+		MetaData overlapsG4 = new MetaData("Overlaps_G4");
 		MetaData g4Distance = new MetaData("Distance_G4");
+		MetaData g4Start = new MetaData("G4_Del_Start");
+		MetaData g4End = new MetaData("G4_Del_End");
 		G4 closest = g4s.getClosest(this);
 		if(closest!=null) {
-			g4.setValue(closest.toString());
+			g4near.setValue(closest.toString());
 		}
 		int distance = g4s.getDistanceClosest(this);
 		g4Distance.setValue(distance);
-		metadata.add(g4);
+		
+		//overlap
+		Vector<G4> getG4Overlaps = g4s.getOverlaps(this);
+		int g4relStart = Integer.MIN_VALUE;
+		int g4relEnd = Integer.MIN_VALUE;
+		
+		//get the distance relative to the overlapping G4.
+		//currently we just take the first one
+		if(getG4Overlaps.size()>=1) {
+			G4 g4 = getG4Overlaps.get(0);
+			if(g4.isForward()) {
+				g4relStart = this.getStart().getPosition()-g4.getStart();
+				g4relEnd = this.getEnd().getPosition()-g4.getStart();
+			}
+			else {
+				g4relStart = g4.getEnd()-this.getEnd().getPosition();
+				g4relEnd = g4.getEnd()-this.getStart().getPosition();
+			}
+			overlapsG4.setValue(true);
+		}
+		else {
+			overlapsG4.setValue(false);
+		}
+		g4Start.setValue(g4relStart);
+		g4End.setValue(g4relEnd);
+		metadata.add(g4near);
 		metadata.add(g4Distance);
+		metadata.add(overlapsG4);
+		metadata.add(g4Start);
+		metadata.add(g4End);
+		
 		
 		
 	}
@@ -260,6 +314,9 @@ public class StructuralVariation {
 		sb.append(origCaller).append(sep);
 		sb.append(getStartEndLocation()).append(sep);
 		sb.append(getStartEndLocation(0.2)).append(sep);
+		sb.append(this.getStart().getChr()).append(sep);
+		sb.append(this.getStart().getPosition()).append(sep);
+		sb.append(this.getEnd().getPosition()).append(sep);
 		sb.append(getSize()).append(sep);
 		sb.append(getInsert()).append(sep);
 		if(metadata!=null) {
@@ -276,7 +333,8 @@ public class StructuralVariation {
 		}
 		sb.append(getConsensusSample(callers)).append(sep);
 		sb.append(getConsensusGroup(callers)).append(sep);
-		sb.append(neigbourhood);
+		sb.append(neigbourhood).append(sep);
+		sb.append(neighbourhoodString);
 		/*
 		if(samples!=null) {
 			for(Sample s: samples) {
@@ -347,7 +405,7 @@ public class StructuralVariation {
 		return insert;
 	}
 
-	private int getSize() {
+	public int getSize() {
 		if(start.onSameChromosome(end)) {
 			if(this.type == SVType.SINS) {
 				return insert.length();
@@ -474,7 +532,7 @@ public class StructuralVariation {
 		this.info = totalString;
 	}
 	public String getHeader(ArrayList<String> callers) {
-		String head =  "Type\torigCaller\tlocation\tIGVLocation\tSize\tInsert";
+		String head =  "Type\torigCaller\tlocation\tIGVLocation\tChr\tStart\tEnd\tSize\tInsert";
 		if(metadata != null) {
 			for(MetaData md: metadata) {
 				head+="\t"+md.getName();
@@ -487,7 +545,7 @@ public class StructuralVariation {
 		for(String caller: callers) {
 			head+="\tSample"+caller;
 		}
-		head+="\tconsensusSample\tsampleGroup\tneighbourhood";
+		head+="\tconsensusSample\tsampleGroup\tneighbourhood\tneighbourhoodString";
 		return head;
 	}
 	public String getOrigCaller() {
@@ -507,5 +565,12 @@ public class StructuralVariation {
 			}
 		}
 		return Utils.toString(support," ");
+	}
+	public void setInNeighbourhood(String startEndLocation) {
+		if(neighbourhoodString.length()!=0) {
+			neighbourhoodString+="|";
+		}
+		neighbourhoodString+=startEndLocation; 
+		
 	}
 }

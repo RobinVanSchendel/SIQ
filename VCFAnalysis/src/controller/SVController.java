@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Vector;
 
 import data.G4;
 import data.Sample;
@@ -20,6 +21,7 @@ public class SVController {
 	private HashMap<String, String> names = new HashMap<String, String>();
 	private int debugLocation = -1;
 	private G4Controller g4s;
+	private Vector<String> unknownNames = new Vector<String>();
 	
 	public SVController(ReferenceSequenceFile rsf, int maxSupportingSamples) {
 		this.rsf = rsf;
@@ -32,7 +34,6 @@ public class SVController {
 			System.out.println(sv.toOneLineString());
 			System.out.println("Supports "+sv.getNrSampleSupport());
 			System.out.println("Supports "+sv.getSupportingSamples());
-			System.out.println("Supports "+sv.getSamples());
 			System.out.println("END DEBUG");
 		}
 		//check if not too many support
@@ -82,6 +83,11 @@ public class SVController {
 		if(!checkForLocations) {
 			//System.out.println("Adding");
 			svs.put(sv.getKey(), sv);
+			if(isDebugEvent(sv)) {
+				System.out.println("DEBUG insertSV");
+				System.out.println("Insert without checking");
+				System.out.println("END DEBUG");
+			}
 			return true;
 		}
 		else {
@@ -95,6 +101,16 @@ public class SVController {
 					closest.add(svTemp);
 				}
 			}
+			if(isDebugEvent(sv)) {
+				System.out.println("DEBUG insertSV");
+				System.out.println(sv.getSupportingSamples());
+				System.out.println("Insert found matches "+closest.size());
+				for(StructuralVariation tempSV: closest) {
+					System.out.println(tempSV.toOneLineString());
+					System.out.println(tempSV.getSupportingSamples());
+				}
+				System.out.println("END DEBUG");
+			}
 			if(closest.size()>0) {
 				if(closest.size()==1) {
 					closest.get(0).merge(sv);
@@ -102,23 +118,48 @@ public class SVController {
 					return false;
 				}
 				else {
-					//pick the same type
-					ArrayList<StructuralVariation> typeSame = new ArrayList<StructuralVariation>();
+					//check for the same supporting sample
+					ArrayList<StructuralVariation> nameSame = new ArrayList<StructuralVariation>();
 					for(StructuralVariation close : closest) {
-						if(close.getType().equals(sv.getType())) {
-							typeSame.add(close);
+						if(close.getSupportingSamples().equals(sv.getSupportingSamples())) {
+							nameSame.add(close);
 						}
-						//System.out.println(close.toOneLineString());
 					}
-					if(typeSame.size()==1) {
-						typeSame.get(0).merge(sv);
+					if(nameSame.size()==1) {
+						nameSame.get(0).merge(sv);
+						added = true;
+						if(isDebugEvent(sv)) {
+							System.out.println("DEBUG insertSV");
+							System.out.println("merged on name");
+							System.out.println("END DEBUG");
+						}
 					}
-					//now don't know what to do yet
+					//same type
 					else {
-						//System.out.println("====");
-						//System.out.println(sv.toOneLineString());
-						//System.out.println("======");
-						//System.exit(0);
+						//pick the same type
+						ArrayList<StructuralVariation> typeSame = new ArrayList<StructuralVariation>();
+						for(StructuralVariation close : closest) {
+							if(close.getType().equals(sv.getType())) {
+								typeSame.add(close);
+							}
+							//System.out.println(close.toOneLineString());
+						}
+						if(typeSame.size()==1) {
+							typeSame.get(0).merge(sv);
+							added = true;
+							if(isDebugEvent(sv)) {
+								System.out.println("DEBUG insertSV");
+								System.out.println("merged on type");
+								System.out.println("END DEBUG");
+							}
+						}
+						//now don't know what to do yet
+						else {
+							//System.out.println("====");
+							//System.out.println(sv.toOneLineString());
+							//System.out.println("======");
+							//System.exit(0);
+						}
 					}
 				}
 			}
@@ -151,7 +192,16 @@ public class SVController {
 					StructuralVariation sv2 = svs.get(key2);
 					if(sv.inNeighbourhood(sv2)) {
 						sv.setInNeighbourhood(true);
+						sv.setInNeighbourhood(sv2.getStartEndLocation());
 						sv2.setInNeighbourhood(true);
+						sv2.setInNeighbourhood(sv.getStartEndLocation());
+						/*
+						if(sv.getStartEndLocation().contentEquals(sv2.getStartEndLocation())) {
+							System.out.println(sv.toOneLineString());
+							System.out.println(sv2.toOneLineString());
+							System.out.println("=====");
+						}
+						*/
 					}
 				}
 			}
@@ -214,6 +264,12 @@ public class SVController {
 		if(names.containsKey(name)) {
 			return names.get(name);
 		}
+		else {
+			if(!unknownNames.contains(name)) {
+				System.err.println(name);
+				unknownNames.add(name);
+			}
+		}
 		return name;
 	}
 	public void setDebugLocation(int debugLocation) {
@@ -253,5 +309,11 @@ public class SVController {
 	}
 	public void setG4Controller(G4Controller g4s) {
 		this.g4s = g4s;
+	}
+	public boolean isDebugEvent(StructuralVariation sv) {
+		if(debugLocation >0 && sv.getStart().getPosition()>(debugLocation-1000) && sv.getStart().getPosition()<(debugLocation+1000)) {
+			return true;
+		}
+		return false;
 	}
 }
