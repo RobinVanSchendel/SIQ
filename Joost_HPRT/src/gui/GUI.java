@@ -1468,7 +1468,6 @@ public class GUI implements ActionListener, MouseListener {
         placeComp(copyPaste,guiFrame,0,3,1,1);
         
         addJTableNGS();
-        
         R = new JButton("Plot with R");
         R.setActionCommand("R");
         R.addActionListener(this);
@@ -1510,16 +1509,16 @@ public class GUI implements ActionListener, MouseListener {
         run.addActionListener(this);
         placeComp(run,guiFrame,0,5,1,1);
         
-        excelNGS = new JButton("Export to Excel");
-        excelNGS.setActionCommand("ExcelNGS");
+        //excelNGS = new JButton("Export to Excel");
+        //excelNGS.setActionCommand("ExcelNGS");
         //excelNGS.setBounds(150,500,120,20);
-        excelNGS.addActionListener(this);
-        excelNGS.setEnabled(false);
-        placeComp(excelNGS,guiFrame,1,5,1,1);
+        //excelNGS.addActionListener(this);
+        //excelNGS.setEnabled(false);
+        //placeComp(excelNGS,guiFrame,1,5,1,1);
         
         this.ab1Perspective = false;
-        guiFrame.setTitle("Tijsterman lab - SATL "+version+" "+getMode());
-        //guiFrame.pack();
+        guiFrame.setTitle("Tijsterman lab - SIQ "+version+" "+getMode());
+        guiFrame.pack();
         guiFrame.setVisible(true);
 	}
 

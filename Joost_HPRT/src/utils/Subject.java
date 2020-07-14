@@ -49,10 +49,10 @@ public class Subject {
 		if(left == null) {
 			left = "";
 		}
-		this.setLeftFlank(left);
 		if(right == null) {
 			right = "";
 		}
+		this.setLeftFlank(left, right);
 		this.setRightFlank(right);
 		
 		checkLeftRight();
@@ -153,7 +153,7 @@ public class Subject {
 			this.rightPrimerSet = true;
 		}
 	}
-	public void setLeftFlank(String tempLeftFlank) {
+	public void setLeftFlank(String tempLeftFlank, String right) {
 		if(tempLeftFlank!=null) {
 			this.leftFlank = tempLeftFlank.toUpperCase();
 			if(this.leftFlank.length()==0) {
@@ -168,10 +168,30 @@ public class Subject {
 				//System.exit(0);
 				leftSet = false;
 			}
+			//found
 			else {
 				this.endOfLeftFlank = subject.indexOf(leftFlank)+leftFlank.length();
 				//System.out.println("endOfLeftFlank "+endOfLeftFlank);
-				leftSet = true;
+				//check
+				int first = subject.indexOf(leftFlank);
+				int last = subject.lastIndexOf(leftFlank);
+				if(first != last) {
+					//check if we can select it based on the right
+					String tempLeftRight = leftFlank+right.toUpperCase();
+					int firstLR = subject.indexOf(tempLeftRight);
+					int lastLR = subject.lastIndexOf(tempLeftRight);
+					if(firstLR == lastLR) {
+						this.endOfLeftFlank = firstLR+leftFlank.length();
+						leftSet = true;
+					}
+					else {
+						System.err.println("leftFlank seen multiple times");
+						leftSet = false;
+					}
+				}
+				else {
+					leftSet = true;
+				}
 			}
 		}
 	}

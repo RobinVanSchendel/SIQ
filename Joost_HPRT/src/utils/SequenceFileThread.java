@@ -623,7 +623,7 @@ public class SequenceFileThread extends Thread {
 		try {
 			
 			//String execTotal = exec +" -query query.fa -db "+db+" -word_size 18 -outfmt \"6 std qseq sseq\"";
-			String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -M 5000 -O -x 0 -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
+			String execTotal = flashExec+ " \""+ngs.getR1()+"\" \""+ngs.getR2()+"\" -M 5000 -O -x 0 -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
 			//String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -r 300 -M 5000 -O -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
 			System.out.println(execTotal);
 			Process p = Runtime.getRuntime().exec(execTotal);

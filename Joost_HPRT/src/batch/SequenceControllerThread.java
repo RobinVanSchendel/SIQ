@@ -1,6 +1,7 @@
 package batch;
 
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
@@ -118,6 +119,7 @@ public class SequenceControllerThread implements Runnable{
 		if(!readyToRun) {
 			return;
 		}
+		GUI.guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 		enableButtons(false);
 		ArrayList<Thread> threads = new ArrayList<Thread>();
 		while(vThreads.size()>0) {
@@ -130,10 +132,10 @@ public class SequenceControllerThread implements Runnable{
 			try {
 				while(t.isAlive() && !exit) {
 					Thread.sleep(500);
-					System.out.println("sleeping "+t.getName());
+					//System.out.println("sleeping "+t.getName());
 				}
 				if(exit) {
-					System.out.println("interrupting "+t.getName());
+					//System.out.println("interrupting "+t.getName());
 					t.interrupt();
 				}
 				System.out.println("called joined "+t.getName());
@@ -189,6 +191,7 @@ public class SequenceControllerThread implements Runnable{
 		*/
 		//while(Thread.)
 		enableButtons(true);
+		GUI.guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 		//add button to export stuff to Combined file
 	}
 	public void stop(){

@@ -134,8 +134,10 @@ public class KMERLocation {
 				if(length>longest && lcs.getSubjectStart()<leftPos) {
 					longest = lcs.length();
 					max = lcs;
+					//System.out.println("SET:");
 				}
 			//}
+				//System.out.println(lcs);
 		}
 		//System.out.println("found max:"+max);
 		if(max == null) {

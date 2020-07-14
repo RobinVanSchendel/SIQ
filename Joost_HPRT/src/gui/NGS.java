@@ -171,7 +171,7 @@ public class NGS {
 		if(s == null) {
 			return false;
 		}
-		s.setLeftFlank(leftFlank);
+		s.setLeftFlank(leftFlank, rightFlank);
 		//System.out.println("leftFlank in NGS is "+leftFlank);
 		//System.out.println("leftFlank in NGS subject is "+s.getLeftFlank());
 		
@@ -254,9 +254,12 @@ public class NGS {
 			return R1;
 		}
 		//TODO I broke the FLASH thingy now
-		//if(this.assembledOK()) {
-		return this.assembled;
-		//}
+		if(this.assembledOK()) {
+			return this.assembled;
+		}
+		else {
+			return this.getAssembledFileDerived();
+		}
 		//
 	}
 	public File getAssembledFileDerived() {
