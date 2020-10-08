@@ -526,7 +526,8 @@ public class CompareSequence {
 			ret.append(isStartPos).append(s);
 			ret.append(isEndPos).append(s);
 			ret.append(isStartPosRel).append(s);
-			ret.append(isEndPosRel).append(s);
+			//Do not append final tab
+			ret.append(isEndPosRel);
 		}
 		return ret.toString();
 	}
@@ -876,7 +877,16 @@ public class CompareSequence {
 		}
 		else if(getType() == Type.INSERTION) {
 			if(this.getInsertion().length()<minSizeInsertionSolver) {
+				String leftFlank = this.getLeftFlank(this.getInsertion().length());
+				if(this.getRightFlank(this.getInsertion().length()).contentEquals(this.getInsertion())) {
+					return Type.INSERTION+"smallTDright_"+this.getInsertion();
+				}
+				else if(leftFlank.contentEquals(this.getInsertion())) {
+					return Type.INSERTION+"smallTDleft_"+this.getInsertion();
+				}
+				else
 				return Type.INSERTION+"_<"+minSizeInsertionSolver;
+				
 			}
 			else {
 				String ret = "FLANKINSERT";
