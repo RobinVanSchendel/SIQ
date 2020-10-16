@@ -17,11 +17,13 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -739,7 +741,6 @@ public class GUI implements ActionListener, MouseListener {
 	}
 
 	public void exportToExcel(File outputFile) {
-		// TODO Auto-generated method stub
 		Vector<NGS> v = ngsModel.getData();
 		boolean firstFile = true;
 		int totalRow = 0;
@@ -1766,7 +1767,47 @@ public class GUI implements ActionListener, MouseListener {
 	    cons.weighty = 0.8;
 	    cons.weightx = weightX;
 	    cons.fill = GridBagConstraints.BOTH;
-	    //comp.setPreferredSize(new Dimension(250,25));
 	    panel.add(comp, cons);
 	 }
+	public void exportToTSV(File tsvFile) {
+		Vector<NGS> v = ngsModel.getData();
+		BufferedWriter bw = null;
+		try {
+			bw = new BufferedWriter(new PrintWriter(tsvFile));
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		boolean firstFile = true;
+		for(NGS n: v) {
+			File tempInput = n.getOutput();
+			int index = 0;
+			try {
+				Scanner s = new Scanner(tempInput);
+				while(s.hasNext()) {
+					String line = s.nextLine();
+					if(index == 0) {
+						if(firstFile) {
+							bw.write(line+"\n");
+						}
+					}
+					else {
+						bw.write(line+"\n");
+					}
+					index++;
+				}
+				s.close();
+				
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			firstFile = false;
+		}
+		
+		
+	}
 }

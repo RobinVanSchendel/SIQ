@@ -461,7 +461,7 @@ public class CompareSequence {
 		else {
 			ret.append(getName()).append(s);
 		}
-		if(alias != null) {
+		if(alias != null && alias.length()>0) {
 			ret.append(alias).append(s);
 		}
 		else {

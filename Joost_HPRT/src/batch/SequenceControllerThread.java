@@ -32,6 +32,7 @@ public class SequenceControllerThread implements Runnable{
 	private File outputDir;
 	private Vector<NGS> v;
 	private File excelFile;
+	private File tsvFile;
 	
 	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, GUI GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue) {
 		this.GUI = GUI;
@@ -147,8 +148,10 @@ public class SequenceControllerThread implements Runnable{
 		//all threads are done here
 		if(excelFile!=null){
 			GUI.exportToExcel(excelFile);
-			ReportPanel.runR(excelFile, false);
-			ReportPanel.runR(excelFile, true);
+			GUI.exportToTSV(tsvFile);
+			//Don't go to R anymore
+			//ReportPanel.runR(excelFile, false);
+			//ReportPanel.runR(excelFile, true);
 		}
 		if(v.size()>0) {
 			File dir = v.get(0).getOutputDir();
@@ -218,6 +221,12 @@ public class SequenceControllerThread implements Runnable{
 
 	public void setExportToExcel(File excelFile) {
 		this.excelFile = excelFile;
+		//make sure it ends with .xlsx
+		if(!this.excelFile.getAbsolutePath().endsWith(".xlsx")) {
+			this.excelFile = new File(this.excelFile.getAbsolutePath()+".xlsx");
+		}
+		//set Tab-delimited file for SIQPlotter
+		this.tsvFile = new File(excelFile.getAbsolutePath().replace(".xlsx", ".txt"));
 	}
 
 
