@@ -1,9 +1,10 @@
-package utils;
+package dnaanalysis;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
 
 import org.biojava.bio.seq.Sequence;
+
 import org.apache.commons.math3.distribution.BinomialDistribution;
 
 
@@ -342,7 +343,7 @@ public class InsertionSolverTwoSides {
 		}
 	}
 	private void setLargestTDNAMatch(String subS, boolean rc) {
-		if(this.tDNAVector != null && this.tDNAVector.size()>1){
+		if(this.tDNAVector != null && this.tDNAVector.size()>=1){
 			int maxSize = 0;
 			Sequence current = null;
 			String maxLCS = null;
