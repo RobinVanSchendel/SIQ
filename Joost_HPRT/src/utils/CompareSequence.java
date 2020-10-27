@@ -137,7 +137,8 @@ public class CompareSequence {
 				}
 			}
 			else {
-				seqRemain = query.replace(flankOne.getString(), replacementFlank);
+				//exchange the exact position
+				seqRemain = query.substring(0, flankOne.getQueryStart())+replacementFlank+query.substring(flankOne.getQueryEnd());
 				//some error checking on the length of the rightFlank
 				indexRemain = seqRemain.indexOf(replacementFlank);
 				if(indexRemain>=0){
