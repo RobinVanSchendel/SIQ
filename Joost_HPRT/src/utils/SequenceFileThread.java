@@ -187,6 +187,7 @@ public class SequenceFileThread extends Thread {
 							cs = new CompareSequence(subject, R.getNucleotideSequence().toString(), R.getQualitySequence(), f.getParentFile().getName(), checkReverse, R.getId());
 							//bug, needs to be opposite orientation of forward read
 							if(!takeRc.get()) {
+								//System.out.println("reversing");
 								cs.reverseRead();
 							}
 							cs.setAndDetermineCorrectRange(maxError);
@@ -202,6 +203,21 @@ public class SequenceFileThread extends Thread {
 							}
 							else {
 								//System.out.println("not correct "+leftCorrect+":"+rightCorrect+" - "+Thread.activeCount());
+								//System.out.println(F.getNucleotideSequence());
+								//System.out.println(R.getNucleotideSequence());
+//								System.out.println(R.getQualitySequence().toArray());
+								//System.out.println(cs.getRangesString());
+								//for(long i=0;i<R.getQualitySequence().getLength();i++) {
+									//System.out.println(R.getQualitySequence().get(i).getErrorProbability());
+								//}
+								//System.out.println(cs.toStringOneLine());
+								//if(R.getId().contentEquals("A00379:191:H7FWTDSXY:3:1101:22905:7905 2:N:0:ATGGATAA+GGCGATAA")) {
+								//	System.out.println("Found");
+								//	System.out.println(cs.isCorrectPositionRight());
+								//	System.exit(0);
+								//}
+								//System.out.println("===");
+								//System.exit(0);
 							}
 						}
 					}
@@ -358,6 +374,10 @@ public class SequenceFileThread extends Thread {
 								if(cs.getNrXs()<csEvents.get(key).getNrXs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
 									csEvents.put(key, cs);
 								}
+								//can also be done if matchPositions are smaller
+								else if(cs.getNrXs()==csEvents.get(key).getNrXs() && (cs.getMatchStart()< csEvents.get(key).getMatchStart() || cs.getMatchEnd() >csEvents.get(key).getMatchEnd())) {
+									csEvents.put(key, cs);
+								}
 							}
 							else{
 								countEvents.put(key, 1);
@@ -457,6 +477,7 @@ public class SequenceFileThread extends Thread {
 		if(writerStats!= null) {
 			double correctFraction = correct.get()/(double)totalRawReadsCounter.get();
 			double correctFractionMerged = correct.get()/(double)counter.get();
+			writerStats.println("File\tType\tAmount");
 			writerStats.println(f.getName()+"\tTotalReads\t"+totalRawReadsCounter);
 			writerStats.println(f.getName()+"\tMergedReads\t"+counter);
 			writerStats.println(f.getName()+"\tMergedCorrect\t"+correct);
