@@ -100,7 +100,7 @@ public class SequenceController {
 				subject = si.nextRichSequence();
 			}
 			else {
-				subject = RichSequence.Tools.createRichSequence("subject", DNATools.createDNA(subjectFile));
+				subject = RichSequence.Tools.createRichSequence("subject_"+options.getAlias(), DNATools.createDNA(subjectFile));
 			}
 			
 			
