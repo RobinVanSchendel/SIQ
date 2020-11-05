@@ -30,6 +30,7 @@ import org.biojava.bio.symbol.IllegalSymbolException;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.biojavax.bio.seq.RichSequenceIterator;
+import org.biojavax.bio.seq.io.RichSequenceBuilder;
 import org.jcvi.jillion.core.datastore.DataStoreException;
 import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
 import org.jcvi.jillion.core.qual.PhredQuality;
@@ -70,15 +71,14 @@ public class SequenceController {
 	}
 	public void readFilesFASTQMultiThreaded(String file, String subjectFile, String leftFlank, String rightFlank, String type, File searchAdditional, boolean writeToOutput, String containsString, MyOptions options){
 		File f = new File(subjectFile);
-		if(!f.exists()) {
-			MyError.err("The reference input file does not exist: "+f.getAbsolutePath());
+		if(!isDNA(subjectFile) && !f.exists()) {
+			MyError.err("The reference input file does not exist: "+f.getAbsolutePath()+"\tor is not DNA");
 		}
 		BufferedReader is = null, is2 = null, is3 = null;
 		RichSequence subject = null, hdr = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
 		HashMap<String, String> hmAdditional = new HashMap<String, String>();
 		try {
-			is = new BufferedReader(new FileReader(subjectFile));
 			if(searchAdditional!= null && !searchAdditional.equals("")){
 				is2 = new BufferedReader(new FileReader(searchAdditional));
 				SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
@@ -94,8 +94,14 @@ public class SequenceController {
 				RichSequenceIterator rsi = IOTools.readFastaDNA(is3, null);
 				hdr = rsi.nextRichSequence();
 			}
-			RichSequenceIterator si = IOTools.readFastaDNA(is, null);
-			subject = si.nextRichSequence();
+			if(!isDNA(subjectFile)) {
+				is = new BufferedReader(new FileReader(subjectFile));
+				RichSequenceIterator si = IOTools.readFastaDNA(is, null);
+				subject = si.nextRichSequence();
+			}
+			else {
+				subject = RichSequence.Tools.createRichSequence("subject", DNATools.createDNA(subjectFile));
+			}
 			
 			
 		} catch (FileNotFoundException | NoSuchElementException | BioException e1) {
@@ -144,6 +150,9 @@ public class SequenceController {
 			fileNr++;
 		}
 		sft.runReal();
+	}
+	private boolean isDNA(String subjectFile) {
+		return subjectFile.matches("[agctAGCT]*");
 	}
 	private Vector<File> getFASTQFiles(File d, String containsString) {
 		Vector<File> files = new Vector<File>();
