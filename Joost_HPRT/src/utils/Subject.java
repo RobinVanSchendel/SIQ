@@ -99,7 +99,7 @@ public class Subject {
 		}
 	}
 	public void setLeftPrimer(String tempLeftPrimer) {
-		if(tempLeftPrimer !=null) {
+		if(tempLeftPrimer !=null && tempLeftPrimer.length()>0) {
 			this.leftPrimer = tempLeftPrimer.toUpperCase();
 			//can also be in reverse complement orientation
 			if(subject.indexOf(this.leftPrimer)<0) {
@@ -125,7 +125,7 @@ public class Subject {
 		}
 	}
 	public void setRightPrimer(String tempRightPrimer) {
-		if(tempRightPrimer!=null) {
+		if(tempRightPrimer!=null && tempRightPrimer.length()>0) {
 			this.rightPrimer = tempRightPrimer.toUpperCase();
 			//take rc
 			if(rightPrimer!=null) {
