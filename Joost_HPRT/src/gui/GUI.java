@@ -782,6 +782,8 @@ public class GUI implements ActionListener, MouseListener {
 			File tempInput = n.getOutputStats();
 			try {
 				Scanner s = new Scanner(tempInput);
+				//to skip first line which contains the header
+				String dummy = s.nextLine();
 				while(s.hasNext()) {
 					String line = s.nextLine();
 					printLineToExcel(sheet, line, totalRow++);
@@ -1125,6 +1127,8 @@ public class GUI implements ActionListener, MouseListener {
 	}
 
 	private boolean isNGSFile(File f) {
+		System.out.println("hier");
+		System.out.println(f.getAbsolutePath());
 		return f.getAbsolutePath().endsWith(".fastq") 
 				|| f.getAbsolutePath().endsWith(".fastq.gz");
 	}
@@ -1807,7 +1811,12 @@ public class GUI implements ActionListener, MouseListener {
 			}
 			firstFile = false;
 		}
-		
+		try {
+			bw.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 	}
 }
