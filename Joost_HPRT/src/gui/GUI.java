@@ -776,7 +776,7 @@ public class GUI implements ActionListener, MouseListener {
 		//write stats
 		sheet = workbook.createSheet("Information");
 		totalRow=0;
-		printLineToExcel(sheet,"File\tType\t#Reads",totalRow++);
+		printLineToExcel(sheet,"File\tType\tReads",totalRow++);
 		for(NGS n: v) {
 			
 			File tempInput = n.getOutputStats();
