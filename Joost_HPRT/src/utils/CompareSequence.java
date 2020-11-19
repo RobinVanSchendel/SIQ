@@ -1315,7 +1315,10 @@ public class CompareSequence {
 		return strings;
 	}
 	public static String[] mandatoryColumns() {
-		String[] mandatory = {"Name","Split","Dir","File","Subject","Raw","leftFlank","del","rightFlank","insertion","delStart","delEnd","homology","homologyLength","delSize", "insSize", "Type","Remarks"};
+		String[] mandatory = {"Name","Split","Dir","File","Subject","Raw","leftFlank","del","rightFlank","insertion","delStart","delEnd","homology","homologyLength","delSize", "insSize", "Type","Remarks","Alias",
+				"delRelativeStart","delRelativeEnd","delRelativeStartRight","delRelativeEndRight","delRelativeStartTD",
+				"delRelativeEndTD","getHomologyColor"
+				};
 		return mandatory;
 	}
 	public void setAllowJump(boolean allowJump) {
