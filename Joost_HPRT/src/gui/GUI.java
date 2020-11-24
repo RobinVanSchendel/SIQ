@@ -135,8 +135,6 @@ public class GUI implements ActionListener, MouseListener {
 	JCheckBox maskLowQualityRemove = new JCheckBox("Mask low quality bases");
 	JCheckBox removeRemarkRows = new JCheckBox("Remove sequences with remarks");
 	JCheckBox split = new JCheckBox("Split reads in multiple ranges");
-	JButton R = new JButton("R");
-	JButton Rin = new JButton("Rin");
 	private ArrayList<RichSequence> sequences;
 	JProgressBar progressBar;
 	JLabel maxE = new JLabel("maxError:");
@@ -532,44 +530,6 @@ public class GUI implements ActionListener, MouseListener {
 		}
 		else if(e.getActionCommand().contentEquals("split")) {
 			pm.setProperty("split", ""+split.isSelected());
-		}
-		else if(e.getActionCommand().contentEquals("R")) {
-			if(lastSavedExcel!=null) {
-				ReportPanel.runR(lastSavedExcel, false);
-			}
-			else {
-				if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
-					File f = chooser.getSelectedFile();
-					if(f.getAbsolutePath().endsWith(".xlsx")) {
-						ReportPanel.runR(f, false);
-					}
-					else {
-						JOptionPane.showMessageDialog(guiFrame,
-							    "Please select an Excel file produced by SIQ",
-							    "No Excel file (.xlsx) was selected",
-							    JOptionPane.ERROR_MESSAGE);
-					}
-				}
-			}
-		}
-		else if(e.getActionCommand().contentEquals("Rin")) {
-			if(lastSavedExcel!=null) {
-				ReportPanel.runR(lastSavedExcel, true);
-			}
-			else {
-				if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
-					File f = chooser.getSelectedFile();
-					if(f.getAbsolutePath().endsWith(".xlsx")) {
-						ReportPanel.runR(f, true);
-					}
-					else {
-						JOptionPane.showMessageDialog(guiFrame,
-							    "Please select an Excel file produced by SIQ",
-							    "No Excel file (.xlsx) was selected",
-							    JOptionPane.ERROR_MESSAGE);
-					}
-				}
-			}
 		}
 		else if(e.getActionCommand().contentEquals("stop")) {
 			if(sct != null) {
@@ -1130,7 +1090,8 @@ public class GUI implements ActionListener, MouseListener {
 		System.out.println("hier");
 		System.out.println(f.getAbsolutePath());
 		return f.getAbsolutePath().endsWith(".fastq") 
-				|| f.getAbsolutePath().endsWith(".fastq.gz");
+				|| f.getAbsolutePath().endsWith(".fastq.gz")
+				|| f.getAbsolutePath().endsWith(".fq");
 	}
 
 	private boolean isSangerFile(File f) {
@@ -1473,15 +1434,6 @@ public class GUI implements ActionListener, MouseListener {
         placeComp(copyPaste,guiFrame,0,3,1,1);
         
         addJTableNGS();
-        R = new JButton("Plot with R");
-        R.setActionCommand("R");
-        R.addActionListener(this);
-        placeComp(R, guiFrame, 4,5,1,1);
-
-        Rin = new JButton("Plot with R (inverse)");
-        Rin.setActionCommand("Rin");
-        Rin.addActionListener(this);
-        placeComp(Rin, guiFrame, 5,5,1,1);
         
         stop = new JButton("Stop");
         stop.setActionCommand("stop");

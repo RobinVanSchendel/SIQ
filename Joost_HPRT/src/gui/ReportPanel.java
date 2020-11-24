@@ -55,7 +55,6 @@ public class ReportPanel extends JFrame implements ActionListener {
 	private boolean[] removeColumns;
 	private boolean split;
 	private File lastFileSaved = null;
-	private JButton R, Rin;
 	private final static String RscriptCommand = "C:\\Program Files\\R\\R-3.6.0\\bin\\Rscript.exe"; 
 	private final static String Rscript = "E:\\R_working_directory\\r-plots-ngs\\SIQPlotter.R";
 			
@@ -77,20 +76,6 @@ public class ReportPanel extends JFrame implements ActionListener {
 		export.setBounds(20, 710, 120, 20);
 		export.addActionListener(this);
 		this.add(export);
-		
-		R = new JButton("Plot with R");
-		R.setActionCommand("R");
-		R.setBounds(140, 710, 120, 20);
-		R.addActionListener(this);
-		R.setEnabled(false);
-		this.add(R);
-		
-		Rin = new JButton("Plot with R (inverse)");
-		Rin.setActionCommand("Rinverse");
-		Rin.setBounds(260, 710, 120, 20);
-		Rin.addActionListener(this);
-		Rin.setEnabled(false);
-		this.add(Rin);
 		
 		this.setVisible(true);
 		
@@ -270,9 +255,6 @@ public class ReportPanel extends JFrame implements ActionListener {
 				
 				exportToExcel(f);
 				this.lastFileSaved = f;
-				Rin.setEnabled(true);
-				R.setEnabled(true);
-				
 				
 				//open it in Excel
 				try {
@@ -284,21 +266,6 @@ public class ReportPanel extends JFrame implements ActionListener {
 				
 			}
 		}
-		else if(arg0.getActionCommand().contentEquals("R")) {
-			R.setEnabled(false);
-			Rin.setEnabled(false);
-			runR(this.lastFileSaved,false);
-			R.setEnabled(true);
-			Rin.setEnabled(true);
-		}
-		else if(arg0.getActionCommand().contentEquals("Rinverse")) {
-			R.setEnabled(false);
-			Rin.setEnabled(false);
-			runR(lastFileSaved,true);
-			R.setEnabled(true);
-			Rin.setEnabled(true);
-		}
-		
 	}
 	public static void runR(File f, boolean inverse) {
 		String[] commands = getRCommand(f, inverse);
@@ -448,7 +415,8 @@ public class ReportPanel extends JFrame implements ActionListener {
 		this.removeColumns = outputColumns;
 		TableColumnModel tcm = jt.getColumnModel();
 		for(int col=0;col<outputColumns.length;col++) {
-			if(!outputColumns[col]) {
+			//bug sometimets the columns in the model are fewer than the outputColumns
+			if(!outputColumns[col] && tcm.getColumnCount()>col) {
 				tcm.removeColumn(tcm.getColumn(col));
 			}
 		}
