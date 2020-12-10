@@ -66,6 +66,7 @@ public class CompareSequence {
 	private File file;
 	private boolean isSplit = false;
 	private int tinsDistValue = -1;
+	private String barcode;
 	
 	
 	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName) {
@@ -349,7 +350,11 @@ public class CompareSequence {
 				//if we masked, then probably this check is not correct
 				//after testing it turns out that most often this is correct
 				//this.multipleSNVs = insertDelCommon;
-				this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused a DELINS which is probably incorrect.");
+				//unless we have this thing multiple times
+				//which might not always be useful
+				if(this.subjectObject.isStringUnique(insertDelCommon)) {
+					this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused a DELINS which is probably incorrect.");
+				}
 			}
 		}
 	}
@@ -455,6 +460,12 @@ public class CompareSequence {
 		//}
 		ret.append(getName()).append(s);
 		ret.append(isSplit).append(s);
+		if(barcode!=null) {
+			ret.append(barcode).append(s);
+		}
+		else {
+			ret.append(s);
+		}
 		ret.append(dir).append(s);
 		if(file != null) {
 			ret.append(file.getAbsolutePath()).append(s);
@@ -939,7 +950,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "Name\tSplit\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
+		String ret = "Name\tSplit\tBarcode\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
 				+ "Remarks\tReversed\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight"+s+"entireQueryUsed";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos"+s+"isStartPos"+s+"isEndPos"+s+"isStartPosRel"+s+"isEndPosRel";
@@ -1239,6 +1250,9 @@ public class CompareSequence {
 		String s = "_";
 		//name of file should be enough
 		StringBuffer ret = new StringBuffer(file.getName()).append(s);
+		if(barcode!=null) {
+			ret.append(barcode).append(s);
+		}
 		ret.append(getDelStart()).append(s);
 		ret.append(getDelEnd()).append(s);
 		ret.append(del).append(s);
@@ -1463,5 +1477,8 @@ public class CompareSequence {
 	public void setTINSSearchDistance(int tinsDistValue) {
 		this.tinsDistValue  = tinsDistValue;
 		
+	}
+	public void setBarcode(String comment) {
+		this.barcode = comment;
 	}
 }
