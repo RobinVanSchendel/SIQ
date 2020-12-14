@@ -421,6 +421,8 @@ public class CompareSequence {
 		int homologyLength = -1;
 		String homologyM = "";
 		int homologyLengthM = -1;
+		String homologyMref = "";
+		int homologyLengthMref = -1;
 		checkCall();
 		//only do it when no weird things found
 		if(this.remarks.length() == 0 && insert.length()>0 && is == null){
@@ -437,6 +439,11 @@ public class CompareSequence {
 			homologyLength = homology.length();
 			homologyM = Utils.getHomologyAtBreakWithMismatch(leftFlank.getString(), del, rightFlank, maxMismatchRate);
 			homologyLengthM = homologyM.length();
+			String ref = this.subjectObject.getString();
+			String leftFlankref = ref.substring(0, leftFlank.getSubjectEnd());
+			String rightFlankref = ref.substring(ref.indexOf(rightFlank));
+			homologyMref = Utils.getHomologyAtBreakWithMismatch(leftFlankref, del, rightFlankref, maxMismatchRate);
+			homologyLengthMref = homologyMref.length();
 		}
 		if(this.getType()== Type.TANDEMDUPLICATION){
 			homology = getHomologyTandemDuplication();
@@ -501,6 +508,8 @@ public class CompareSequence {
 		ret.append(homologyLength).append(s);
 		ret.append(homologyM).append(s);
 		ret.append(homologyLengthM).append(s);
+		ret.append(homologyMref).append(s);
+		ret.append(homologyLengthMref).append(s);
 		ret.append(delLength).append(s);
 		ret.append(getInsertion().length()).append(s);
 		ret.append(mod).append(s);
@@ -950,7 +959,9 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "Name\tSplit\tBarcode\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
+		String ret = "Name\tSplit\tBarcode\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%"
+				+ "\thomologyMismatch10%ref\thomologyLengthMismatch10%ref"
+				+ "\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
 				+ "Remarks\tReversed\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight"+s+"entireQueryUsed";
 		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos"+s+"isStartPos"+s+"isEndPos"+s+"isStartPosRel"+s+"isEndPosRel";
