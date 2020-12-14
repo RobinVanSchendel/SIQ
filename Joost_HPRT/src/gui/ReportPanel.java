@@ -348,7 +348,7 @@ public class ReportPanel extends JFrame implements ActionListener {
         	for(Object o: rowV){
         		if(removeColumns[counter]) {
 	        		Cell cell = row.createCell(columnCount);
-	        		if(columnCount == fileColumn) {
+	        		if(counter == fileColumn) {
 	        			Hyperlink href = workbook.getCreationHelper().createHyperlink(HyperlinkType.FILE);
 	        			File f = new File((String)o);
 	        			href.setAddress(f.toURI().toString());
