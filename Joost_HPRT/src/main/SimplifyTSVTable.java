@@ -18,7 +18,7 @@ public class SimplifyTSVTable {
 			fileIn = new File(file);
 		}
 		else {
-			String file = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\SIQPlotter";
+			String file = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104269\\Analysis\\ICL_All\\20201221_ICL_total_JV.txt.xlsx";
 			fileIn = new File(file);
 		}
 		ArrayList<File> list = new ArrayList<File>();
@@ -29,8 +29,10 @@ public class SimplifyTSVTable {
 		if(fileIn.isDirectory()) {
 			for(File tempFile: fileIn.listFiles()) {
 				if(!tempFile.getName().contains("reduced") && !tempFile.getName().contains("stats")) {
-					list.add(tempFile);
-					System.out.println(tempFile.getName());
+					if(tempFile.getName().contains(".txt")) {
+						list.add(tempFile);
+						System.out.println(tempFile.getName());
+					}
 				}
 			}
 		}
@@ -56,7 +58,7 @@ public class SimplifyTSVTable {
 				String[] keepColumns = {"countEvents", "fraction", "Alias", "Subject","delSize", "insSize"
 						,"Type","homology","homologyLength","delStart","delEnd"
 						,"delRelativeStart","delRelativeEnd","delRelativeStartRight","delRelativeEndRight","delRelativeStartTD",
-						"delRelativeEndTD","getHomologyColor"
+						"delRelativeEndTD","getHomologyColor", "SNVMutation"
 						};
 				
 				ArrayList<Integer> colKeepHM = null;
