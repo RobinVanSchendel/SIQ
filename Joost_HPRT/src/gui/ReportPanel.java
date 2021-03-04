@@ -357,7 +357,11 @@ public class ReportPanel extends JFrame implements ActionListener {
 	        		}
 	        		else {
 		            	if(o instanceof String) {
-		            		cell.setCellValue((String)o);
+		            		String s = (String)o;
+		            		if(s.length()>32767) {
+		            			s = s.substring(0, 32767);
+		            		}
+		            		cell.setCellValue(s);
 		            	}
 		            	else if(o instanceof Integer) {
 		            		cell.setCellValue((Integer)o);
