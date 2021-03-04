@@ -18,11 +18,12 @@ public class NGSPair {
 			if(done.contains(f)) {
 				continue;
 			}
-			if(f.getName().contains("R1") && f.getName().contains("fastq")) {
+			if(f.getName().contains("R1")) {
 				File R1 = f;
 				String R2name = R1.getName().replace("R1", "R2");
 				File R2 = new File(R1.getAbsolutePath().replace(R1.getName(), R2name));
 				//search for R2
+				boolean added = false;
 				for(File tempFile: v) {
 					if(done.contains(tempFile)) {
 						continue;
@@ -32,10 +33,26 @@ public class NGSPair {
 						pairs.add(ngspair);
 						done.add(R1);
 						done.add(tempFile);
+						added = true;
 						break;
 					}
 				}
+				//changed behaviour, add single files as well
+				if(!added) {
+					System.out.println("adding "+R1.getAbsolutePath());
+					NGSPair ngspair = new NGSPair(R1, null);
+					pairs.add(ngspair);
+					done.add(R1);
+				}
 			}
+			else if(!f.getName().contains("R2") && (f.getName().contains("fastq") || f.getName().endsWith(".fq"))) {
+				System.out.println("adding2 "+f.getAbsolutePath());
+				NGSPair ngspair = new NGSPair(f, null);
+				pairs.add(ngspair);
+				done.add(f);
+			}
+			System.out.println(f.getName());
+			System.out.println(f.getName().endsWith(".fq"));
 		}
 		return pairs;
 	}
