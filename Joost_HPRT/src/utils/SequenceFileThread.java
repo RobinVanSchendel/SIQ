@@ -1,5 +1,6 @@
 package utils;
 
+import java.awt.List;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -9,7 +10,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.biojavax.bio.seq.RichSequence;
+import org.jcvi.jillion.core.Range;
 import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.util.iter.StreamingIterator;
@@ -33,11 +40,10 @@ import gui.NGSTableModel;
 
 public class SequenceFileThread extends Thread {
 
-	private File f, output, outputStats;
+	private File f, output, outputStats, outputTopStats;
 	private boolean writeToOutput;
 	private Subject subject;
 	private HashMap<String, Integer> countEvents = new HashMap<String, Integer>();
-	private HashMap<String, String> actualEvents = new HashMap<String, String>();
 	private HashMap<String, CompareSequence> csEvents = new HashMap<String, CompareSequence>();
 	private HashMap<String, String> colorMap;
 	private boolean collapse = true;
@@ -60,17 +66,20 @@ public class SequenceFileThread extends Thread {
 	private int cpus = 1;
 	private Semaphore semaphore;
 	private int tinsDistValue = -1;
+	private boolean overwriteMerged = false;
 	
 	//private boolean takeRC = false;
 	
-	public SequenceFileThread(File f, boolean writeToOutput, Subject subject, File output, File statsOutput, double maxError, HashMap<String, String> additional){
+	public SequenceFileThread(File f, boolean writeToOutput, Subject subject, File output, File statsOutput, double maxError, HashMap<String, String> additional, File outputTopStats, boolean overwriteMerge){
 		this.f = f;
 		this.writeToOutput = writeToOutput;
 		this.subject = subject;
 		this.output = output;
 		this.outputStats = statsOutput;
+		this.outputTopStats = outputTopStats;
 		this.maxError = maxError;
 		this.hmAdditional = additional;
+		this.overwriteMerged = overwriteMerge;
 	}
 	private void setCheckReverseOverwrite() {
 		checkReverseOverwrite = true;
@@ -92,7 +101,7 @@ public class SequenceFileThread extends Thread {
 		Thread.currentThread().setName(alias);
 		boolean printOnlyIsParts = false;
 		boolean collapseEvents = collapse;
-		PrintWriter writer = null, writerStats = null;
+		PrintWriter writer = null, writerStats = null, writerTopStats = null;
 		String type = "";
 		//reset NGSTable if needed
 		if(this.tableModel!= null) {
@@ -104,7 +113,7 @@ public class SequenceFileThread extends Thread {
 		
 		
 		//Check if you need to assemble anything
-		if(!f.exists()) {
+		if(!f.exists() || (overwriteMerged && ngs.getR2()!=null) ) {
 			if(ngs!=null) {
 				System.out.println("Assembling the file via R1 R2");
 				tableModel.setStatus(ngs,-1);
@@ -117,6 +126,7 @@ public class SequenceFileThread extends Thread {
 			try {
 				writer = new PrintWriter(new FileOutputStream(output,false));
 				writerStats = new PrintWriter(new FileOutputStream(outputStats,false));
+				writerTopStats = new PrintWriter(new FileOutputStream(outputTopStats,false));
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -142,6 +152,16 @@ public class SequenceFileThread extends Thread {
 		AtomicBoolean takeRc = new AtomicBoolean(false);
 		AtomicInteger totalRawReadsCounter = new AtomicInteger(0);
 		HashMap<String, Integer> remarks = new HashMap<String, Integer>();
+		HashMap<String, Integer> commonSequences = new HashMap<String, Integer>();
+		
+		//for PacBio data
+		//would be better to know that this is PacBio data
+		if(!subject.hasPrimers()) {
+			this.setCheckReverseOverwrite();
+			//this might cause issues
+			setAllowJump(true);
+		}
+		
 		
 		try {
 			//first check the non-assembled reads
@@ -278,9 +298,31 @@ public class SequenceFileThread extends Thread {
 				else if(takeRc.get()) {
 					cs.reverseRead();
 				}
+				boolean found = false;
+				if(id.contains("27066889")) {
+					System.err.println("found it");
+					System.err.println(seq);
+					found = true;
+				}
 				cs.setAndDetermineCorrectRange(maxError);
-				cs.maskSequenceToHighQualityRemoveSingleRange();
+				//if there are primers specified it makes sense to call this
+				if(subject.hasPrimers()) {
+					cs.maskSequenceToHighQualityRemoveSingleRange();
+				}
+				//PacBio data for instance should keep the best sequence
+				else {
+					cs.maskSequenceToHighQualityRemove();
+				}
 				cs.setAllowJump(this.allowJump);
+				if(found) {
+					System.err.println(cs.getRemarks());
+					System.err.println(cs.isMasked());
+					System.err.println(cs.getRanges().size());
+					for(Range r: cs.getRanges()){
+						System.err.println(r);
+					}
+					//System.exit(0);
+				}
 				
 				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
@@ -331,6 +373,11 @@ public class SequenceFileThread extends Thread {
 								cs.setAdditionalSearchString(hmAdditional);
 								cs.setCurrentFile(f);
 								cs.setCurrentAlias(alias, f.getName());
+								if(fastqRecord.getId().contains(" BC:")) {
+									int startBC = fastqRecord.getId().indexOf(" BC:")+4;
+									String barcode = fastqRecord.getId().substring(startBC);
+									cs.setBarcode(barcode);
+								}
 							}
 							else {
 								if(cs.getRemarks().length()>0) {
@@ -390,6 +437,13 @@ public class SequenceFileThread extends Thread {
 				
 				if(!(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect)){
 					wrong.getAndIncrement();
+					//collect these
+					if(commonSequences.containsKey(cs.getRaw())) {
+						commonSequences.put(cs.getRaw(),commonSequences.get(cs.getRaw())+1);
+					}
+					else {
+						commonSequences.put(cs.getRaw(),1);
+					}
 				}
 				//System.out.println(cs.toStringOneLine());
 				//no masking
@@ -469,39 +523,77 @@ public class SequenceFileThread extends Thread {
 					}
 				}
 				System.out.println("Written "+count+" events to: "+output.getAbsolutePath());
-				actualEvents.clear();
-				countEvents.clear();
 			}
 			writer.close();
 		}
 		if(writerStats!= null) {
 			double correctFraction = correct.get()/(double)totalRawReadsCounter.get();
 			double correctFractionMerged = correct.get()/(double)counter.get();
-			writerStats.println("File\tType\tAmount");
-			writerStats.println(f.getName()+"\tTotalReads\t"+totalRawReadsCounter);
-			writerStats.println(f.getName()+"\tMergedReads\t"+counter);
-			writerStats.println(f.getName()+"\tMergedCorrect\t"+correct);
-			writerStats.println(f.getName()+"\tCorrectFractionTotal\t"+correctFraction);
-			writerStats.println(f.getName()+"\tCorrectFractionMerged\t"+correctFractionMerged);
-			writerStats.println(f.getName()+"\tMergedButWrong\t"+wrong);
-			writerStats.println(f.getName()+"\tMergedButWrongPositionTotal\t"+wrongPosition);
-			writerStats.println(f.getName()+"\tMergedButWrongPositionL\t"+wrongPositionL);
-			writerStats.println(f.getName()+"\tMergedButWrongPositionR\t"+wrongPositionR);
+			writerStats.println("Alias\tFile\tType\tReads");
+			writerStats.println(alias+"\t"+f.getName()+"\tTotalReads\t"+totalRawReadsCounter);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedReads\t"+counter);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedCorrect\t"+correct);
+			writerStats.println(alias+"\t"+f.getName()+"\tCorrectFractionTotal\t"+correctFraction);
+			writerStats.println(alias+"\t"+f.getName()+"\tCorrectFractionMerged\t"+correctFractionMerged);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedButWrong\t"+wrong);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedButWrongPositionTotal\t"+wrongPosition);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedButWrongPositionL\t"+wrongPositionL);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedButWrongPositionR\t"+wrongPositionR);
 			if(singleFileF != null && singleFileR != null) {
-				writerStats.println(f.getName()+"\tUnmergedCorrectPositionFR\t"+correctPositionFR);
+				writerStats.println(alias+"\t"+f.getName()+"\tUnmergedCorrectPositionFR\t"+correctPositionFR);
 			}
-			writerStats.println(f.getName()+"\tMergedCorrectPositionFR\t"+correctPositionFRassembled);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedCorrectPositionFR\t"+correctPositionFRassembled);
 			
-			writerStats.println(f.getName()+"\tMergedBadQual\t"+badQual);
-			writerStats.println(f.getName()+"\tMergedcontainsN\t"+containsN);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedBadQual\t"+badQual);
+			writerStats.println(alias+"\t"+f.getName()+"\tMergedcontainsN\t"+containsN);
 			
 			
 			for(String key: remarks.keySet()) {
-				writerStats.println(f.getName()+"\t"+key+"\t"+remarks.get(key));
+				writerStats.println(alias+"\t"+f.getName()+"\t"+key+"\t"+remarks.get(key));
 			}
 			writerStats.close();
 			System.out.println("Written stats to: "+outputStats.getAbsolutePath());
 		}
+		if(writerTopStats !=null) {
+			Object[] a = commonSequences.entrySet().toArray();
+			Arrays.sort(a, new Comparator() {
+			    public int compare(Object o1, Object o2) {
+			        return ((Map.Entry<String, Integer>) o2).getValue()
+			                   .compareTo(((Map.Entry<String, Integer>) o1).getValue());
+			    }
+			});
+			int max = Math.min(100,commonSequences.size());
+			writerTopStats.println("File\tExactReadFound\tReadKeyFound\tReads\tfractionOfReads\tleftPrimerCorrect\trightPrimerCorrect\tSeq\t"+CompareSequence.getOneLineHeader());
+			for (int i=0;i<max;i++) {
+				Object e = a[i];
+				String seq = ((Map.Entry<String, Integer>) e).getKey();
+				int times = ((Map.Entry<String, Integer>) e).getValue();
+				//only output reads that have been seen often enough
+				if(times>=minimalCount) {
+					double fractionTotal = times/(double)counter.get();
+					boolean found = false;
+					//check if this read is called
+					for(String key: csEvents.keySet()){
+						//only output if we saw it minimalCount times
+						if(countEvents.get(key)>=minimalCount) {
+							CompareSequence cs = csEvents.get(key);
+							if(cs.getRaw().contentEquals(seq)) {
+								found = true;
+								break;
+							}
+						}
+					}
+					CompareSequence cs = new CompareSequence(subject, seq, null, f.getParentFile().getName(), true, "top "+(i+1));
+					cs.determineFlankPositions(true);
+					cs.setCurrentFile(f);
+					cs.setCurrentAlias(alias, f.getName());
+					writerTopStats.println(alias+"\t"+found+"\t"+csEvents.containsKey(cs.getKey(includeStartEnd))+"\t"+times+"\t"+fractionTotal+"\t"+cs.isCorrectPositionLeft()+"\t"+cs.isCorrectPositionLeft()+"\t"+seq+"\t"+cs.toStringOneLine());
+				}
+			}
+			writerTopStats.close();
+			System.out.println("Written writerTopStats to: "+outputTopStats.getAbsolutePath());
+		}
+		
 		long end = System.nanoTime();
 		long duration = TimeUnit.SECONDS.convert((end-realStart), TimeUnit.NANOSECONDS);
 		System.out.println("Thread: "+Thread.currentThread().getName()+" duration "+duration+" seconds");
