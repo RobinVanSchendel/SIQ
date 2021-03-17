@@ -339,4 +339,88 @@ public class Subject {
 	public KMERLocation getKmerl() {
 		return kmerl;
 	}
+	public boolean isHDREventOneMismatch(CompareSequence cs) {
+		if(this.hdr == null) {
+			return false;
+		}
+		//test if it is similar to hdrsequence
+		//String[] lcs = Utils.longestCommonSubstringAllowMismatch(cs.getRaw(), hdr.seqString().toUpperCase(), 1, true);
+		String query = cs.getRaw().replaceAll("X", "");
+		String subject = hdr.seqString().toUpperCase();
+		
+		int startPart = 20;
+		int endPart = 20;
+		int start = -1;
+		int end = -1;
+		if(this.leftPrimerSet && rightPrimerSet) {
+			//not completely correct as query could be shortened
+			start = subject.indexOf(query.substring(0, leftPrimer.length()));
+			end = subject.indexOf(query.substring(query.length()-rightPrimer.length()));
+		}
+		else {
+			start = subject.indexOf(query.substring(0, startPart));
+			end = subject.indexOf(query.substring(query.length()-endPart));
+		}
+		//now check positions
+		if(start<0 || end <0 || end<start) {
+			return false;
+		}
+		//otherwise update ends and go on
+		else {
+			if(this.leftPrimerSet && rightPrimerSet) {
+				end+=rightPrimer.length();
+			}
+			else {
+				end+=endPart;
+			}
+		}
+		String subjectSub = subject.substring(start,end);
+		if(Math.abs(query.length()-subjectSub.length())>1) {
+			return false;
+		}
+		int mm = 0;
+		int maxLength = Math.min(query.length(), subjectSub.length());
+		for(int i = 0;i<maxLength;i++) {
+			if(query.charAt(i)!=subjectSub.charAt(i)) {
+				mm++;
+				if(mm>1) {
+					//can also be a 1bp del or insert, so check that now
+					//for now hardcoded 1bp difference
+					return checkSkipOneBase(query,subjectSub,1);
+				}
+			}
+		}
+		return true;
+	}
+	private static boolean checkSkipOneBase(String s1, String s2, int maxSkips) {
+		boolean skipS1 = true;
+		if(s2.length()>s1.length()) {
+			//skip S2
+			skipS1 = false;
+		}
+		int maxLength = Math.min(s1.length(), s2.length());
+		int skip = 0;
+		int indexS1 = 0;
+		int indexS2 = 0;
+		for(int i = 0;i<maxLength;i++) {
+			if(s1.charAt(indexS1)==s2.charAt(indexS2)) {
+				indexS1++;
+				indexS2++;
+			}
+			else {
+				if(skipS1) {
+					skip++;
+					indexS1++;
+				}
+				else {
+					skip++;
+					indexS2++;
+				}
+				if(skip>maxSkips) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
 }
