@@ -148,10 +148,19 @@ public class KMERLocation {
 			//possible take the next one
 			LCS second = null;
 			for(LCS lcs: lcss) {
-				int absDist = Math.abs(lcs.getSubjectStart()-max.getSubjectEnd());
-				int absDistQuery = Math.abs(lcs.getQueryStart()-max.getQueryEnd());
-				if(lcs != max && lcs.getSubjectStart()<leftPos-30 && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()>max.getSubjectStart()) {
-					second = lcs;
+				//int absDist = Math.abs(lcs.getSubjectStart()-max.getSubjectEnd());
+				//int absDistQuery = Math.abs(lcs.getQueryStart()-max.getQueryEnd());
+				//if(lcs != max && lcs.getSubjectStart()<leftPos-30 && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()>max.getSubjectStart()) {
+				if(lcs != max && lcs.getSubjectStart()<leftPos-30 && lcs.getSubjectStart()>max.getSubjectStart()) {
+					if(second == null) { 
+						if(lcs.getSubjectEnd() > max.getSubjectEnd() && lcs.getSubjectStart()>max.getSubjectStart()) {
+							second = lcs;
+						}
+					}
+					else if(lcs.getSubjectStart()>second.getSubjectStart() && lcs.getSubjectEnd()>second.getSubjectEnd()) {
+						second = lcs;
+						//System.out.println("jumping "+second);
+					}
 					//System.out.println(absDist);
 					//System.out.println(absDistQuery);
 				}
@@ -415,10 +424,16 @@ public class KMERLocation {
 			//can we find one closer by that is also long enough?
 			LCS second = null;
 			for(LCS lcs: lcss) {
-				int absDist = Math.abs(lcs.getSubjectEnd()-max.getSubjectStart());
-				int absDistQuery = Math.abs(lcs.getQueryEnd()-max.getQueryStart());
-				if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()<max.getSubjectStart()) {
-					second = lcs;
+				//int absDist = Math.abs(lcs.getSubjectEnd()-max.getSubjectStart());
+				//int absDistQuery = Math.abs(lcs.getQueryEnd()-max.getQueryStart());
+				//dropping the distance requirements
+				//if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()<max.getSubjectStart()) {
+				if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && lcs.getSubjectStart()<max.getSubjectStart()) {
+					if(second == null || lcs.getSubjectStart()<second.getSubjectStart()) {
+						second = lcs;
+						//System.out.println("Switching");
+						//System.out.println(second);
+					}
 				}
 			}
 			if(second != null) {
