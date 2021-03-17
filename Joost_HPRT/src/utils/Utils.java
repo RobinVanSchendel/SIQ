@@ -325,7 +325,8 @@ public class Utils {
 					revCom.append('n');
 					break;
 				default:
-					System.err.println("Can't complement "+c);
+					//disable this check for now
+					//System.err.println("Can't complement "+c);
 					revCom.append(c);
 			}
 		}
