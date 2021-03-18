@@ -45,7 +45,7 @@ public class CompareSequence {
 	private ArrayList<Blast> blasts;
 	private boolean entireQueryUsed = false;
 	
-	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR, TINS};
+	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR, TINS, HDR1MM};
 	public String dir;
 	private Vector<Sequence> additionalSearchSequence;
 	private boolean possibleDouble = false;
@@ -346,7 +346,7 @@ public class CompareSequence {
 		int maxLengthMatch = 10;
 		if(del!= null && insert != null && del.length()>maxLengthMatch && insert.length()>maxLengthMatch) {
 			String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
-			if(!this.subjectObject.isHDREvent(this) && insertDelCommon.length()>maxLengthMatch){
+			if(!this.subjectObject.isHDREvent(this) && !this.subjectObject.isHDREventOneMismatch(this) && insertDelCommon.length()>maxLengthMatch){
 				//if we masked, then probably this check is not correct
 				//after testing it turns out that most often this is correct
 				//this.multipleSNVs = insertDelCommon;
@@ -644,9 +644,14 @@ public class CompareSequence {
 			if(error) {
 				System.out.println(this.getName());
 				System.err.println("The TD is not placed on the left side");
+				System.out.println(this.alias);
+				System.out.println(this.getRaw());
 				System.out.println(leftFlank.getString());
 				System.out.println(rightFlank);
 				System.out.println(insert);
+				System.out.println(this.getType());
+				System.out.println(this.getDelStart());
+				System.out.println(this.getDelEnd());
 				System.exit(0);
 			}
 		}
@@ -709,7 +714,7 @@ public class CompareSequence {
 			String right = this.getCorrectedRightFlankRelative(start, end);
 			String[] rightValues = right.split(":");
 			right = rightValues[0];
-			int adjustmentRight = Integer.parseInt(leftValues[1]);
+			int adjustmentRight = Integer.parseInt(rightValues[1]);
 			InsertionSolverTwoSides is = new InsertionSolverTwoSides(left, right,this.insert,getName());
 			is.setAdjustedPositionLeft(adjustmentLeft);		
 			is.setAdjustedPositionRight(adjustmentRight);
@@ -808,7 +813,11 @@ public class CompareSequence {
 			return Type.DELETION;
 		}
 		else if(this.getDel().length()> 0 && this.getInsertion().length() > 0){
-			if(this.isFlankInsert) {
+			//test placement here
+			if(this.subjectObject.isHDREventOneMismatch(this)) {
+				return Type.HDR1MM;
+			}
+			else if(this.isFlankInsert) {
 				return Type.TINS;
 			}
 			else {
@@ -1491,5 +1500,8 @@ public class CompareSequence {
 	}
 	public void setBarcode(String comment) {
 		this.barcode = comment;
+	}
+	public ArrayList<Range> getRanges() {
+		return this.ranges;
 	}
 }
