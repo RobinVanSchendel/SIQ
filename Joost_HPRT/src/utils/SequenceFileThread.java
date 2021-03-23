@@ -159,7 +159,9 @@ public class SequenceFileThread extends Thread {
 		if(!subject.hasPrimers()) {
 			this.setCheckReverseOverwrite();
 			//this might cause issues
-			setAllowJump(true);
+			//indeed this might be PacBio specific
+			//disable for now
+			//setAllowJump(true);
 		}
 		
 		
