@@ -433,7 +433,7 @@ public class GUI implements ActionListener, MouseListener {
 			
 			boolean isOK = SequenceControllerThread.isOK(v);
 			if(isOK) {
-				JPanel panel = new JPanel(new GridLayout(3,2));
+				JPanel panel = new JPanel(new GridLayout(4,2));
 				
 				String dirString = "<dir>";
 				if(pm.getProperty("lastDir") != null) {
@@ -450,12 +450,16 @@ public class GUI implements ActionListener, MouseListener {
 			    String strDate = sdfDate.format(now);
 				JTextField name = new JTextField(strDate);
 				JTextField excelName = new JTextField(strDate+"_SIQ.xlsx");
+				JCheckBox remerge = new JCheckBox();
+				remerge.setSelected(true);
 				panel.add(new JLabel("Select output directory"));
 				panel.add(dirChooserPanel);
 				panel.add(new JLabel("Set output prefix:"));
 				panel.add(name);
 				panel.add(new JLabel("Set Excel name:"));
 				panel.add(excelName);
+				panel.add(new JLabel("Remerge files:"));
+				panel.add(remerge);
 				int result = JOptionPane.showConfirmDialog(guiFrame, panel);
 				if(result == JOptionPane.OK_OPTION) {
 					File outputDir = new File(dirChooserPanel.getText()+File.separator+name.getText());
@@ -468,7 +472,7 @@ public class GUI implements ActionListener, MouseListener {
 					for(NGS ngs: v) {
 						ngs.setOutputDir(outputDir);
 					}
-					sct.setNGSfromGUI(v, ngsModel, this, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"), cores, tinsDistValue);
+					sct.setNGSfromGUI(v, ngsModel, this, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"), cores, tinsDistValue, remerge.isSelected());
 					
 					//check if requirements are met
 					if(sct.isAssemblyRequired()) {
@@ -736,7 +740,7 @@ public class GUI implements ActionListener, MouseListener {
 		//write stats
 		sheet = workbook.createSheet("Information");
 		totalRow=0;
-		printLineToExcel(sheet,"File\tType\tReads",totalRow++);
+		printLineToExcel(sheet,"Alias\tFile\tType\tReads",totalRow++);
 		for(NGS n: v) {
 			
 			File tempInput = n.getOutputStats();
@@ -793,6 +797,30 @@ public class GUI implements ActionListener, MouseListener {
 				}
 			}
 		}
+		
+		//write top 100 reads
+		sheet = workbook.createSheet("Top100Reads");
+		totalRow=0;
+		printLineToExcel(sheet,"File\tExactReadFound\tReadKeyFound\tReads\tfractionOfReads\tleftPrimerCorrect\trightPrimerCorrect\tSeq\t"+CompareSequence.getOneLineHeader(),totalRow++);
+		for(NGS n: v) {
+			
+			File tempInput = n.getOutputTopStats();
+			try {
+				Scanner s = new Scanner(tempInput);
+				//to skip first line which contains the header
+				String dummy = s.nextLine();
+				while(s.hasNext()) {
+					String line = s.nextLine();
+					printLineToExcel(sheet, line, totalRow++);
+				}
+				s.close();
+				
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
 		try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
             workbook.write(outputStream);
         } catch (FileNotFoundException e) {
