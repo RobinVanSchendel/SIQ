@@ -27,6 +27,8 @@ public class Subject {
 	private RichSequence hdr;
 	private CompareSequence hdrCS;
 	private KMERLocation kmerl;
+	//for testing it is now true
+	private boolean isPacBio = false;
 	
 	public Subject(RichSequence subject) {
 		this.subject = subject.seqString().toString().toUpperCase();
@@ -422,5 +424,11 @@ public class Subject {
 			}
 		}
 		return true;
+	}
+	public boolean isPacBio() {
+		return isPacBio ;
+	}
+	public void setPacBio(boolean pacbio) {
+		this.isPacBio = pacbio;
 	}
 }
