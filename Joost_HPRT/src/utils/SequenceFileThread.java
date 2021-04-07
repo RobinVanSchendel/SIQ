@@ -156,12 +156,13 @@ public class SequenceFileThread extends Thread {
 		
 		//for PacBio data
 		//would be better to know that this is PacBio data
-		if(!subject.hasPrimers()) {
+		if(subject.isPacBio()) {
+		//if(!subject.hasPrimers()) {
 			this.setCheckReverseOverwrite();
 			//this might cause issues
 			//indeed this might be PacBio specific
 			//disable for now
-			//setAllowJump(true);
+			setAllowJump(true);
 		}
 		
 		
@@ -531,27 +532,27 @@ public class SequenceFileThread extends Thread {
 		if(writerStats!= null) {
 			double correctFraction = correct.get()/(double)totalRawReadsCounter.get();
 			double correctFractionMerged = correct.get()/(double)counter.get();
-			writerStats.println("Alias\tFile\tType\tReads");
-			writerStats.println(alias+"\t"+f.getName()+"\tTotalReads\t"+totalRawReadsCounter);
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedReads\t"+counter);
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedCorrect\t"+correct);
-			writerStats.println(alias+"\t"+f.getName()+"\tCorrectFractionTotal\t"+correctFraction);
-			writerStats.println(alias+"\t"+f.getName()+"\tCorrectFractionMerged\t"+correctFractionMerged);
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedButWrong\t"+wrong);
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedButWrongPositionTotal\t"+wrongPosition);
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedButWrongPositionL\t"+wrongPositionL);
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedButWrongPositionR\t"+wrongPositionR);
+			writerStats.println("Alias\tFile\tSubject\tType\tReads");
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tTotalReads\t"+totalRawReadsCounter);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedReads\t"+counter);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedCorrect\t"+correct);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tCorrectFractionTotal\t"+correctFraction);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tCorrectFractionMerged\t"+correctFractionMerged);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedButWrong\t"+wrong);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedButWrongPositionTotal\t"+wrongPosition);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedButWrongPositionL\t"+wrongPositionL);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedButWrongPositionR\t"+wrongPositionR);
 			if(singleFileF != null && singleFileR != null) {
-				writerStats.println(alias+"\t"+f.getName()+"\tUnmergedCorrectPositionFR\t"+correctPositionFR);
+				writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tUnmergedCorrectPositionFR\t"+correctPositionFR);
 			}
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedCorrectPositionFR\t"+correctPositionFRassembled);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedCorrectPositionFR\t"+correctPositionFRassembled);
 			
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedBadQual\t"+badQual);
-			writerStats.println(alias+"\t"+f.getName()+"\tMergedcontainsN\t"+containsN);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedBadQual\t"+badQual);
+			writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\tMergedcontainsN\t"+containsN);
 			
 			
 			for(String key: remarks.keySet()) {
-				writerStats.println(alias+"\t"+f.getName()+"\t"+key+"\t"+remarks.get(key));
+				writerStats.println(alias+"\t"+f.getName()+"\t"+subject.getSubjectName()+"\t"+key+"\t"+remarks.get(key));
 			}
 			writerStats.close();
 			System.out.println("Written stats to: "+outputStats.getAbsolutePath());

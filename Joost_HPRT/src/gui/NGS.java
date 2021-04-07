@@ -227,6 +227,9 @@ public class NGS {
 		if(s == null) {
 			return false;
 		}
+		if(leftPrimer==null) {
+			return true;
+		}
 		s.setLeftPrimer(leftPrimer);
 		
 		if(s.isLeftPrimerSet()) {
@@ -238,6 +241,9 @@ public class NGS {
 		Subject s = getSubjectObject();
 		if(s == null) {
 			return false;
+		}
+		if(rightPrimer==null) {
+			return true;
 		}
 		s.setRightPrimer(rightPrimer);
 		
@@ -430,5 +436,11 @@ public class NGS {
 	}
 	public File getOutputDir() {
 		return this.outputDir;
+	}
+	public File getOutputTopStats() {
+		if(outputDir!=null) {
+			return new File(outputDir.getAbsolutePath()+File.separator+getAssembledFile().getName()+"_"+this.getRowNumber()+"_top_stats_output.txt");
+		}
+		return new File(getAssembledFile()+"_"+this.getRowNumber()+"_top_stats_output.txt");
 	}
 }

@@ -451,7 +451,7 @@ public class GUI implements ActionListener, MouseListener {
 				JTextField name = new JTextField(strDate);
 				JTextField excelName = new JTextField(strDate+"_SIQ.xlsx");
 				JCheckBox remerge = new JCheckBox();
-				remerge.setSelected(true);
+				remerge.setSelected(false);
 				panel.add(new JLabel("Select output directory"));
 				panel.add(dirChooserPanel);
 				panel.add(new JLabel("Set output prefix:"));
@@ -740,7 +740,6 @@ public class GUI implements ActionListener, MouseListener {
 		//write stats
 		sheet = workbook.createSheet("Information");
 		totalRow=0;
-		printLineToExcel(sheet,"Alias\tFile\tType\tReads",totalRow++);
 		for(NGS n: v) {
 			
 			File tempInput = n.getOutputStats();
@@ -748,6 +747,9 @@ public class GUI implements ActionListener, MouseListener {
 				Scanner s = new Scanner(tempInput);
 				//to skip first line which contains the header
 				String dummy = s.nextLine();
+				if(totalRow==0) {
+					printLineToExcel(sheet,dummy,totalRow++);
+				}
 				while(s.hasNext()) {
 					String line = s.nextLine();
 					printLineToExcel(sheet, line, totalRow++);
