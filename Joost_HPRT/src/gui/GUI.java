@@ -146,7 +146,7 @@ public class GUI implements ActionListener, MouseListener {
 	private boolean ab1Perspective = true;
 	private String version;
 	private JTable ngs;
-	private NGSTableModel ngsModel;
+	public NGSTableModel ngsModel;
 	private JButton run;
 	private JSpinner maxReads;
 	private JButton excelNGS, switchToAB1;

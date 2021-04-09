@@ -18,6 +18,11 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
 	  NGSTableModel wtm = (NGSTableModel) table.getModel();
       NGS wine = (NGS) wtm.getValueAtRow(row);
       //System.out.println("hier Render!"+row+" c: "+column);
+      //BUG: make sure the info is not changed anymore at this point as it causes disasters
+      if(!wtm.isEnabled()) {
+    	  return super.getTableCellRendererComponent(table, value, isSelected,
+                  hasFocus, row, column);
+      }
       //R1
       if (column == 0) {
     	  if(wine.R1OK()) {

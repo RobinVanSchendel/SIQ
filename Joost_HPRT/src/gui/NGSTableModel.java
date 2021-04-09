@@ -16,6 +16,8 @@ public class NGSTableModel extends AbstractTableModel {
 	  
 	   // holds our data
 	   Vector<NGS> data = new Vector<NGS>();
+
+	private boolean enabled = true;;
 	   
 	   public void removeAll() {
 		   data.removeAllElements();
@@ -89,6 +91,9 @@ public class NGSTableModel extends AbstractTableModel {
 	   }
 	   @Override
 	   public boolean isCellEditable(int row, int col) {
+		   if(!enabled) {
+			   return false;
+		   }
 		   if(col>=12) {
 			   return false;
 		   }
@@ -239,5 +244,12 @@ public class NGSTableModel extends AbstractTableModel {
             fireTableCellUpdated(rowNumber, progressBarColumn);
         }	
 		
+	}
+	public void setEnabled(boolean enable) {
+		System.out.println("JTAble enabled: "+enable);
+		this.enabled = enable;
+	}
+	public boolean isEnabled() {
+		return this.enabled;
 	}
 }

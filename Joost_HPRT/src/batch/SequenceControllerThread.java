@@ -33,12 +33,14 @@ public class SequenceControllerThread implements Runnable{
 	private Vector<NGS> v;
 	private File excelFile;
 	private File tsvFile;
+	private boolean remerge;
 	
-	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, GUI GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue) {
+	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, GUI GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue, boolean remerge) {
 		this.GUI = GUI;
 		this.v = v;
 		readyToRun = true;
 		this.cpus = cpus;
+		this.remerge = remerge;
 		
 		//this can als be a user defined maximum
 		//now it is
@@ -67,6 +69,7 @@ public class SequenceControllerThread implements Runnable{
 			
 			Subject subject = n.getSubjectObject();
 			System.out.println(subject);
+			subject.swapPrimersIfNeeded();
 			System.out.println("Primers: " +subject.hasPrimers());
 			System.out.println("Flanks: " +subject.hasLeftRight());
 			//for now no additional sequences to search (final null argument)
@@ -75,12 +78,12 @@ public class SequenceControllerThread implements Runnable{
 			//should we get the assembled
 			if(n.assembledOK()) {
 				System.out.println("Starting assembled");
-				sft = new SequenceFileThread(n.getAssembledFile(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
+				sft = new SequenceFileThread(n.getAssembledFile(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null, n.getOutputTopStats(), remerge);
 			}
 			else {
 				this.assembleRequired = true;
 				System.out.println("Starting assembled derived");
-				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
+				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null, n.getOutputTopStats(), remerge);
 			}
 			//leave out for now
 			/*
@@ -203,6 +206,7 @@ public class SequenceControllerThread implements Runnable{
 
 
 	private void enableButtons(boolean b) {
+		GUI.ngsModel.setEnabled(b);
 		if(GUI!=null) {
 			for(Component c: GUI.guiFrame.getContentPane().getComponents()) {
 				if(c instanceof JButton) {
