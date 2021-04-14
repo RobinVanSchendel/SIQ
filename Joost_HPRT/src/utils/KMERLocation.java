@@ -72,7 +72,7 @@ public class KMERLocation {
 		return max;
 	
 	}
-	public Left getMatchLeft(String seq, int leftPos, boolean allowJump) {
+	public Left getMatchLeft(String seq, int rightPos, boolean allowJump, int leftPos) {
 		if(!hasQuery(seq)) {
 			//System.out.println("replacing");
 			//long start = System.nanoTime();
@@ -105,10 +105,10 @@ public class KMERLocation {
 		if(lcss.size()==1) {
 			LCS one = lcss.get(0);
 			int start = one.getSubjectStart();
-			if(start > leftPos) {
+			if(start > rightPos) {
 				return null;
 			}
-			int maxPos = Math.min(one.getSubjectEnd(), leftPos);
+			int maxPos = Math.min(one.getSubjectEnd(), rightPos);
 			//System.out.println("leftPostMax:"+leftPos);
 			//System.out.println("leftPostCurrent:"+one.getSubjectEnd());
 			//it is already fine
@@ -119,6 +119,7 @@ public class KMERLocation {
 			String leftS = ref.substring(one.getSubjectStart(), maxPos);
 			int queryEndPos = seq.indexOf(leftS)+leftS.length();
 			Left l = new Left(leftS,one.getSubjectStart(), maxPos, one.getQueryStart(),queryEndPos);
+			//System.out.println(l);
 			return l;
 		}
 		//check the longest
@@ -129,15 +130,15 @@ public class KMERLocation {
 			//if(lcs.getSubjectStart()<leftPos) {
 				//recalculate the length based on the part that we can actually search for
 				//based on leftPos
-				int end = Math.min(lcs.getSubjectEnd(), leftPos);
+				int end = Math.min(lcs.getSubjectEnd(), rightPos);
 				int length = end - lcs.getSubjectStart();
-				if(length>longest && lcs.getSubjectStart()<leftPos) {
+				if(length>longest && lcs.getSubjectStart()<rightPos) {
 					longest = lcs.length();
 					max = lcs;
-					//System.out.println("SET:");
+					//System.out.println("SET:"+max+" "+longest);
 				}
 			//}
-				//System.out.println(lcs);
+				
 		}
 		//System.out.println("found max:"+max);
 		if(max == null) {
@@ -148,10 +149,36 @@ public class KMERLocation {
 			//possible take the next one
 			LCS second = null;
 			for(LCS lcs: lcss) {
+				//System.out.println(lcs);
 				int absDist = Math.abs(lcs.getSubjectStart()-max.getSubjectEnd());
 				int absDistQuery = Math.abs(lcs.getQueryStart()-max.getQueryEnd());
-				if(lcs != max && lcs.getSubjectStart()<leftPos-30 && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()>max.getSubjectStart()) {
-					second = lcs;
+				//if(lcs != max && lcs.getSubjectStart()<leftPos-30 && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()>max.getSubjectStart()) {
+				//	second = lcs;
+					//System.out.println(absDist);
+					//System.out.println(absDistQuery);
+				//}
+				if(lcs != max && lcs.getSubjectStart()<leftPos-30 && lcs.getSubjectStart()>max.getSubjectStart()) {
+					//System.out.println(" "+lcs);
+					//System.out.println("   "+second);
+					//System.out.println(lcs.getSubjectStart()>=max.getSubjectEnd());
+					//System.out.println(lcs.getSubjectStart()>max.getSubjectStart());
+					if(second == null) { 
+						if(lcs.getSubjectEnd() > max.getSubjectEnd() && lcs.getSubjectStart()>max.getSubjectStart()) {
+								//&& lcs.getSubjectStart()>=max.getSubjectEnd()) {
+							second = lcs;
+							//System.out.println("jumping1 "+second);
+						}
+					}
+					else if(lcs.getSubjectStart()>second.getSubjectStart() && lcs.getSubjectEnd()>second.getSubjectEnd()) {
+						second = lcs;
+						//System.out.println("jumping "+second);
+					}
+					//engulfment
+					else if(lcs.getSubjectStart()<second.getSubjectStart() && lcs.getSubjectEnd()>second.getSubjectEnd()) {
+						second = lcs;
+						//System.out.println("jumping engulfment "+second);
+					}
+					
 					//System.out.println(absDist);
 					//System.out.println(absDistQuery);
 				}
@@ -165,7 +192,7 @@ public class KMERLocation {
 		}
 		//System.out.println("maxAgain:"+max);
 		//System.out.println(leftPos);
-		int maxPos = Math.min(max.getSubjectEnd(), leftPos);
+		int maxPos = Math.min(max.getSubjectEnd(), rightPos);
 		//System.out.println("Changing position to:"+maxPos);
 		String leftS = ref.substring(max.getSubjectStart(), maxPos);
 		int queryEndPos = seq.indexOf(leftS)+leftS.length();
@@ -415,10 +442,17 @@ public class KMERLocation {
 			//can we find one closer by that is also long enough?
 			LCS second = null;
 			for(LCS lcs: lcss) {
-				int absDist = Math.abs(lcs.getSubjectEnd()-max.getSubjectStart());
-				int absDistQuery = Math.abs(lcs.getQueryEnd()-max.getQueryStart());
-				if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()<max.getSubjectStart()) {
-					second = lcs;
+				//int absDist = Math.abs(lcs.getSubjectEnd()-max.getSubjectStart());
+				//int absDistQuery = Math.abs(lcs.getQueryEnd()-max.getQueryStart());
+				//if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()<max.getSubjectStart()) {
+				//	second = lcs;
+				//}
+				if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && lcs.getSubjectStart()<max.getSubjectStart()) {
+					if(second == null || lcs.getSubjectStart()<second.getSubjectStart()) {
+						second = lcs;
+						//System.out.println("Switching");
+						//System.out.println(second);
+					}
 				}
 			}
 			if(second != null) {

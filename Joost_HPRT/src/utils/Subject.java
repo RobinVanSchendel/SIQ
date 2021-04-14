@@ -431,4 +431,12 @@ public class Subject {
 	public void setPacBio(boolean pacbio) {
 		this.isPacBio = pacbio;
 	}
+	public String printPrimers() {
+		String ret = "";
+		if(this.hasPrimers()) {
+			ret+=this.leftPrimer+" "+this.startOfLeftPrimer+"\n";
+			ret+=this.rightPrimer+" "+this.startOfRightPrimer;
+		}
+		return ret;
+	}
 }

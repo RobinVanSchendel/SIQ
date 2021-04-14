@@ -281,11 +281,17 @@ public class SequenceFileThread extends Thread {
 			        (id, fastqRecord) -> {
 			    totalRawReadsCounter.getAndIncrement();
 				QualitySequence quals = fastqRecord.getQualitySequence();
-				
 				String seq = fastqRecord.getNucleotideSequence().toString();
+				
 				boolean checkReverse = false;
 				if(counter.get()==0) {
 					checkReverse = true;
+					//check if these are PacBio reads
+					if(id.endsWith("ccs")) {
+						subject.setPacBio(true);
+						this.setCheckReverseOverwrite();
+						setAllowJump(true);
+					}
 				}
 				else {
 					checkReverse = false;
@@ -298,14 +304,9 @@ public class SequenceFileThread extends Thread {
 				if(counter.get()==0 && cs.isReversed()) {
 					takeRc.set(true);
 				}
-				else if(takeRc.get()) {
+				//bug if checkReverseOverwrite TRUE we already checked if we needed to reverse
+				else if(takeRc.get() && !checkReverseOverwrite) {
 					cs.reverseRead();
-				}
-				boolean found = false;
-				if(id.contains("27066889")) {
-					System.err.println("found it");
-					System.err.println(seq);
-					found = true;
 				}
 				cs.setAndDetermineCorrectRange(maxError);
 				//if there are primers specified it makes sense to call this
@@ -317,15 +318,6 @@ public class SequenceFileThread extends Thread {
 					cs.maskSequenceToHighQualityRemove();
 				}
 				cs.setAllowJump(this.allowJump);
-				if(found) {
-					System.err.println(cs.getRemarks());
-					System.err.println(cs.isMasked());
-					System.err.println(cs.getRanges().size());
-					for(Range r: cs.getRanges()){
-						System.err.println(r);
-					}
-					//System.exit(0);
-				}
 				
 				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
@@ -437,7 +429,12 @@ public class SequenceFileThread extends Thread {
 						}
 					}
 				}
-				
+				if(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect){
+					//System.out.println("correct\t"+cs.toStringOneLine());
+				}
+				else {
+					//System.out.println(leftCorrect+"_"+rightCorrect+cs.getRemarks()+"_incorrect\t"+cs.toStringOneLine());
+				}
 				if(!(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect)){
 					wrong.getAndIncrement();
 					//collect these

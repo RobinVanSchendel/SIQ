@@ -117,8 +117,9 @@ public class CompareSequence {
 
 		if(subjectObject.hasLeftRight()){
 			rightPos = subjectObject.getStartOfRightFlank();
+			int leftPos = subjectObject.getEndOfLeftFlank();
 			//long start = System.nanoTime();
-			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump);
+			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump,leftPos);
 			//long stop = System.nanoTime();
 			//long duration = stop-start;
 			//System.out.println("getMatchLeft "+duration);
@@ -218,6 +219,11 @@ public class CompareSequence {
 			}
 			if(flankOne != null) {
 				leftFlank = flankOne;
+				int startPosleftFlank = leftFlank.getSubjectStart();
+				int startsBefore = subjectObject.getEndOfLeftFlank()-startPosleftFlank;
+				if(startsBefore<minimumSizeWithLeftRight) {
+					this.setRemarks("Query does not extend far enough past left defined site");
+				}
 			}
 			if(flankTwo != null) {
 				rightFlank = flankTwo;
@@ -601,6 +607,8 @@ public class CompareSequence {
 				System.out.println("r:"+getRightFlank(0));
 				System.out.println("del:"+this.getDel());
 				System.out.println("raw:"+query);
+				System.out.println("subject:"+subjectObject.getString());
+				System.out.println("Alias:"+alias);
 				System.out.println(getName());
 				System.out.println(this.getRemarks());
 				System.exit(0);
