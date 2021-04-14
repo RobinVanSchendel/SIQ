@@ -1408,7 +1408,7 @@ public class GUI implements ActionListener, MouseListener {
         JLabel minNumberReadstoCallEvent = new JLabel("Min support");
         minNumberReadstoCallEvent.setToolTipText("Set the minimum number of reads required for an event to be included in the output");
         placeComp(minNumberReadstoCallEvent,guiFrame,5,2,1,1);
-        SpinnerModel model2 = new SpinnerNumberModel(5, 0, Integer.MAX_VALUE, 1);
+        SpinnerModel model2 = new SpinnerNumberModel(2, 0, Integer.MAX_VALUE, 1);
         minSupport = new JSpinner(model2);
         minSupport.setPreferredSize(new Dimension(80, 16));
         placeComp(minSupport,guiFrame,6,2,1,1);
