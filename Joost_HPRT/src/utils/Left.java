@@ -87,7 +87,7 @@ public class Left {
 		return string.length();
 	}
 	public String toString(){
-		return this.queryStart+"-"+this.queryEnd+":"+this.subjectStart+"-"+this.subjectEnd+"::"+string;
+		return this.queryStart+"-"+this.queryEnd+":"+this.subjectStart+"-"+this.subjectEnd+"::"+string+" "+string.length();
 	}
 	public int getSubjectEnd() {
 		return this.subjectEnd;
