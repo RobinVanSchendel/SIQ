@@ -1,9 +1,10 @@
-package utils;
+package dnaanalysis;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 public class RandomInsertionSolverTwoSides {
 	private InsertionSolverTwoSides is;
@@ -28,6 +29,7 @@ public class RandomInsertionSolverTwoSides {
 			InsertionSolverTwoSides is = new InsertionSolverTwoSides(leftShuffle, rightShuffle, insert, i+"");
 			is.search(searchN, searchRC);
 			is.setMinimumMatch(MINMATCH, true);
+			is.setMaxTriesSolved(1);
 			is.solveInsertion();
 			sizes.add(is.getLargestMatch());
 		}
@@ -46,7 +48,11 @@ public class RandomInsertionSolverTwoSides {
 		int min = this.getMinLength(prob);
 		return min<largestMatch;
 	}
-	public static String shuffle(String input){
+	public static String shuffle(String str){
+		 List<Character> chars = str.chars().mapToObj(e->(char)e).collect(Collectors.toList());
+		    Collections.shuffle(chars);
+		    return chars.stream().map(e->e.toString()).collect(Collectors.joining());
+		/*
         List<Character> characters = new ArrayList<Character>();
         for(char c:input.toCharArray()){
             characters.add(c);
@@ -57,5 +63,6 @@ public class RandomInsertionSolverTwoSides {
             output.append(characters.remove(randPicker));
         }
         return output.toString();
+        */
     }
 }

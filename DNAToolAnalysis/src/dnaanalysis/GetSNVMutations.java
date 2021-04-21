@@ -1,4 +1,4 @@
-package utils;
+package dnaanalysis;
 
 import java.io.File;
 import java.io.FileNotFoundException;

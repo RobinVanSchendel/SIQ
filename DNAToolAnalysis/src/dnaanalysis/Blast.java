@@ -1,4 +1,7 @@
-package utils;
+package dnaanalysis;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class Blast {
@@ -627,4 +630,125 @@ public class Blast {
 		}
 		return ret;
 	}
+
+	public String findLargestInsert() {
+		//System.out.println(subject);
+		Pattern p = Pattern.compile("\\-+");
+		Matcher m = p.matcher(subject);
+		//System.out.println("hier");
+		//System.out.println(subject);
+		int largest = 0;
+		int startIndex = -1;
+		while(m.find()) {
+			String start = m.group();
+			if(start.length()>largest) {
+				largest = start.length();
+				startIndex = m.start();
+			}
+		}
+		if(startIndex!=-1) {
+			//System.out.println(largest);
+			//System.out.println(startIndex);
+			String queryPart = query.substring(startIndex, startIndex+largest);
+			return queryPart;
+		}
+		return null;
+	}
+
+	public String getBlastString() {
+		StringBuffer matches = new StringBuffer();
+		for(int i=0;i<query.length();i++) {
+			if(query.charAt(i)==subject.charAt(i)) {
+				matches.append("|");
+			}
+			else {
+				matches.append(" ");	
+			}
+		}
+		StringBuffer total = new StringBuffer();
+		int size = 60;
+		for(int i=0;i<query.length();i+=size) {
+			if(total.length()>0) {
+				total.append("\n");
+			}
+			int start = i;
+			int end = i+size;
+			if(end>query.length()) {
+				end = query.length();
+			}
+			String queryT = query.substring(start, end);
+			String matchT = matches.substring(start, end).toString();
+			String subjectT = subject.substring(start, end);
+			total.append(queryT+"\n");
+			total.append(matchT+"\n");
+			total.append(subjectT+"\n");
+		}
+		
+		// TODO Auto-generated method stub
+		return total.toString();
+	}
+
+	public String getLeft() {
+		//System.out.println(subject);
+		Pattern p = Pattern.compile("\\-+");
+		Matcher m = p.matcher(subject);
+		//System.out.println("hier");
+		//System.out.println(subject);
+		int largest = 0;
+		int startIndex = -1;
+		while(m.find()) {
+			String start = m.group();
+			if(start.length()>largest) {
+				largest = start.length();
+				startIndex = m.start();
+			}
+		}
+		if(startIndex!=-1) {
+			//System.out.println(largest);
+			//System.out.println(startIndex);
+			String left = query.substring(0,startIndex);
+			left = left.replaceAll("-", "");
+			return left;
+		}
+		return null;
+	}
+
+	public String getRight() {
+		//System.out.println(subject);
+		Pattern p = Pattern.compile("\\-+");
+		Matcher m = p.matcher(subject);
+		//System.out.println("hier");
+		//System.out.println(subject);
+		int largest = 0;
+		int startIndex = -1;
+		while(m.find()) {
+			String start = m.group();
+			if(start.length()>largest) {
+				largest = start.length();
+				startIndex = m.start();
+			}
+		}
+		if(startIndex!=-1) {
+			//System.out.println(largest);
+			//System.out.println(startIndex);
+			String right = query.substring(startIndex+largest);
+			right = right.replaceAll("-", "");
+			return right;
+		}
+		return null;
+	}
+
+	public int getNrGaps() {
+		//System.out.println(subject);
+		Pattern p = Pattern.compile("\\-+");
+		Matcher m = p.matcher(subject);
+		int nr = 0;
+		//System.out.println("hier");
+		//System.out.println(subject);
+		while(m.find()) {
+			nr++;
+		}
+		return nr;
+	}
+
 }

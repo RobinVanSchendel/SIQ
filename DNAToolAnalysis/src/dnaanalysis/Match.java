@@ -1,4 +1,4 @@
-package utils;
+package dnaanalysis;
 
 import java.util.ArrayList;
 
@@ -9,6 +9,7 @@ public class Match {
 	private boolean isLeft = true;
 	private boolean searchF = true, searchRC = true;
 	private int preferredPosition;
+	private String id;
 	public Match(String query, String subject) {
 		this.query = query.toLowerCase();
 		this.subject = subject.toLowerCase();
@@ -39,6 +40,9 @@ public class Match {
 		return this.isLeft;
 	}
 	public int getNrMismatchesAllowed() {
+		//System.out.println(mismatchRate);
+		//System.out.println(query.length());
+		//System.out.println(this.mismatchRate*query.length());
 		return (int) (this.mismatchRate*query.length());
 	}
 	public void setSearchBothDirections() {
@@ -54,5 +58,16 @@ public class Match {
 	public int getPreferredPosition() {
 		return this.preferredPosition;
 	}
-	
+	public void setId(String id) {
+		this.id = id;
+	}
+	public String getId() {
+		return id;
+	}
+	public boolean searchLeft() {
+		return searchF;
+	}
+	public void setSearchRC(boolean b) {
+		this.searchRC = b;
+	}
 }

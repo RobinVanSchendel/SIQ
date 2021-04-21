@@ -1,4 +1,4 @@
-package utils;
+package dnaanalysis;
 
 import java.util.ArrayList;
 
@@ -10,6 +10,9 @@ public class LargestMatchSearcher {
 	private boolean left;
 	private String subject;
 	private String query;
+	private String id;
+	private double randomOccurrence;
+	private int gaps;
 	public LargestMatchSearcher(String lcsQ, String lcsS) {
 		this.lcsQuery = lcsQ;
 		this.lcsSubject = lcsS;
@@ -27,27 +30,45 @@ public class LargestMatchSearcher {
 		int allowedMismatch = match.getNrMismatchesAllowed();
 		int preferredPosition = match.getPreferredPosition();
 		if(match.searchBothDirections()) {
-			//System.out.println("F search");
 			LargestMatchSearcher lcsF = longestCommonSubstringAllowMismatch(match.getQuery(), match.getSubject(),allowedMismatch, preferredPosition);
-			//System.out.println(lcsF);
-			//System.out.println("RC search");
 			LargestMatchSearcher lcsRC = longestCommonSubstringAllowMismatch(Utils.reverseComplement(match.getQuery()), match.getSubject(),allowedMismatch, preferredPosition);
-			lcsRC.setRC(match.getQuery());
+			//lcsRC.setRC(match.getQuery());
 			lcsF.setPreferredPosition(preferredPosition);
 			lcsRC.setPreferredPosition(preferredPosition);
 			lcsF.setLeft(match.isLeft());
 			lcsRC.setLeft(match.isLeft());
+			//System.out.println("F search");
+			//System.out.println(lcsF);
+			//System.out.println("RC search");
 			//System.out.println(lcsRC);
 			
 			ArrayList<LargestMatchSearcher> lcss = new ArrayList<LargestMatchSearcher>();
 			lcss.add(lcsF);
 			lcss.add(lcsRC);
 			lcs = getLargestLCS(lcss);
+			//System.out.println("LARGEST");
+			//System.out.println(lcs);
+			lcs.setId(match.getId());
+		}
+		else if(match.searchLeft()) {
+			LargestMatchSearcher lcsF = longestCommonSubstringAllowMismatch(match.getQuery(), match.getSubject(),allowedMismatch, preferredPosition);
+			//lcsRC.setRC(match.getQuery());
+			lcsF.setPreferredPosition(preferredPosition);
+			lcsF.setLeft(match.isLeft());
+			//System.out.println("LARGEST");
+			//System.out.println(lcs);
+			lcs = lcsF;
+			lcs.setId(match.getId());
 		}
 		
 		return lcs;
 	}
+	private void setId(String id) {
+		this.id = id;
+		
+	}
 	private void setLeft(boolean left) {
+		//System.out.println("Set left "+left);
 		this.left = left;
 	}
 	private void setPreferredPosition(int preferredPosition) {
@@ -90,6 +111,7 @@ public class LargestMatchSearcher {
 		//in case of a tie in distance the forward ones are automatically chosen
 		//as they are first in the list!
 		if(multipleLargest) {
+			//System.out.println("JAHA!");
 			ArrayList<LargestMatchSearcher> largests = new ArrayList<LargestMatchSearcher>();
 			//System.out.println("LARGESTS");
 			for(LargestMatchSearcher l: lcss) {
@@ -102,6 +124,9 @@ public class LargestMatchSearcher {
 			int lowestDistance = Integer.MAX_VALUE;
 			for(LargestMatchSearcher l: largests) {
 				int tempD = Math.min(l.getStartS()-l.getPreferredPosition(), l.getEndS()-l.getPreferredPosition());
+				//need the absolute distance
+				tempD = Math.abs(tempD);
+				//System.out.println(tempD);
 				if(tempD<lowestDistance) {
 					largest = l;
 					lowestDistance = tempD;
@@ -210,6 +235,7 @@ public class LargestMatchSearcher {
 	    int Max = 0;
 	    int MaxMismatches = 0;
 	    int MaxMatches = 0;
+	    //System.out.println("Nr mismatches "+nrMismatches);
 	    for (int i = 0; i < subject.length(); i++)
 	    {
 	        for (int j = 0; j < query.length(); j++)
@@ -228,21 +254,23 @@ public class LargestMatchSearcher {
 	            	x++;
 	                if (((i + x) >= subject.length()) || ((j + x) >= query.length())) break;
 	            }
-	            if (matches > MaxMatches || (matches==MaxMatches && mismatches<MaxMismatches))
+	            //changed mismatches<MaxMismatches to mismatches>MaxMismatches
+	            //to maximize found insert
+	            if (matches > MaxMatches || (matches==MaxMatches && mismatches>MaxMismatches))
 	            {
 	                Max = x;
 	                MaxMatches = matches;
 	                StartS1 = i;
 	                StartS2 = j;
 	                MaxMismatches = mismatches;
-	                //System.out.println("Setting pos to "+StartS1+" matches "+MaxMatches);
+	                //System.out.println("Setting pos to "+StartS1+" matches "+MaxMatches+" mismatches "+MaxMismatches);
 	            }
 	            //same event found, take closest to preferredPosition
 	            else if(matches == MaxMatches && mismatches==MaxMismatches) {
 	            	int disToPreferred = Math.abs(preferredPosition-StartS1);
 	            	int disToCurrent = Math.abs(preferredPosition-i);
 	            	if(disToCurrent<disToPreferred) {
-	            		//System.out.println("Taking the one closer to preferredPosition "+disToCurrent);
+	            		//System.out.println("Taking the one closer to preferredPosition "+disToCurrent+" "+matches+" : "+mismatches);
 	            		Max = x;
 		                MaxMatches = matches;
 		                StartS1 = i;
@@ -274,10 +302,13 @@ public class LargestMatchSearcher {
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
 		String s = "\t";
+		sb.append(id).append(s);
 		sb.append(query).append(s);
 		sb.append(subject).append(s);
 		sb.append(lcsQuery).append(s);
 		sb.append(lcsSubject).append(s);
+		sb.append(query.length()).append(s);
+		sb.append(subject.length()).append(s);
 		sb.append(startQ).append(s);
 		sb.append(endQ).append(s);
 		sb.append(startS).append(s);
@@ -288,16 +319,37 @@ public class LargestMatchSearcher {
 		sb.append(getOrientation()).append(s);
 		sb.append(getAdjustedPositionStart()).append(s);
 		sb.append(getAdjustedPositionEnd()).append(s);
+		boolean isOnZero = getAdjustedPositionStart()==0 || getAdjustedPositionEnd()==0;
+		if(getAdjustedPositionStart()<0 &&getAdjustedPositionEnd()>0 ) {
+			isOnZero = true;
+		}
+		if(isOnZero) {
+			sb.append("0").append(s);
+		}
+		else {
+			sb.append("!0").append(s);
+		}
+		sb.append(gaps).append(s);
+		sb.append(randomOccurrence).append(s);
+		sb.append(randomOccurrence<=0.05);
+		
+		
 		
 		return sb.toString();
+	}
+	public String getID() {
+		return id;
 	}
 	public static String getHeader() {
 		StringBuffer sb = new StringBuffer();
 		String s = "\t";
+		sb.append("ID").append(s);
 		sb.append("Query").append(s);
 		sb.append("Subject").append(s);
 		sb.append("lcsQuery").append(s);
 		sb.append("lcsSubject").append(s);
+		sb.append("QueryLength").append(s);
+		sb.append("SubjectLength").append(s);
 		sb.append("startQ").append(s);
 		sb.append("endQ").append(s);
 		sb.append("startS").append(s);
@@ -308,6 +360,10 @@ public class LargestMatchSearcher {
 		sb.append("getOrientation()").append(s);
 		sb.append("getAdjustedPositionStart()").append(s);
 		sb.append("getAdjustedPositionEnd()").append(s);
+		sb.append("onZero").append(s);
+		sb.append("gaps").append(s);
+		sb.append("randomOccurrence").append(s);
+		sb.append("Significant");
 		return sb.toString();
 	}
 	private String getAdjustedPosition() {
@@ -315,6 +371,7 @@ public class LargestMatchSearcher {
 	}
 	public int getAdjustedPositionEnd() {
 		if(!left) {
+			System.out.println("HIEREE");
 			return -1*(endS-this.preferredPosition);
 		}
 		else {
@@ -357,5 +414,11 @@ public class LargestMatchSearcher {
 			}
 		}
 		return ret;
+	}
+	public void calculateRandomOccurence() {
+		this.randomOccurrence = RandomMatchTester.getLikelihood(subject, query, this.getNrMatches());
+	}
+	public void setNrGaps(int gaps) {
+		this.gaps = gaps;
 	}
 }

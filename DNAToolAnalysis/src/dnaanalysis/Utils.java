@@ -1,4 +1,4 @@
-package utils;
+package dnaanalysis;
 
 public class Utils {
 	public static String reverseComplement(String dna){
