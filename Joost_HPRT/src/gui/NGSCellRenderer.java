@@ -25,16 +25,26 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
       }
       //R1
       if (column == 0) {
-    	  if(wine.R1OK()) {
+    	  if(wine.R1equalsR2()) {
+    		  setForeground(problem);
+    		  this.setBackground(Color.white);
+    	  }
+    	  else if(wine.R1OK()) {
     		  setForeground(greenFont);
+    		  this.setBackground(Color.white);
     	  }
     	  else {
     		  setForeground(optional);
+    		  this.setBackground(problem);
     	  }
       }
       //R2
       else if (column == 1) {
-    	  if(wine.R2OK()) {
+    	  this.setBackground(Color.white);
+    	  if(wine.R1equalsR2()) {
+    		  setForeground(problem);
+    	  }
+    	  else if(wine.R2OK()) {
     		  setForeground(greenFont);
     	  }
     	  else {
@@ -44,34 +54,48 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
       else if (column == 2) {
     	  if(wine.getSubjectOK()) {
     		  setForeground(greenFont);
+    		  this.setBackground(Color.white);
     	  }
     	  else {
+    		  this.setBackground(problem);
     		  setForeground(problem);
     	  }
       }
       else if (column == 3) {
-    	  setForeground(Color.white);
-    	  setForeground(greenFont);
+    	  if(wine.getAlias()==null || wine.getAlias().length()==0) {
+    		  this.setBackground(problem);
+    	  }
+    	  else {
+    		  this.setBackground(Color.white);
+	    	  setForeground(Color.white);
+	    	  setForeground(greenFont);
+    	  }
       }
       else if (column == 4) {
     	  //System.out.println("rendering leftFlank "+wine.leftFlankOK());
     	  //System.out.println("rendering leftFlank "+wine.getLeftFlank());
+    	  this.setBackground(Color.white);
     	  if(wine.leftFlankOK()) {
     		  setForeground(greenFont);
+    		  this.setBackground(Color.white);
     	  }
     	  else {
     		  setForeground(problem);
+    		  this.setBackground(problem);
     	  }
       }
       else if (column == 5) {
     	  if(wine.rightFlankOK()) {
     		  setForeground(greenFont);
+    		  this.setBackground(Color.white);
     	  }
     	  else {
     		  setForeground(problem);
+    		  this.setBackground(problem);
     	  }
       }
       else if (column == 6) {
+    	  this.setBackground(Color.white);
     	  if(wine.leftPrimerOK()) {
     		  setForeground(greenFont);
     	  }
@@ -80,6 +104,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     	  }
       }
       else if (column == 7) {
+    	  this.setBackground(Color.white);
     	  if(wine.rightPrimerOK()) {
     		  setForeground(greenFont);
     	  }

@@ -11,6 +11,11 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -40,6 +45,7 @@ import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
+import javax.swing.DropMode;
 import javax.swing.ImageIcon;
 import javax.swing.InputMap;
 import javax.swing.JButton;
@@ -64,8 +70,10 @@ import javax.swing.KeyStroke;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
+import javax.swing.TransferHandler;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
@@ -810,7 +818,9 @@ public class GUI implements ActionListener, MouseListener {
 			try {
 				Scanner s = new Scanner(tempInput);
 				//to skip first line which contains the header
-				String dummy = s.nextLine();
+				if(s.hasNextLine()) {
+					String dummy = s.nextLine();
+				}
 				while(s.hasNext()) {
 					String line = s.nextLine();
 					printLineToExcel(sheet, line, totalRow++);
@@ -1558,6 +1568,9 @@ public class GUI implements ActionListener, MouseListener {
 		        };
 		    }
 		};
+		//ngs.setDropMode(DropMode.ON);
+		//ngs.setDragEnabled(true);
+		ngs.setTransferHandler(new FileDropHandler());
 		//add Delete functionality
 		InputMap inputMap = ngs.getInputMap(JComponent.WHEN_FOCUSED);
 		ActionMap actionMap = ngs.getActionMap();

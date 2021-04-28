@@ -14,7 +14,7 @@ import org.biojavax.bio.seq.RichSequence.IOTools;
 import utils.Subject;
 
 public class NGS {
-	private File R1, R2, assembled = null, unassF = null, unassR = null;
+	private File R1, R2, assembled = null, unassF = null, unassR = null, hdr = null;
 	private String subject;
 	private String leftFlank, rightFlank;
 	private String alias;
@@ -358,6 +358,10 @@ public class NGS {
 		return ngs;
 	}
 	public boolean filesOK() {
+		//check if not the same files
+		if(R1equalsR2()) {
+			return false;
+		}
 		if(R1OK() && R2OK()) {
 			return true;
 		}
@@ -442,5 +446,15 @@ public class NGS {
 			return new File(outputDir.getAbsolutePath()+File.separator+getAssembledFile().getName()+"_"+this.getRowNumber()+"_top_stats_output.txt");
 		}
 		return new File(getAssembledFile()+"_"+this.getRowNumber()+"_top_stats_output.txt");
+	}
+	public File getHDR() {
+		return null;
+		//return new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104406\\ref\\pICL-pso_cut.fa");
+	}
+	public boolean R1equalsR2() {
+		if(R1 !=null && R2 != null && R1.getAbsolutePath().contentEquals(R2.getAbsolutePath())) {
+			return true;
+		}
+		return false;
 	}
 }
