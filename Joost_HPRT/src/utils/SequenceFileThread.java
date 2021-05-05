@@ -2,10 +2,12 @@ package utils;
 
 import java.awt.List;
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -16,13 +18,17 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.biojava.bio.BioException;
 import org.biojavax.bio.seq.RichSequence;
+import org.biojavax.bio.seq.RichSequenceIterator;
+import org.biojavax.bio.seq.RichSequence.IOTools;
 import org.jcvi.jillion.core.Range;
 import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
 import org.jcvi.jillion.core.qual.QualitySequence;
@@ -363,6 +369,14 @@ public class SequenceFileThread extends Thread {
 							//System.out.println(cs.toStringOneLine());
 							
 						}
+						boolean isHDRevent = false;
+						if(subject.isHDREvent(cs)) {
+							cs.resetRemarks();
+							isHDRevent = true;
+							//actually we need to check this via the HDR sequence rather than like this...
+							//leftCorrect = cs.getRaw().startsWith(subject.getLeftPrimer());
+							//rightCorrect = cs.getRaw().endsWith(subject.getRightPrimer());
+						}
 						if(cs.getRemarks().isEmpty()) {
 							if(leftCorrect && rightCorrect) {
 								cs.setAdditionalSearchString(hmAdditional);
@@ -433,7 +447,8 @@ public class SequenceFileThread extends Thread {
 					//System.out.println("correct\t"+cs.toStringOneLine());
 				}
 				else {
-					//System.out.println(leftCorrect+"_"+rightCorrect+cs.getRemarks()+"_incorrect\t"+cs.toStringOneLine());
+					//System.out.println("incorrect\t"+cs.toStringOneLine());
+					//System.out.println(subject.isHDREvent(cs));
 				}
 				if(!(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect)){
 					wrong.getAndIncrement();
@@ -448,6 +463,21 @@ public class SequenceFileThread extends Thread {
 				//System.out.println(cs.toStringOneLine());
 				//no masking
 				counter.getAndIncrement();
+				//has GUI
+				//are slooooow, so update more often
+				if(subject.isPacBio() && this.tableModel!=null) {
+					long end = System.nanoTime();
+					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
+					if(duration>1000) {
+						float perc = counter.get()/(float)totalReads.get();
+						this.tableModel.setStatus(ngs, perc);
+						this.tableModel.setTotal(ngs, counter.get());
+						this.tableModel.setCorrect(ngs, correct.get());
+						this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
+						//reset timer
+						start.set(end);
+					}
+				}
 				if(counter.get()%10000==0){
 					long end = System.nanoTime();
 					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
@@ -800,5 +830,17 @@ public class SequenceFileThread extends Thread {
 	}
 	public void setTinsDistance(int tinsDistValue) {
 		this.tinsDistValue = tinsDistValue;
+	}
+	public void setHDR(File hdr) {
+		if(hdr!=null) {
+			try {
+				BufferedReader is = new BufferedReader(new FileReader(hdr));
+				RichSequenceIterator si = IOTools.readFastaDNA(is, null);
+				subject.setHDR(si.nextRichSequence());
+			} catch (FileNotFoundException | NoSuchElementException | BioException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 }

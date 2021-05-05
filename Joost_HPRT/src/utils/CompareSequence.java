@@ -1512,4 +1512,9 @@ public class CompareSequence {
 	public ArrayList<Range> getRanges() {
 		return this.ranges;
 	}
+	//very dangerous, only use if you are 100% sure
+	public void resetRemarks() {
+		remarks = new StringBuffer();
+		
+	}
 }

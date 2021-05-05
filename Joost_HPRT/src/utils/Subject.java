@@ -439,4 +439,13 @@ public class Subject {
 		}
 		return ret;
 	}
+	public boolean hasHDR() {
+		return hdr != null;
+	}
+	public String getLeftPrimer() {
+		return this.leftPrimer;
+	}
+	public String getRightPrimer() {
+		return this.rightPrimer;
+	}
 }
