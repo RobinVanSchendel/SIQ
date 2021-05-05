@@ -113,6 +113,7 @@ public class SequenceControllerThread implements Runnable{
 			sft.setFlash(flashExec,cpusForAssembly);
 			sft.setSemaphore(mySemaphore);
 			sft.setTinsDistance(tinsDistValue);
+			sft.setHDR(n.getHDR());
 			vThreads.add(sft);
 		}
 	}
