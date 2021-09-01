@@ -290,6 +290,7 @@ public class SequenceFileThread extends Thread {
 				String seq = fastqRecord.getNucleotideSequence().toString();
 				
 				boolean checkReverse = false;
+				boolean flaggedAsWrong = false;
 				if(counter.get()==0) {
 					checkReverse = true;
 					//check if these are PacBio reads
@@ -307,6 +308,13 @@ public class SequenceFileThread extends Thread {
 					checkReverse = true;
 				}
 				CompareSequence cs = new CompareSequence(subject, seq, quals, f.getParentFile().getName(), checkReverse, id);
+				//set barcode directly
+				if(fastqRecord.getId().contains(" BC:")) {
+					int startBC = fastqRecord.getId().indexOf(" BC:")+4;
+					String barcode = fastqRecord.getId().substring(startBC);
+					cs.setBarcode(barcode);
+				}
+				
 				if(counter.get()==0 && cs.isReversed()) {
 					takeRc.set(true);
 				}
@@ -327,17 +335,21 @@ public class SequenceFileThread extends Thread {
 				
 				if(!cs.getRemarks().isEmpty()) {
 					badQual.getAndIncrement();
+					flaggedAsWrong = true;
 				}
 				boolean hasN = cs.checkContainsN();
 				if(hasN) {
-					containsN.getAndIncrement();
+					if(!flaggedAsWrong) {
+						containsN.getAndIncrement();
+					}
+					flaggedAsWrong = true;
 				}
 				boolean leftCorrect = false;
 				boolean rightCorrect = false;
 				//at this point has to be true because of earlier check
 				if(cs.isMasked()) {
 					//check if exists in cache
-					String lookupDoneKey = lookupDone.get(cs.getQuery());
+					String lookupDoneKey = lookupDone.get(cs.getBarcode()+"|"+cs.getQuery());
 					if(lookupDoneKey != null) {
 						//String key = lookupDone.get(cs.getQuery());
 						countEvents.put(lookupDoneKey, countEvents.get(lookupDoneKey)+1);
@@ -366,8 +378,6 @@ public class SequenceFileThread extends Thread {
 								//System.out.println(cs.toStringOneLine());
 							}
 							wrongPosition.getAndIncrement();
-							//System.out.println(cs.toStringOneLine());
-							
 						}
 						boolean isHDRevent = false;
 						if(subject.isHDREvent(cs)) {
@@ -382,11 +392,6 @@ public class SequenceFileThread extends Thread {
 								cs.setAdditionalSearchString(hmAdditional);
 								cs.setCurrentFile(f);
 								cs.setCurrentAlias(alias, f.getName());
-								if(fastqRecord.getId().contains(" BC:")) {
-									int startBC = fastqRecord.getId().indexOf(" BC:")+4;
-									String barcode = fastqRecord.getId().substring(startBC);
-									cs.setBarcode(barcode);
-								}
 							}
 							else {
 								if(cs.getRemarks().length()>0) {
@@ -416,7 +421,8 @@ public class SequenceFileThread extends Thread {
 							correct.getAndIncrement();
 							String key = cs.getKey(includeStartEnd);
 							//this is for the cache
-							lookupDone.put(cs.getQuery(),key);
+							
+							lookupDone.put(cs.getBarcode()+"|"+cs.getQuery(),key);
 							//now really count the event
 							Integer countEventsNr = countEvents.get(key);
 							if(countEventsNr!=null){
@@ -445,8 +451,14 @@ public class SequenceFileThread extends Thread {
 				}
 				if(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect){
 					//System.out.println("correct\t"+cs.toStringOneLine());
+					//if(cs.getBarcode().contentEquals("RVsg_mmPolq-2")) {
+						//System.out.println("correct\t"+cs.toStringOneLine());
+					//}
 				}
 				else {
+					//if(cs.getBarcode().contentEquals("RVsg_mmPolq-2")) {
+						//System.out.println("incorrect\t"+cs.toStringOneLine());
+					//}
 					//System.out.println("incorrect\t"+cs.toStringOneLine());
 					//System.out.println(subject.isHDREvent(cs));
 				}
