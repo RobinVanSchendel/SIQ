@@ -407,7 +407,7 @@ public class KMERLocation {
 		return lcs;
 		//System.out.println("final["+origKey+":"+key+"]:"+start+":"+end);
 	}
-	public LCS getMatchRight(String seq, int startPos, int minSize, boolean allowJump) {
+	public LCS getMatchRight(String seq, int startPos, int minSize, boolean allowJump, int minPosition) {
 		//System.out.println("seq"+seq);
 		//System.out.println("getMatchRight");
 		if(!hasQuery(seq)) {
@@ -428,11 +428,20 @@ public class KMERLocation {
 				int length = lcs.getSubjectEnd()-start;
 				if(lcs.getSubjectEnd()>startPos && length>=minSize) {
 					if(length>longest) {
-						longest = lcs.getString().length();
-						max = lcs;
+						//keep the match close to the designated primer if possible
+						if(minPosition>-1) {
+							if(lcs.getSubjectEnd()>=minPosition) {
+								longest = lcs.getString().length();
+								max = lcs;
+							}
+						}
+						//normal situation
+						else {
+							longest = lcs.getString().length();
+							max = lcs;
+						}
 					}
 				}
-			//}
 		}
 		if(max == null) {
 			return max;
@@ -442,17 +451,31 @@ public class KMERLocation {
 			//can we find one closer by that is also long enough?
 			LCS second = null;
 			for(LCS lcs: lcss) {
-				//int absDist = Math.abs(lcs.getSubjectEnd()-max.getSubjectStart());
-				//int absDistQuery = Math.abs(lcs.getQueryEnd()-max.getQueryStart());
+				//int absDist = max.getSubjectDist(lcs, startPos);
+				int absDist = Math.abs(lcs.getSubjectEnd()-max.getSubjectStart());
+				int absDistQuery = Math.abs(lcs.getQueryEnd()-max.getQueryStart());
 				//if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()<max.getSubjectStart()) {
 				//	second = lcs;
 				//}
 				if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && lcs.getSubjectStart()<max.getSubjectStart()) {
-					if(second == null || lcs.getSubjectStart()<second.getSubjectStart()) {
-						second = lcs;
-						//System.out.println("Switching");
-						//System.out.println(second);
+					//this will break again the PacBio
+					int distToExpectedCut = lcs.getSubjectEnd()-startPos;
+					//query has to start earlier 
+					boolean queryStartsEarlier = lcs.getQueryStart()<max.getQueryStart();
+					//System.out.println(distToExpectedCut);
+					//maybe this should be changed to a configurable number instead of 100
+					if(absDist<=1 && absDistQuery<=1 || (distToExpectedCut >=100 && queryStartsEarlier)) {
+						if(second == null || lcs.getSubjectStart()<second.getSubjectStart()) {
+							second = lcs;
+							//System.out.println("Switching");
+							//System.out.println(second);
+						}
 					}
+					//System.out.println("Current");
+					//System.out.println(max);
+					//System.out.println(lcs);
+					//System.out.println(absDist);
+					//System.out.println(absDistQuery);
 				}
 			}
 			if(second != null) {

@@ -309,9 +309,9 @@ public class SequenceFileThread extends Thread {
 				}
 				CompareSequence cs = new CompareSequence(subject, seq, quals, f.getParentFile().getName(), checkReverse, id);
 				//set barcode directly
-				if(fastqRecord.getId().contains(" BC:")) {
-					int startBC = fastqRecord.getId().indexOf(" BC:")+4;
-					String barcode = fastqRecord.getId().substring(startBC);
+				if(id.contains(" BC:")) {
+					int startBC = id.indexOf(" BC:")+4;
+					String barcode = id.substring(startBC);
 					cs.setBarcode(barcode);
 				}
 				
@@ -541,10 +541,17 @@ public class SequenceFileThread extends Thread {
 		if(writer != null){
 			if(collapseEvents){
 				//get the total
-				double total = 0;
+				HashMap<String, Integer> totals = new HashMap<String, Integer>();
 				for(String key: csEvents.keySet()){
 					if(countEvents.get(key)>=minimalCount) {
-						total += countEvents.get(key);
+						String barcode = csEvents.get(key).getBarcode();
+						if(barcode == null) {
+							barcode = "dummy";
+						}
+						if(!totals.containsKey(barcode)) {
+							totals.put(barcode,0);
+						}
+						totals.put(barcode,totals.get(barcode)+countEvents.get(key));
 					}
 				}
 				//System.out.println("Writing events "+csEvents.size()+" to: "+output.getAbsolutePath());
@@ -557,6 +564,14 @@ public class SequenceFileThread extends Thread {
 				for(String key: csEvents.keySet()){
 					//only output if we saw it minimalCount times
 					if(countEvents.get(key)>=minimalCount) {
+						String barcode = csEvents.get(key).getBarcode();
+						if(barcode == null) {
+							barcode = "dummy";
+						}
+						double total = 0;
+						if(totals.containsKey(barcode)) {
+							total = totals.get(barcode);
+						}
 						double fraction = countEvents.get(key)/total;
 						CompareSequence cs = csEvents.get(key);
 						cs.setTINSSearchDistance(this.tinsDistValue);

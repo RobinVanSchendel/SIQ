@@ -158,11 +158,11 @@ public class CompareSequence {
 			LCS flankTwoLCS = null;
 			if(replacementIndex == -1) {
 				seqRemainRightPart = query;
-				flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemainRightPart, 0, minimumSizeWithLeftRight, allowJump);
+				flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemainRightPart, 0, minimumSizeWithLeftRight, allowJump, subjectObject.getMinLocationEndEvent());
 			}
 			else {
 				seqRemainRightPart = queryRemain;
-				flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemainRightPart, flankOne.getSubjectEnd(), minimumSizeWithLeftRight, allowJump);
+				flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemainRightPart, flankOne.getSubjectEnd(), minimumSizeWithLeftRight, allowJump, subjectObject.getMinLocationEndEvent());
 			}
 			if(flankTwoLCS!= null) {
 				flankTwo = flankTwoLCS.getString();
@@ -245,7 +245,7 @@ public class CompareSequence {
 				String seqRemain = query.replace(querySub, replacementFlank);
 				//start searching after the leftFlank
 				if(flankOne!=null) {
-					LCS flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemain, flankOne.getSubjectEnd(), minimumSizeWithoutLeftRight, allowJump);
+					LCS flankTwoLCS = subjectObject.getKmerl().getMatchRight(seqRemain, flankOne.getSubjectEnd(), minimumSizeWithoutLeftRight, allowJump, subjectObject.getMinLocationEndEvent());
 					if(flankTwoLCS != null) {
 						flankTwo = flankTwoLCS.getString();
 					}
@@ -352,7 +352,7 @@ public class CompareSequence {
 		int maxLengthMatch = 10;
 		if(del!= null && insert != null && del.length()>maxLengthMatch && insert.length()>maxLengthMatch) {
 			String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
-			if(!this.subjectObject.isHDREvent(this) && !this.subjectObject.isHDREventOneMismatch(this) && insertDelCommon.length()>maxLengthMatch){
+			if(!this.subjectObject.isHDREvent(this) && this.subjectObject.getHDREventOneMismatch(this)!=1 && insertDelCommon.length()>maxLengthMatch){
 				//if we masked, then probably this check is not correct
 				//after testing it turns out that most often this is correct
 				//this.multipleSNVs = insertDelCommon;
@@ -822,7 +822,11 @@ public class CompareSequence {
 		}
 		else if(this.getDel().length()> 0 && this.getInsertion().length() > 0){
 			//test placement here
-			if(this.subjectObject.isHDREventOneMismatch(this)) {
+			int mismatches = this.subjectObject.getHDREventOneMismatch(this);
+			if(mismatches == 0) {
+				return Type.HDR;
+			}
+			else if(mismatches == 1) {
 				return Type.HDR1MM;
 			}
 			else if(this.isFlankInsert) {
@@ -1281,6 +1285,7 @@ public class CompareSequence {
 		if(barcode!=null) {
 			ret.append(barcode).append(s);
 		}
+		ret.append(getType()).append(s);
 		ret.append(getDelStart()).append(s);
 		ret.append(getDelEnd()).append(s);
 		ret.append(del).append(s);
@@ -1516,5 +1521,8 @@ public class CompareSequence {
 	public void resetRemarks() {
 		remarks = new StringBuffer();
 		
+	}
+	public String getBarcode() {
+		return this.barcode;
 	}
 }

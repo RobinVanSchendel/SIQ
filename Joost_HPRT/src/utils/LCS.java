@@ -15,4 +15,25 @@ public class LCS extends Left{
 	public boolean hasMultipleHits() {
 		return multipleHits;
 	}
+	/*
+	public int getSubjectDist(LCS lcs) {
+		if(this == lcs) {
+			return Integer.MAX_VALUE;
+		}
+		//only if it resides in front
+		if(lcs.getSubjectEnd()<this.getSubjectEnd()) {
+			
+		}
+	}
+	*/
+	private boolean hasOverlap(LCS lcs) {
+		if(lcs.getQueryStart()<this.getQueryStart() &&
+				lcs.getQueryEnd()>this.getQueryStart()
+				) {
+			System.out.println(true);
+			return true;
+		}
+			
+		return false;
+	}
 }

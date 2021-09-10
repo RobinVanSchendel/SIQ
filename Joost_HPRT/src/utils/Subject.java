@@ -305,7 +305,7 @@ public class Subject {
 		return delEnd<getMinLocationEndEvent();
 	}
 	public String toString() {
-		String ret = this.subjectName+" "+this.getLeftFlank()+" "+this.getRightFlank()+" "+this.leftPrimer+" "+this.rightPrimer;
+		String ret = this.subjectName+" "+this.getLeftFlank()+" "+this.getEndOfLeftFlank()+" "+this.getRightFlank()+" "+this.getStartOfRightFlank()+" "+this.leftPrimer+" "+this.rightPrimer;
 		return ret;
 	}
 	public void swapPrimersIfNeeded() {
@@ -330,20 +330,22 @@ public class Subject {
 			//bug as RichSequence will return lowercase DNA, so make it uppercase
 			hdrCS = new CompareSequence(this,hdr.seqString().toUpperCase(),null, null, true, "");
 			hdrCS.determineFlankPositions(false);
+			System.err.println(hdrCS.toStringOneLine());
 		}
 		if(hdrCS!=null) {
 			if(hdrCS.getDel().contentEquals(cs.getDel()) && hdrCS.getInsertion().contentEquals(cs.getInsertion())) {
 				return true;
 			}
 		}
+
 		return false;
 	}
 	public KMERLocation getKmerl() {
 		return kmerl;
 	}
-	public boolean isHDREventOneMismatch(CompareSequence cs) {
+	public int getHDREventOneMismatch(CompareSequence cs) {
 		if(this.hdr == null) {
-			return false;
+			return -1;
 		}
 		//test if it is similar to hdrsequence
 		//String[] lcs = Utils.longestCommonSubstringAllowMismatch(cs.getRaw(), hdr.seqString().toUpperCase(), 1, true);
@@ -365,7 +367,7 @@ public class Subject {
 		}
 		//now check positions
 		if(start<0 || end <0 || end<start) {
-			return false;
+			return -1;
 		}
 		//otherwise update ends and go on
 		else {
@@ -378,7 +380,7 @@ public class Subject {
 		}
 		String subjectSub = subject.substring(start,end);
 		if(Math.abs(query.length()-subjectSub.length())>1) {
-			return false;
+			return -1;
 		}
 		int mm = 0;
 		int maxLength = Math.min(query.length(), subjectSub.length());
@@ -388,11 +390,14 @@ public class Subject {
 				if(mm>1) {
 					//can also be a 1bp del or insert, so check that now
 					//for now hardcoded 1bp difference
-					return checkSkipOneBase(query,subjectSub,1);
+					boolean mismatches =  checkSkipOneBase(query,subjectSub,1);
+					if(mismatches) {
+						return 1;
+					}
 				}
 			}
 		}
-		return true;
+		return mm;
 	}
 	private static boolean checkSkipOneBase(String s1, String s2, int maxSkips) {
 		boolean skipS1 = true;
