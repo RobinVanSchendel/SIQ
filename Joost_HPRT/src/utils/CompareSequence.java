@@ -75,6 +75,9 @@ public class CompareSequence {
 		this.dir = dir;
 		this.quals = quals;
 		this.subjectObject = subjectObject;
+		if(subjectObject.hasPrimers()) {
+			this.setAllowJump(false);
+		}
 		if(checkReverse) {
 			checkAndPossibleReverse();
 		}
@@ -119,7 +122,7 @@ public class CompareSequence {
 			rightPos = subjectObject.getStartOfRightFlank();
 			int leftPos = subjectObject.getEndOfLeftFlank();
 			//long start = System.nanoTime();
-			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump,leftPos);
+			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump,leftPos, subjectObject.getMinLocationStartEvent());
 			//long stop = System.nanoTime();
 			//long duration = stop-start;
 			//System.out.println("getMatchLeft "+duration);

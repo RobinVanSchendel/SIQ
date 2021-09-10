@@ -72,7 +72,7 @@ public class KMERLocation {
 		return max;
 	
 	}
-	public Left getMatchLeft(String seq, int rightPos, boolean allowJump, int leftPos) {
+	public Left getMatchLeft(String seq, int rightPos, boolean allowJump, int leftPos, int maxStartPos) {
 		if(!hasQuery(seq)) {
 			//System.out.println("replacing");
 			//long start = System.nanoTime();
@@ -133,8 +133,16 @@ public class KMERLocation {
 				int end = Math.min(lcs.getSubjectEnd(), rightPos);
 				int length = end - lcs.getSubjectStart();
 				if(length>longest && lcs.getSubjectStart()<rightPos) {
-					longest = lcs.length();
-					max = lcs;
+					if(maxStartPos>-1) {
+						if(lcs.getSubjectStart()<=maxStartPos) {
+							longest = lcs.length();
+							max = lcs;
+						}
+					}
+					else {
+						longest = lcs.length();
+						max = lcs;
+					}
 					//System.out.println("SET:"+max+" "+longest);
 				}
 			//}
@@ -163,13 +171,15 @@ public class KMERLocation {
 					//System.out.println(lcs.getSubjectStart()>=max.getSubjectEnd());
 					//System.out.println(lcs.getSubjectStart()>max.getSubjectStart());
 					if(second == null) { 
-						if(lcs.getSubjectEnd() > max.getSubjectEnd() && lcs.getSubjectStart()>max.getSubjectStart()) {
+						if(lcs.getSubjectEnd() > max.getSubjectEnd() && lcs.getSubjectStart()>max.getSubjectStart() &&
+								lcs.getSubjectStart()<rightPos) {
 								//&& lcs.getSubjectStart()>=max.getSubjectEnd()) {
 							second = lcs;
 							//System.out.println("jumping1 "+second);
 						}
 					}
-					else if(lcs.getSubjectStart()>second.getSubjectStart() && lcs.getSubjectEnd()>second.getSubjectEnd()) {
+					else if(lcs.getSubjectStart()>second.getSubjectStart() && lcs.getSubjectEnd()>second.getSubjectEnd() &&
+							lcs.getSubjectStart()<rightPos) {
 						second = lcs;
 						//System.out.println("jumping "+second);
 					}
