@@ -31,12 +31,29 @@ public class TestSingleSequence {
 		
 		//FILL IN
 		
-		String refFile = "E:\\temp\\eGFP.txt";
-		String seqS = "GTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAaCGTGTCCGGCGAGGGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAGCTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGCCGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCAT";
-		String left = "GAAGTTCATCTGCACCACCG";
-		String right = "CTACGGCGTGCAGTGCTTCA";
+		String refFile = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\PPOlocus.txt";
+		//String seqS = "gctgttgctcgtatttcttcaggaactatctacagctcctcactctttccaaatcgcgcaccgcccggaagaattttgctgttgaactacattggcgggtctacaaacaccggaattctgtccaaggtaaaaaacagcaaacactggtaccacatctttattcaaccaagtaaacctaagaactg";
+		String seqS = "GCTGTTGCTCGTATTTCTTCAGGAACTATCTACAGCTCCTCACTCTTTCCAAATCGCGCACCGCCCGGAAGAATTTTGCTGTTGAACATGATTGGCGGGTCTACAAACACCGGAATTCTGTCCAAGGTAAAAAACAGCAAACACTTGTAACACATCTTTATTCAACCAAGTAAACCTAAGAACTG";
+		String left = "attttgctgttgaactacat";
+		String right = "tggcgggtctacaaacaccgg";
+		String leftPrimer = "gctgttgctcgtatttcttc";
+		String rightPrimer = "cagttcttaggtttacttgg";
+		
+		File hdr = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\PPO_HDR.txt");
+		RichSequence hdrSeq = null;
 		//String left = null;
 		//String right = null;
+		if(hdr!=null) {
+			BufferedReader is3;
+			try {
+				is3 = new BufferedReader(new FileReader(hdr));
+				RichSequenceIterator rsi = IOTools.readFastaDNA(is3, null);
+				hdrSeq = rsi.nextRichSequence();
+			} catch (FileNotFoundException | NoSuchElementException | BioException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 		
 		File ref = new File(refFile);
 		try {
@@ -73,8 +90,13 @@ public class TestSingleSequence {
 			}
 		}
 			Subject subjectObject = new Subject(hprtSeq, left, right);
+			if(leftPrimer !=null) {
+				subjectObject.setLeftPrimer(leftPrimer);
+				subjectObject.setRightPrimer(rightPrimer);
+			}
+			subjectObject.setHDR(hdrSeq);
 			
-			CompareSequence kmerWith = new CompareSequence(subjectObject,seqS,null, null, true, "");
+			CompareSequence kmerWith = new CompareSequence(subjectObject,seqS.toUpperCase(),null, null, true, "");
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
 			//kmerWith.setAndDetermineCorrectRange(0.05);
