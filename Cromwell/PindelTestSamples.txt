@@ -1,3 +1,0 @@
-/exports/humgen/rvanschendel/Project_Cromwell/bams/XF677-J50.sorted.bam
-/exports/humgen/rvanschendel/Project_Cromwell/bams/XF677-F50.sorted.bam
-/exports/humgen/rvanschendel/Project_Cromwell/bams/XF677-H50.sorted.bam

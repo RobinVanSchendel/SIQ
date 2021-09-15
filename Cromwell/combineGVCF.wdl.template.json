@@ -1,6 +1,0 @@
-{
-  "gVCFCombine.reference": "/exports/humgen/rvanschendel/Genomes/c_elegans.WS235.genomic.fa",
-  "gVCFCombine.outputFile": "20180822_combined.g.vcf",
-  "gVCFCombine.dir": "/exports/humgen/rvanschendel/Project_Hartwig/LUMC-001-004/bam"
-}
-
