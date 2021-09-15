@@ -10,6 +10,7 @@ import java.util.Vector;
 import data.G4;
 import data.Sample;
 import data.StructuralVariation;
+import data.StructuralVariation.SVType;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 
 public class SVController {
@@ -29,13 +30,6 @@ public class SVController {
 	}
 	//only add SVs if they are not yet in
 	public void addSV(StructuralVariation sv) {
-		if(debugLocation >0 && sv.getStart().getPosition()>(debugLocation-1000) && sv.getStart().getPosition()<(debugLocation+1000)) {
-			System.out.println("DEBUG");
-			System.out.println(sv.toOneLineString());
-			System.out.println("Supports "+sv.getNrSampleSupport());
-			System.out.println("Supports "+sv.getSupportingSamples());
-			System.out.println("END DEBUG");
-		}
 		//check if not too many support
 		int support = sv.getNrSampleSupport();
 		if(support==0 || sv.getNrSampleSupport()>maxSupportingSamples) {
@@ -83,11 +77,13 @@ public class SVController {
 		if(!checkForLocations) {
 			//System.out.println("Adding");
 			svs.put(sv.getKey(), sv);
+			/*
 			if(isDebugEvent(sv)) {
 				System.out.println("DEBUG insertSV");
 				System.out.println("Insert without checking");
 				System.out.println("END DEBUG");
 			}
+			*/
 			return true;
 		}
 		else {
@@ -98,10 +94,19 @@ public class SVController {
 			for(String key: svs.keySet()) {
 				StructuralVariation svTemp = svs.get(key);
 				if(svTemp.inNeighbourhood(sv) && !svTemp.getCallers().contains(sv.getOrigCaller())) {
-					closest.add(svTemp);
+					if(sv.getType() == SVType.TRANS) {
+						if(sv.getTransDir() == svTemp.getTransDir() && sv.getSomethingAtEnd()==svTemp.getSomethingAtEnd()) {
+							closest.add(svTemp);
+						}
+					}
+					else {
+						closest.add(svTemp);
+					}
 				}
+				
 			}
 			if(isDebugEvent(sv)) {
+				/*
 				System.out.println("DEBUG insertSV");
 				System.out.println(sv.getSupportingSamples());
 				System.out.println("Insert found matches "+closest.size());
@@ -110,6 +115,7 @@ public class SVController {
 					System.out.println(tempSV.getSupportingSamples());
 				}
 				System.out.println("END DEBUG");
+				*/
 			}
 			if(closest.size()>0) {
 				if(closest.size()==1) {
@@ -266,7 +272,7 @@ public class SVController {
 		}
 		else {
 			if(!unknownNames.contains(name)) {
-				System.err.println(name);
+				System.err.println(name +"\tneeds to be added to the mappingNames file");
 				unknownNames.add(name);
 			}
 		}

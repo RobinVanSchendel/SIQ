@@ -11,7 +11,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.Allele;
 
 public class StructuralVariation {
-	public enum SVType {DEL,DELINS,SINS,INV,TD,TDINS, TRANS};
+	public enum SVType {DEL,DELINS,SINS,INV,TD,TDINS, TRANS, INVINS};
 	private SVType type;
 	private String insert = "";
 	private Location start, end;
@@ -22,6 +22,9 @@ public class StructuralVariation {
 	private String origCaller;
 	private boolean neigbourhood = false;
 	private String neighbourhoodString = "";
+	private ArrayList<String> homology;
+	private boolean transdir;
+	private boolean somethingAtEnd;
 	
 	public StructuralVariation(SVType type, Location start, Location end, String caller) {
 		setType(type);
@@ -45,11 +48,69 @@ public class StructuralVariation {
 		setADCallGATK();
 		setHetCallGATK();
 		setTrueEvent();
+		setEvent(rsf, 300);
 		if(g4s!=null) {
 			setG4s(g4s);
 		}
 	}
 	
+	private void setEvent(ReferenceSequenceFile rsf, int size) {
+		MetaData trueEvent = new MetaData("seq");
+		//maybe for all?
+		//if(this.getType()== SVType.TRANS) {
+			String right = "";
+			String left = "";
+			if(!this.somethingAtEnd) {
+				int startLeft = this.getStart().getPosition()-size;
+				int endLeft = this.getStart().getPosition();
+				left = rsf.getSubsequenceAt(getStart().getChr(),startLeft,endLeft).getBaseString();
+			}
+			else {
+				int startLeft = this.getStart().getPosition();
+				int endLeft = this.getStart().getPosition()+size;
+				//safety
+				int chrLength = rsf.getSequenceDictionary().getSequence(getStart().getChr()).getSequenceLength();
+				if(endLeft>chrLength) {
+					endLeft = chrLength;
+				}
+				left = rsf.getSubsequenceAt(getStart().getChr(),startLeft,endLeft).getBaseString();
+				left = Utils.reverseComplement(left);
+			}
+			
+			if(this.transdir) {
+				int startRight = this.getEnd().getPosition();
+				int endRight = this.getEnd().getPosition()+size;
+				
+				//safety
+				int chrLength = rsf.getSequenceDictionary().getSequence(getEnd().getChr()).getSequenceLength();
+				if(endRight>chrLength) {
+					endRight = chrLength;
+				}
+				
+				right = rsf.getSubsequenceAt(getEnd().getChr(),startRight,endRight).getBaseString();
+			}
+			//need the reverse complement
+			else {
+				int startRight = this.getEnd().getPosition()-size;
+				int endRight = this.getEnd().getPosition();
+				right = rsf.getSubsequenceAt(getEnd().getChr(),startRight,endRight).getBaseString();
+				right = Utils.reverseComplement(right);
+			}
+			
+			if(this.insert.length()>0) {
+				String tempInsert = insert;
+				if(this.somethingAtEnd) {
+					tempInsert = Utils.reverseComplement(tempInsert);
+				}
+				left = left.toUpperCase()+tempInsert.toLowerCase()+right.toUpperCase();
+			}
+			else {
+				left = left.toUpperCase()+"|"+right.toUpperCase();
+			}
+			trueEvent.setValue(left);
+		//}
+		metadata.add(trueEvent);
+	}
 	private void setTrueEvent() {
 		ArrayList<String> callers = new ArrayList<String>();
 		for(Sample s: samples) {
@@ -255,6 +316,11 @@ public class StructuralVariation {
 			*/
 			hom.setValue(homology);
 		}
+		else {
+			if(this.homology !=null) {
+				hom.setValue(getHomologyString());
+			}
+		}
 		if(hom.getValue()==null) {
 			hom.setValue("");
 		}
@@ -263,6 +329,16 @@ public class StructuralVariation {
 		metadata.add(homLength);
 	}
 
+	private String getHomologyString() {
+		String ret = "";
+		for(String s: homology) {
+			if(ret.length()>0) {
+				ret+="|";
+			}
+			ret+=s;
+		}
+		return ret;
+	}
 	public void setInsert(String insert) {
 		if(insert != null && insert.length()>0) {
 			this.insert = insert.toUpperCase();
@@ -311,9 +387,12 @@ public class StructuralVariation {
 		StringBuffer sb = new StringBuffer();
 		String sep = "\t";
 		sb.append(type).append(sep);
+		sb.append(this.transdir).append(sep);
 		sb.append(origCaller).append(sep);
 		sb.append(getStartEndLocation()).append(sep);
 		sb.append(getStartEndLocation(0.2)).append(sep);
+		sb.append(getStartLocation()).append(sep);
+		sb.append(getEndLocation()).append(sep);
 		sb.append(this.getStart().getChr()).append(sep);
 		sb.append(this.getStart().getPosition()).append(sep);
 		sb.append(this.getEnd().getPosition()).append(sep);
@@ -331,10 +410,20 @@ public class StructuralVariation {
 				sb.append(getSupportedSamplesString(caller)).append(sep);
 			}
 		}
+		sb.append(this.getNrSupportingSamples()).append(sep);
+		sb.append(this.getNrSupportingCallers(callers)).append(sep);
+		sb.append(getConsensusSampleFirst(callers)).append(sep);
 		sb.append(getConsensusSample(callers)).append(sep);
 		sb.append(getConsensusGroup(callers)).append(sep);
 		sb.append(neigbourhood).append(sep);
-		sb.append(neighbourhoodString);
+		sb.append(neighbourhoodString).append(sep);
+		sb.append(getGeneration()).append(sep);
+		sb.append(getGenotype()).append(sep);
+		sb.append(getLocationID()).append(sep);
+		sb.append("VERYLIKELY").append(sep);
+		sb.append("UNKNOWN").append(sep);
+		sb.append("true").append(sep);
+		sb.append("TRUE");
 		/*
 		if(samples!=null) {
 			for(Sample s: samples) {
@@ -345,6 +434,46 @@ public class StructuralVariation {
 		return sb.toString();
 	}
 	
+	private String getConsensusSampleFirst(ArrayList<String> callers) {
+		if(callers == null) {
+			return null;
+		}
+		for(String caller: callers) {
+			String samples = getSupportedSamplesString(caller);
+			if(samples!=null && samples.length()>0) {
+				for(String sampl: samples.split(" ")) {
+						return sampl;
+				}
+			}
+		}
+		String ret = "";
+		return ret;
+	}
+	private String getLocationID() {
+		return getStartEndLocation();
+	}
+	private String getGenotype() {
+		return "tonsoku";
+	}
+	private int getGeneration() {
+		return 3;
+	}
+	private int getNrSupportingCallers(ArrayList<String> callers) {
+		int total = 0;
+		for(String caller: callers) {
+			String samples = getSupportedSamplesString(caller);
+			if(samples!=null && samples.length()>0) {
+				total++;
+			}
+		}
+		return total;
+	}
+	private String getEndLocation() {
+		return end.getChr()+":"+end.getPosition();
+	}
+	private String getStartLocation() {
+		return start.getChr()+":"+start.getPosition();
+	}
 	private String getConsensusSample(ArrayList<String> callers) {
 		ArrayList<String> samplesA = new ArrayList<String>();
 		if(callers == null) {
@@ -364,14 +493,15 @@ public class StructuralVariation {
 		String ret = "";
 		for(String s: samplesA) {
 			if(ret.length()>0) {
-				ret+= " ";
+				//use comma here!
+				ret+= ",";
 			}
 			ret+=s;
 		}
 		return ret;
 	}
 	private String getConsensusGroup(ArrayList<String> callers) {
-		String sample = getConsensusSample(callers);
+		String sample = getConsensusSampleFirst(callers);
 		if(sample!=null) {
 			sample = sample.replaceAll("-", "_");
 			return sample.split("_")[0];
@@ -506,6 +636,24 @@ public class StructuralVariation {
 				}
 			}
 		}
+		//also add the homology
+		if(sv.getHomology() !=null) {
+			for(String hom: sv.getHomology()) {
+				this.setHomology(hom);
+			}
+		}
+		if(sv.getType() != this.getType()) {
+			/*
+			System.out.println("Merging a "+this.getType()+" with a "+sv.getType() +" "+ this.origCaller+" "+sv.getOrigCaller());
+			System.out.println(this.getStartEndLocation());
+			System.out.println(this.getStartLocation()+"\t"+this.getEndLocation());
+			System.out.println(this.getSupportingSamples());
+			System.out.println(sv.getSupportingSamples());
+			*/
+		}
+	}
+	private ArrayList<String> getHomology() {
+		return this.homology;
 	}
 	private Sample findSample(String name) {
 		for(Sample s: samples) {
@@ -532,7 +680,7 @@ public class StructuralVariation {
 		this.info = totalString;
 	}
 	public String getHeader(ArrayList<String> callers) {
-		String head =  "Type\torigCaller\tlocation\tIGVLocation\tChr\tStart\tEnd\tSize\tInsert";
+		String head =  "SVType\ttransDir\torigCaller\tlocation\tIGVLocation\tIGVLocation1\tIGVLocation2\tChr\tStart\tEnd\tSize\tInsert";
 		if(metadata != null) {
 			for(MetaData md: metadata) {
 				head+="\t"+md.getName();
@@ -545,7 +693,8 @@ public class StructuralVariation {
 		for(String caller: callers) {
 			head+="\tSample"+caller;
 		}
-		head+="\tconsensusSample\tsampleGroup\tneighbourhood\tneighbourhoodString";
+		head+="\tNrSupportingSamples\tNrSupportingCallers\tSample\tSupportingSamples\tSampleGroup\tneighbourhood\tneighbourhoodString\tGeneration\tGenotype\tLocationID"
+				+ "\tLikelyHoodOfEvent\tTract\tUnique\tCurated";
 		return head;
 	}
 	public String getOrigCaller() {
@@ -566,11 +715,51 @@ public class StructuralVariation {
 		}
 		return Utils.toString(support," ");
 	}
+	public int getNrSupportingSamples() {
+		ArrayList<String> support = new ArrayList<String>();
+		for(Sample s: samples) {
+			for(Caller c: s.getCall()) {
+				if(c.supports() && !support.contains(s.getName())) {
+					support.add(s.getName());
+				}
+			}
+		}
+		return support.size();
+	}
 	public void setInNeighbourhood(String startEndLocation) {
 		if(neighbourhoodString.length()!=0) {
 			neighbourhoodString+="|";
 		}
 		neighbourhoodString+=startEndLocation; 
 		
+	}
+	public void setHomology(String hom) {
+		//ensure it is upper case
+		hom = hom.toUpperCase();
+		if(homology == null) {
+			homology = new ArrayList<String>();
+		}
+		//only if we don't contain this info yet
+		if(!homology.contains(hom)) {
+			homology.add(hom);
+		}
+	}
+	public void setTransDirection(String typeSigns) {
+		if(typeSigns.contentEquals("[[")) {
+			this.transdir = true;
+		}
+		else {
+			this.transdir = false;
+		}
+		
+	}
+	public void setSomethingAtEnd(boolean somethingAtEnd) {
+		this.somethingAtEnd = somethingAtEnd;
+	}
+	public boolean getTransDir() {
+		return this.transdir;
+	}
+	public boolean getSomethingAtEnd() {
+		return somethingAtEnd;
 	}
 }

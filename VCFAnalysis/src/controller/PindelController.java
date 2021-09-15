@@ -42,16 +42,15 @@ public class PindelController {
 			Scanner s = new Scanner(pindel);
 			while(s.hasNextLine()) {
 				String line = s.nextLine();
-				if(header == null) {
-					header = line;
-				}
-				else {
-					PindelEvent p = PindelEvent.parsePindelEvent(line, header);
-					if(excludeTDINV && !p.isINV() && !p.isTD()) {
-						v.add(p);
-					}
-					else if(!excludeTDINV) {
-						v.add(p);
+				if(!line.contains("LocationID")) {
+					PindelEvent p = PindelEvent.parsePindelEvent(line);
+					if(p!=null) {
+						if(excludeTDINV && !p.isINV() && !p.isTD()) {
+							v.add(p);
+						}
+						else if(!excludeTDINV) {
+							v.add(p);
+						}
 					}
 				}
 			}
@@ -115,7 +114,7 @@ public class PindelController {
 		return getDistance(sampleName, location) == 0;
 	}
 	private List<PindelEvent> getSubVector(String sampleName, String location) {
-		String chr = PindelEvent.getChromosome(location);
+		String chr = PindelEvent.getChromosome(location).replace("CHROMOSOME_", "");
 		List<PindelEvent> subset = v.stream()
 			.filter(event -> event.getSample().equals(sampleName))
 			.filter(event -> event.getChr().equals(chr))

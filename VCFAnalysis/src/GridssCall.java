@@ -42,7 +42,7 @@ public class GridssCall extends GeneralCaller {
 		this.vcf = vcf;
 	}
 	public void parseFile(SVController svc) {
-		if(vcf==null) {
+		if(vcf==null || !vcf.exists()) {
 			return;
 		}
 		VCFFileReader reader = new VCFFileReader(vcf, false);
@@ -399,6 +399,14 @@ public class GridssCall extends GeneralCaller {
 		Allele high = vc.getAltAlleleWithHighestAlleleCount();
 		Location end = parseEnd(high);
 		if(end != null) {
+			if(start.getChr().contentEquals("1")) {
+				if(start.onSameChromosome(end)) {
+					int size = start.getDistance(end);
+					if(size>100000) {
+						System.out.println(size+"\t"+start+"\t"+end);
+					}
+				}
+			}
 			//System.out.println("===");
 			//System.out.println(end);
 			//System.out.println("===");
@@ -406,7 +414,6 @@ public class GridssCall extends GeneralCaller {
 			if(start.getPosition()>end.getPosition()) {
 				return null;
 			}
-			
 			String typeSigns = obtainTypeSigns(high);
 			String insertReplacement = typeSigns.charAt(0)+end.toString()+typeSigns.charAt(1);
 			boolean altLeft = high.toString().indexOf(insertReplacement)==0;
@@ -492,6 +499,7 @@ public class GridssCall extends GeneralCaller {
 			}
 			else {
 				type = SVType.TRANS;
+				//System.out.println(typeSigns);
 			}
 			StructuralVariation sv = new StructuralVariation(type,start,end, getName());
 			//bug GRIDSS does not become a SINS when delSize == 0
@@ -509,6 +517,10 @@ public class GridssCall extends GeneralCaller {
 				//s.setGt(vc.getGenotype(name));
 				sv.addSample(s);
 			}
+			if(vc.hasAttribute("HOMSEQ")) {
+				//System.out.println("Setting homology "+vc.getAttributeAsString("HOMSEQ", "-1"));
+				sv.setHomology(vc.getAttributeAsString("HOMSEQ", "-1"));
+			}
 			/*
 			if(sv.getStartEndLocation().contentEquals("CHROMOSOME_IV:1279174-1279196")) {
 				System.out.println(vc.toString());
@@ -519,7 +531,10 @@ public class GridssCall extends GeneralCaller {
 				System.exit(0);
 			}
 			*/
-			
+			int pos = high.toString().lastIndexOf(typeSigns.charAt(1));
+			boolean somethingAtEnd = !((pos+1) == high.toString().length());
+			sv.setSomethingAtEnd(somethingAtEnd);
+			sv.setTransDirection(typeSigns);
 			return sv;
 		}
 		return null;

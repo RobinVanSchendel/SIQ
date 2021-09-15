@@ -9,7 +9,7 @@ public class Sample {
 	private ArrayList<Caller> calls = new ArrayList<Caller>();
 	
 	public Sample(String name) {
-		this.name = name;
+		this.name = name.replace(".sorted.bam", "");
 	}
 	public String getName() {
 		return name;

@@ -24,6 +24,9 @@ public class PindelCall extends GeneralCaller{
 
 	public PindelCall(File pindelFile) {
 		this.vcf = pindelFile;
+		if(vcf!=null && !vcf.exists()) {
+			System.err.println("Pindel file "+vcf.getAbsolutePath()+" does not exist");
+		}
 	}
 
 	@Override
@@ -34,6 +37,9 @@ public class PindelCall extends GeneralCaller{
 
 	@Override
 	public void parseFile(SVController svc) {
+		if(vcf==null || !vcf.exists()) {
+			return;
+		}
 		if(vcf.getName().endsWith(".xlsx")) {
 			parseFileExcel(svc);
 		}
@@ -92,15 +98,35 @@ public class PindelCall extends GeneralCaller{
 	        		if(!insert.contentEquals("NA")) {
 	        			sv.setInsert(insert);
 	        		}
-	        		String sample = row.getCell(headerLookup.get("Sample")).toString();
-	        		//Pindel does not remove .sorted.bam
-	        		sample = sample.replace(".sorted.bam", "");
-	        		Sample s = new Sample(sample);
+	        		String[] samples = null;
+	        		if(headerLookup.containsKey("SupportingSamples")) {
+		        		Cell c = row.getCell(headerLookup.get("SupportingSamples"));
+		        		//these are likely SNVs and are ignored here
+		        		if(c!=null) {
+			        		String sampleNames = c.toString();
+			        		samples = sampleNames.split(",");
+		        		}
+	        		}
+	        		//older version of Pindel don't have SupportingSamples as a column
+	        		else {
+	        			Cell c = row.getCell(headerLookup.get("Sample"));
+		        		//these are likely SNVs and are ignored here
+		        		if(c!=null) {
+			        		String sampleNames = c.toString();
+			        		samples = sampleNames.split(",");
+		        		}
+	        		}
+
 	        		PindelCaller m = new PindelCaller(null);
 	    			m.process();
-	    			s.addCall(m);
-	    			//s.setGt(vc.getGenotype(name));
-	    			sv.addSample(s);
+	    			if(samples!=null) {
+		    			for(String sample: samples) {
+			        		Sample s = new Sample(sample);
+			    			s.addCall(m);
+			    			//s.setGt(vc.getGenotype(name));
+			    			sv.addSample(s);
+		    			}
+	    			}
 	        		//System.out.println(sv.toOneLineString(null));
 	        		//PindelEvent p = PindelEvent.parsePindelEvent(row, headerLookup);
 	        		//System.out.println(p);
@@ -131,6 +157,8 @@ public class PindelCall extends GeneralCaller{
 			return SVType.TDINS;
 		case "INV":
 			return SVType.INV;
+		case "INVINS":
+			return SVType.INVINS;
 		default:
 			System.err.println("I don't have a type for: "+type);
 		}

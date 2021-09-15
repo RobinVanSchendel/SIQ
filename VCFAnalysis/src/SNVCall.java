@@ -1,7 +1,9 @@
 import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder.OutputType;
@@ -10,6 +12,7 @@ import htsjdk.variant.vcf.VCFHeader;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,6 +24,7 @@ import java.util.Locale;
 import java.util.Scanner;
 
 import controller.PindelController;
+import controller.VCFController;
 
 
 public class SNVCall {
@@ -37,7 +41,25 @@ public class SNVCall {
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\createAndCombineGVCF_Project_Juul.vcf");
 		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
 		//File vcf = new File("E:\\temp\\createAndCombineGVCF_Project_4TLS.vcf");
-		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\20200403_gvcf_LUMC-003-001_arab_filtered.vcf");
+		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\SNVs\\20190313_gvcf_xf677_project_filtered.vcf");
+		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\WGS_LUMC-003-001_Hartwig\\Analysis\\20200403_gvcf_LUMC-003-001_arab_filtered.vcf");
+		//File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\bams\\worms\\Pindel_Raw\\LUMC-001-010\\20201019_gvcf_LUMC-001-010_Genotype_gvcf.txt");
+		File vcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\LUMC-001-101\\Analysis\\GATK");
+		ArrayList<File> vcfs = getVCFFiles(vcf);
+		VCFController vcfC = new VCFController();
+		for(File f: vcfs) {
+			vcfC.addFile(f);
+		}
+		HashMap<String, Integer> Generations = createLookupTableGen(new File("C:\\Users\\rvanschendel\\git\\test_robin\\MMR_java\\wormSampleGen.txt"));
+		HashMap<String, String> WormDB = createLookupTable(new File("C:\\Users\\rvanschendel\\git\\test_robin\\MMR_java\\wormDB.txt"));
+		vcfC.setGenerations(Generations);
+		vcfC.setWormDB(WormDB);
+		File pindel = new File("C:\\Users\\rvanschendel\\git\\test_robin\\MMR_java\\Curated.txt");
+		PindelController pc = new PindelController(pindel);
+		pc.parsePindel(true);
+		vcfC.setPindelController(pc);
+		vcfC.printVCFs();
+		System.exit(0);
 		//cross check locations with SVs
 		//File pindel = new File("C:\\Users\\rvanschendel\\Dropbox\\4TLS_Paper\\NGS data\\Pindel_Analysis.txt");
 		Scanner scan = new Scanner(new File("printToVCF.txt"));
@@ -46,9 +68,10 @@ public class SNVCall {
 			String line = scan.nextLine();
 			locs.add(line);
 		}
-		File pindel = null;
-		PindelController pc = new PindelController(pindel);
+		scan.close();
 		boolean excludeINVandTD = true;
+		
+
 		
 		pc.parsePindel(excludeINVandTD);
 		HashMap<String,Integer> snvCounts = new HashMap<String,Integer>();
@@ -72,6 +95,7 @@ public class SNVCall {
         vcw.setHeader(header);
         ArrayList<String> al = header.getSampleNamesInOrder();
         HashMap<String,ArrayList<String>> strains = getStrains(al);
+    	VariantContextBuilder vcb = new VariantContextBuilder();
         
         StringBuffer sb = new StringBuffer("Location");
         for(String s: al){
@@ -80,7 +104,7 @@ public class SNVCall {
         }
         System.out.println(sb.toString());
         outputAllWriter.write(sb.toString()+"\n");
-        String uniqueHeader = "Genotype\tChr\tPos\tLocation\tSample\tRef\tAlt\tMutation\tGQ(Phred-based quality)\tDP\tnrHomCallInSet\tnonhomRefCall\tnoCall\tphased\tnonhomRefCallStrains\tRemark\tDistanceToPindelEvent";
+        String uniqueHeader = "Genotype\tChr\tPos\tLocation\tSample\tRef\tAlt\tMutation\tGQ(Phred-based quality)\tDP\tnrHomCallInSet\tnonhomRefCall\tnoCall\tphased\tnonhomRefCallStrains\tRemark\tDistanceToPindelEvent\t#Generations\tSNV_per_generation";
         System.out.println(uniqueHeader);
         outputUniqueWriter.write(uniqueHeader+"\n");
         outputDiffFromZeroWriter.write(uniqueHeader+"\n");
@@ -89,6 +113,8 @@ public class SNVCall {
         while(it.hasNext()){
         	sb = new StringBuffer();
         	VariantContext vc = it.next();
+
+
         	//only SNPs at the moment!
         	if(!vc.isSNP()) {
         		//System.out.println(vc);
@@ -223,20 +249,23 @@ public class SNVCall {
         			//System.out.println(hetCall);
         			//System.out.println(lastUniqueHet);
         			String ref = vc.getReference().getBaseString();
-        			String alt = lastUniqueHet.getAllele(0).getBaseString();
+        			String alt = getAlt(lastUniqueHet.getAlleles());
         			//this is not a correct SNV position, but probably overlaps with a cnv
         			String hetCallString = lastUniqueHet.getAD()[0]+"|"+lastUniqueHet.getAD()[1];
         			        			
         			
-        			if(!alt.equals("*")) {
+        			if(alt != null && !alt.equals("*")) {
 	        			String mut = getMutation(ref, alt);
 	        			String remark = "";
 	        			//if(nonhomRefCall == 1 && lastUniqueHom.getGQ()>=40 && lastUniqueHom.getDP()>=8) {
-	        				remark = hetCallString; 
+	        				remark = hetCallString;
+	        				//get a percentage
+	        				double sum = lastUniqueHet.getAD()[0]+lastUniqueHet.getAD()[1];
+	        				remark = ""+(lastUniqueHet.getAD()[1]/sum);
 	        			//}
 	        			int distance = pc.getDistance(lastUniqueHet.getSampleName(), location);
 	        			String output =	key+"\t"+chr+"\t"+locationPos+"\t"+location+"\t"+lastUniqueHet.getSampleName()+"\t"+ref+"\t"+alt+"\t"+mut+"\t"+lastUniqueHet.getGQ()+"\t"+lastUniqueHet.getDP()+"\t"+homCallInSet+"\t"+nonhomRefCall+"\t"+noCall+"\t"+phased+"\t"+nonhomRefCallStrains+"\t"+remark+"\t"+distance+"\t"+homrefCall+"\t"+vc.getContig();
-	        			//utputUniqueWriter.write(output+"\n");
+	        			outputUniqueWriter.write(output+"\n");
 	        			//System.out.println(output);
         			}
         			
@@ -252,7 +281,6 @@ public class SNVCall {
         			String alt = lastUniqueHom.getAllele(0).getBaseString();
         			//this is not a correct SNV position, but probably overlaps with a cnv
         			        			
-        			
         			if(!alt.equals("*")) {
 	        			String mut = getMutation(ref, alt);
 	        			String remark = "";
@@ -261,7 +289,34 @@ public class SNVCall {
 	        			}
 	        			uniqueCounter++;
 	        			int distance = pc.getDistance(lastUniqueHom.getSampleName(), location);
-	        			String output =	key+"\t"+chr+"\t"+locationPos+"\t"+location+"\t"+lastUniqueHom.getSampleName()+"\t"+ref+"\t"+alt+"\t"+mut+"\t"+lastUniqueHom.getGQ()+"\t"+lastUniqueHom.getDP()+"\t"+homCallInSet+"\t"+nonhomRefCall+"\t"+noCall+"\t"+phased+"\t"+nonhomRefCallStrains+"\t"+remark+"\t"+distance;
+	        			String sampleName = lastUniqueHom.getSampleName();
+	        			if(sampleName.endsWith("_R1")) {
+	        				sampleName = sampleName.replace("_R1", "");
+	        			}
+	        			int generations = -1;
+	        			if(Generations.containsKey(sampleName)) {
+	        				generations = Generations.get(sampleName);
+	        			}
+	        			else {
+	        				//let's try to derive it
+	        				String[] parts = sampleName.split("-");
+	        				if(parts.length==2) {
+	        					String total = "";
+	        					for(int index = 0;index<parts[1].length();index++) {
+	        						char c = parts[1].charAt(index);
+	        						if(Character.isDigit(c)) {
+	        							total+=c;
+	        						}
+	        					}
+	        					generations = Integer.parseInt(total);
+	        				}
+	        				//System.err.println(sampleName);
+	        			}
+	        			
+	        			//System.out.println(generations);
+	        			//System.out.println(genotype);
+	        			
+	        			String output =	key+"\t"+chr+"\t"+locationPos+"\t"+location+"\t"+lastUniqueHom.getSampleName()+"\t"+ref+"\t"+alt+"\t"+mut+"\t"+lastUniqueHom.getGQ()+"\t"+lastUniqueHom.getDP()+"\t"+homCallInSet+"\t"+nonhomRefCall+"\t"+noCall+"\t"+phased+"\t"+nonhomRefCallStrains+"\t"+remark+"\t"+distance+"\t"+generations+"\t"+1/(double)generations;
 	        			outputUniqueWriter.write(output+"\n");
 	        			//System.out.println(output);
         			}
@@ -359,7 +414,8 @@ public class SNVCall {
 	        	}
         	}
         	
-        	if(totalGroupsHaveSNV == 1 && maxGQ>90) {// && tempNames.size()<vc.getSampleNames().size()) {
+//        	if(totalGroupsHaveSNV >= 1 && maxGQ>90) {// && tempNames.size()<vc.getSampleNames().size()) {
+        	if(totalGroupsHaveSNV == 1 && maxGQ>90) {
 	        	for(String n: tempNames) {
 	        		if(n.contentEquals("atku80-SALK-016627-5-2") || n.contentEquals("atbrca1-1-SALK-014731-5-16")) {
 	        			continue;
@@ -376,6 +432,17 @@ public class SNVCall {
 	        		}
 	        	}
         	}
+        	//for inspection purposes
+        	/*
+        	if(tempNames.contains("XF1648-0") && maxGQ>90) {
+        		//System.out.println(totalGroupsHaveSNV);
+        		if(totalGroupsHaveSNV>1 && totalGroupsHaveSNV<=3) {
+        			System.out.println(totalGroupsHaveSNV);
+        			System.out.println(String.join("\n", tempNames));
+        			System.out.println(vc.getContig()+":"+vc.getStart());
+        		}
+        	}
+        	*/
         	
         	//System.exit(0);
         	/*
@@ -450,6 +517,30 @@ public class SNVCall {
         System.out.println("written "+uniqueCounter+" UNIQUE to "+outputUnique.getAbsolutePath());
         System.out.println("written outputDiffFromZeroWriter to "+outputNonUnique.getAbsolutePath());
         
+	}
+
+	private static ArrayList<File> getVCFFiles(File vcf) {
+		ArrayList<File> vcfs = new ArrayList<File>();
+		if(vcf.isDirectory()) {
+			for(File f: vcf.listFiles()) {
+				vcfs.addAll(getVCFFiles(f));
+			}
+		}
+		else {
+			if(vcf.getName().endsWith(".vcf")) {
+				vcfs.add(vcf);
+			}
+		}
+		return vcfs;
+	}
+
+	private static String getAlt(List<Allele> alleles) {
+		for(Allele a: alleles) {
+			if(a.isNonReference()) {
+				return a.getBaseString();
+			}
+		}
+		return null;
 	}
 
 	private static boolean isZeroStrain(String name) {
@@ -547,6 +638,54 @@ public class SNVCall {
 			return "GC->CG";
 		}
 		return ref+"->"+alt;
+	}
+	public static HashMap<String, Integer> createLookupTableGen(File file) {
+		if(!file.exists()) {
+			System.err.println("Lookup file "+file+" does not exist");
+			System.exit(0);
+		}
+		try {
+			Scanner s =new Scanner(file);
+			HashMap<String, Integer> lookup = new HashMap<String, Integer>();
+			while(s.hasNextLine()) {
+				String line = s.nextLine();
+				String[] parts = line.split("\t");
+				if(parts.length>=2) {
+					lookup.put(parts[0],Integer.parseInt(parts[1]));
+				}
+			}
+			s.close();
+			return lookup;
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	static HashMap<String, String> createLookupTable(File file) {
+		if(!file.exists()) {
+			System.err.println("Lookup file "+file+" does not exist");
+		}
+		try {
+			Scanner s =new Scanner(file);
+			HashMap<String, String> lookup = new HashMap<String, String>();
+			while(s.hasNextLine()) {
+				String line = s.nextLine();
+				String[] parts = line.split("\t");
+				if(parts.length>=2) {
+					String text = parts[1].replaceAll("\"", "");
+					lookup.put(parts[0].toUpperCase(),text);
+				}
+			}
+			s.close();
+			return lookup;
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
 	}
 
 }

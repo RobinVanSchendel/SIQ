@@ -1,36 +1,41 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 
+import controller.G4Controller;
 import controller.SVController;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 
-public class CombineAllCallersArab {
+public class CombineAllCallersHuman {
 
 	public static void main(String[] args) {
-		//File genomeFile = new File("E:\\genomes\\arabidopsis\\Arabidopsis_thaliana.TAIR10.28.dna.genome.fa");
-		File genomeFile = new File("E:\\Project_Bert_TDNA_insertions\\Arabidopsis_thaliana.TAIR10.dna.toplevel_gfp_dsred_only.fa");
+		File genomeFile = new File("E:\\genomes\\homo_sapiens\\GRCh38.fa");
 		ReferenceSequenceFile rsf = ReferenceSequenceFileFactory.getReferenceSequenceFile(genomeFile);
-		File dir = new File("E:\\Project_Bert_TDNA_insertions\\CNVcallers\\");
+		File dir = new File("E:\\temp\\tnsl_patients\\");
 		
-		int maxSupportingSamples = 17;
-		int debugLocation = -1;
+		boolean searchG4 = false;
+		G4Controller g4s = null;
 		
+		if(searchG4) {
+			g4s = new G4Controller();
+			g4s.fillHash(rsf);
+		}
+		
+		int maxSupportingSamples = 1;
+		int debugLocation = 10221366;
 		
 		SVController svc = new SVController(rsf, maxSupportingSamples);
 		svc.setDebugLocation(debugLocation);
-		/*
 		try {
 			svc.addLookupNames("mappingNames.txt");
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		*/
 		boolean debug = true;
 		
 		//perform GRIDSS
-		//GRIDSS crashed on the files
+		//File vcf = new File("E:\\temp\\gridss.vcf");
 		File vcf = new File(dir.getAbsolutePath()+File.separatorChar+"gridss.vcf");
 		GridssCall gc = new GridssCall(vcf);
 		//System.out.println("Starting parse");
@@ -43,9 +48,10 @@ public class CombineAllCallersArab {
 		}
 		
 		//Perform manta
+		//File mantaVCF = new File("E:\\temp\\diploidSV.vcf.gz");
 		File mantaVCF = new File(dir.getAbsolutePath()+File.separatorChar+"diploidSV.vcf.gz");
+		System.out.println("Manta file exists? "+mantaVCF.exists());
 		Manta manta = new Manta(mantaVCF);
-		//Manta manta = new Manta(null);
 		if(debug) {
 			d("Parsing Manta");
 		}
@@ -56,8 +62,9 @@ public class CombineAllCallersArab {
 		
 		//GATK
 		//System.out.println("Ended parse");
-		//File GATKvcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\LUMC-001-101\\Analysis\\GATK\\SAIL.vcf");
-		File GATKvcf = null;
+		//File GATKvcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\20190313_gvcf_brc-1_project.genotyped.vcf");
+		File GATKvcf = null;//new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
+		//File GATKvcf = null;
 		GATKCall gatkCall = new GATKCall(GATKvcf);
 		if(debug) {
 			d("Parsing GATK");
@@ -66,10 +73,13 @@ public class CombineAllCallersArab {
 		if(debug) {
 			d("Parsed GATK "+svc.countEvents());
 		}
+		
 		//perform Pindel
-		//it is frequently wrong, so place it last to not interfere with the merging
-		File pindelFile = null;
-		//new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\LUMC-001-101\\Analysis\\Pindel\\20210222_17tonsoku_Pindel_true.xlsx");
+		//File pindelFile = new File("E:\\temp\\20200320_Pindel_Brc-1.xlsx");
+		//File pindelFile = null;//new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Primase_Paper_Robin\\20191014_Project_Primase_For_Paper_TRUE.xlsx");
+		//File f = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\PindelPlotter\\20201207_Pindel_All.xlsx");
+		File pindelFile = new File(dir.getAbsolutePath()+File.separatorChar+"pindel.xlsx");
+		//File pindelFile = null;
 		PindelCall pindel = new PindelCall(pindelFile);
 		if(debug) {
 			d("Parsing Pindel");
@@ -79,9 +89,10 @@ public class CombineAllCallersArab {
 			d("Parsed Pindel "+svc.countEvents());
 		}
 		
+		svc.setG4Controller(g4s);
 		svc.addMetaData();
 		svc.printSVs(maxSupportingSamples);
-		//File locs = new File("project_brc-1_correct.txt");
+		//File locs = new File("project_primase_combined.txt");
 		//svc.printLocations(locs);
 		
 		System.out.println("the end");

@@ -13,13 +13,18 @@ import htsjdk.variant.vcf.VCFHeader;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.zip.GZIPInputStream;
 
 import controller.PindelController;
 import controller.SVController;
@@ -39,6 +44,10 @@ public class Manta extends GeneralCaller{
 
 	public Manta(File vcf) {
 		this.vcf = vcf;
+		if(vcf!=null && !vcf.exists()) {
+			System.err.println("Manta file "+vcf.getAbsolutePath()+" does not exist");
+			System.exit(0);
+		}
 	}
 
 	public static void test(String[] args) throws IOException {
@@ -572,6 +581,14 @@ public class Manta extends GeneralCaller{
     	}
     	if(type != null) {
     		sv = new StructuralVariation(type, start, end, getName());
+    		if(type == SVType.TRANS) {
+    			Allele high = vc.getAltAlleleWithHighestAlleleCount();
+    			String typeSigns = obtainTypeSigns(high);
+    			int pos = high.toString().lastIndexOf(typeSigns.charAt(1));
+				boolean somethingAtEnd = !((pos+1) == high.toString().length());
+				sv.setSomethingAtEnd(somethingAtEnd);
+				sv.setTransDirection(typeSigns);
+    		}
     	}
     	else {
    			System.err.println(end);
@@ -592,6 +609,12 @@ public class Manta extends GeneralCaller{
     	String insert = (String) vc.getAttribute("SVINSSEQ");
     	if(insert != null) {
     		sv.setInsert(insert);
+    	}
+    	
+    	//add homology
+    	if(vc.hasAttribute("HOMSEQ")) {
+    		String hom = vc.getAttributeAsString("HOMSEQ", "-1");
+    		sv.setHomology(hom);
     	}
     	
     	//add Allele info for now
@@ -667,7 +690,26 @@ public class Manta extends GeneralCaller{
 
 	@Override
 	public void parseFile(SVController svc) {
-		VCFFileReader reader = new VCFFileReader(vcf, false);
+		if(vcf==null) {
+			return;
+		}
+		File f = vcf;
+		if(vcf.getName().endsWith(".gz")) {
+			String name = vcf.getAbsolutePath();
+			Path source = Paths.get(name);
+			name = name.substring(0, name.length()-3);
+			Path target = Paths.get(name);
+			if(!target.toFile().exists()) {
+				try {
+					decompressGzipNio(source,target);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			f = target.toFile();
+		}
+		VCFFileReader reader = new VCFFileReader(f, false);
         CloseableIterator<VariantContext> it = reader.iterator();
         while(it.hasNext()){
         	VariantContext vc = it.next();
@@ -684,5 +726,14 @@ public class Manta extends GeneralCaller{
 	public String getName() {
 		return MantaCaller.nameCaller;
 	}
+	public static void decompressGzipNio(Path source, Path target) throws IOException {
+
+	      try (GZIPInputStream gis = new GZIPInputStream(
+	                                    new FileInputStream(source.toFile()))) {
+
+	          Files.copy(gis, target);
+	      }
+
+	  }
 
 }

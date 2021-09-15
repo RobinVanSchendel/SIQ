@@ -19,32 +19,31 @@ public class PindelEvent {
 	private String lms;
 	private String leftGenomic;
 	private String rightGenomic;
-	public static PindelEvent parsePindelEvent(String s, String header) {
-		String[] headerParts = header.split("\t");
+	public static PindelEvent parsePindelEvent(String s) {
 		String[] parts = s.split("\t");
 		PindelEvent p = new PindelEvent();
-		for(int i=0;i<headerParts.length;i++) {
-			String head = headerParts[i];
-			String part = parts[i];
-			//System.out.println(head+"\t"+part);
-			if(head.equals("Sample")) {
-				p.setSample(part);
-			}
-			else if(head.equals("Chr")) {
-				p.setChr(part);
-			}
-			else if(head.equals("Start")) {
-				p.setStart(part);
-			}
-			else if(head.equals("End")) {
-				p.setEnd(part);
-			}
-			else if(head.equals("SVType")) {
-				p.setSVType(part);
-			}
+		
+		//only the TRUE events
+		if(!parts[2].startsWith("TRUE")) {
+			return null;
 		}
+		//System.out.println(head+"\t"+part);
+		//System.out.println(s);
+		p.setSample(parts[1]);
+		String location = parts[0].split("_")[0];
+		String type = parts[0].split("_")[1];
+		p.setSVType(type);
+		p.setLocation(location);
+		//System.out.println("Created "+p);
 		return p;
 		
+	}
+	private void setLocation(String location) {
+		String[] parts = location.split(":");
+		this.chr = parts[0];
+		String[] parts2 = parts[1].split("-");
+		this.start = Integer.parseInt(parts2[0]);
+		this.end = Integer.parseInt(parts2[1]);
 	}
 	public String getSVTypeOrig() {
 		return svtype;

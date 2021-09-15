@@ -11,6 +11,7 @@ public class CombineAllCallers {
 	public static void main(String[] args) {
 		File genomeFile = new File("E:\\genomes\\caenorhabditis_elegans\\c_elegans.WS235.genomic.fa");
 		ReferenceSequenceFile rsf = ReferenceSequenceFileFactory.getReferenceSequenceFile(genomeFile);
+		File dir = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\MMP\\combined");
 		
 		boolean searchG4 = true;
 		G4Controller g4s = null;
@@ -21,7 +22,7 @@ public class CombineAllCallers {
 		}
 		
 		int maxSupportingSamples = 1;
-		int debugLocation = 4809245;
+		int debugLocation = 10221366;
 		
 		SVController svc = new SVController(rsf, maxSupportingSamples);
 		svc.setDebugLocation(debugLocation);
@@ -33,22 +34,22 @@ public class CombineAllCallers {
 		}
 		boolean debug = true;
 		
-		//perform Pindel
-		//File pindelFile = new File("E:\\temp\\20200320_Pindel_Brc-1.xlsx");
-		File pindelFile = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Primase_Paper_Robin\\20191014_Project_Primase_For_Paper_TRUE.xlsx");
-		PindelCall pindel = new PindelCall(pindelFile);
+		//perform GRIDSS
+		//File vcf = new File("E:\\temp\\gridss.vcf");
+		File vcf = new File(dir.getAbsolutePath()+File.separatorChar+"gridss.vcf");
+		GridssCall gc = new GridssCall(vcf);
+		//System.out.println("Starting parse");
 		if(debug) {
-			d("Parsing Pindel");
+			d("Parsing Gridss");
 		}
-		pindel.parseFile(svc);
+		gc.parseFile(svc);
 		if(debug) {
-			d("Parsed Pindel "+svc.countEvents());
+			d("Parsed Gridss "+svc.countEvents());
 		}
 		
-
 		//Perform manta
 		//File mantaVCF = new File("E:\\temp\\diploidSV.vcf.gz");
-		File mantaVCF = new File("E:\\temp\\Primase\\diploidSV.vcf.gz");
+		File mantaVCF = new File(dir.getAbsolutePath()+File.separatorChar+"diploidSV.vcf.gz");
 		System.out.println("Manta file exists? "+mantaVCF.exists());
 		Manta manta = new Manta(mantaVCF);
 		if(debug) {
@@ -59,21 +60,10 @@ public class CombineAllCallers {
 			d("Parsed Manta "+svc.countEvents());
 		}
 		
-		//perform GRIDSS
-		//File vcf = new File("E:\\temp\\gridss.vcf");
-		File vcf = new File("E:\\temp\\Primase\\gridss.vcf");;
-		GridssCall gc = new GridssCall(vcf);
-		//System.out.println("Starting parse");
-		if(debug) {
-			d("Parsing Gridss");
-		}
-		gc.parseFile(svc);
-		if(debug) {
-			d("Parsed Gridss "+svc.countEvents());
-		}
+		//GATK
 		//System.out.println("Ended parse");
 		//File GATKvcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\MA lines - BRC-1 POLQ-1 analysis\\20190313_gvcf_brc-1_project.genotyped.vcf");
-		File GATKvcf = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
+		File GATKvcf = null;//new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Next Sequence Run\\Analysis\\createAndCombineGVCF_Project_Primase.vcf");
 		//File GATKvcf = null;
 		GATKCall gatkCall = new GATKCall(GATKvcf);
 		if(debug) {
@@ -82,6 +72,21 @@ public class CombineAllCallers {
 		gatkCall.parseFile(svc);
 		if(debug) {
 			d("Parsed GATK "+svc.countEvents());
+		}
+		
+		//perform Pindel
+		//File pindelFile = new File("E:\\temp\\20200320_Pindel_Brc-1.xlsx");
+		//File pindelFile = null;//new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Primase_Paper_Robin\\20191014_Project_Primase_For_Paper_TRUE.xlsx");
+		//File f = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\NGS\\PindelPlotter\\20201207_Pindel_All.xlsx");
+		File pindelFile = new File(dir.getAbsolutePath()+File.separatorChar+"pindel.xlsx");
+		//File pindelFile = null;
+		PindelCall pindel = new PindelCall(pindelFile);
+		if(debug) {
+			d("Parsing Pindel");
+		}
+		pindel.parseFile(svc);
+		if(debug) {
+			d("Parsed Pindel "+svc.countEvents());
 		}
 		
 		svc.setG4Controller(g4s);

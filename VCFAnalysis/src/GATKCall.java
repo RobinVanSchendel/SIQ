@@ -145,6 +145,9 @@ public class GATKCall extends GeneralCaller{
 
 	@Override
 	public void parseFile(SVController svc) {
+		if(vcf==null) {
+			return;
+		}
 		VCFFileReader reader = new VCFFileReader(vcf, false);
         CloseableIterator<VariantContext> it = reader.iterator();
         int counter = 0;
