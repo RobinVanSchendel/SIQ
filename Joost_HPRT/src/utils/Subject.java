@@ -263,11 +263,16 @@ public class Subject {
 		this.minPassedPrimer = (int) minPassedPrimer;
 	}
 	public int getMinLocationStartEvent() {
+		if(this.endOfLeftPrimer==0 && this.minPassedPrimer == 0) {
+			return -1;
+		}
 		return this.endOfLeftPrimer+this.minPassedPrimer;
 	}
 	public int getMinLocationEndEvent() {
+		if(this.startOfRightPrimer==0 && this.minPassedPrimer == 0) {
+			return -1;
+		}
 		return this.startOfRightPrimer-this.minPassedPrimer;
-		
 	}
 	public boolean isLeftPrimerSet() {
 		return leftPrimerSet;
@@ -330,7 +335,7 @@ public class Subject {
 			//bug as RichSequence will return lowercase DNA, so make it uppercase
 			hdrCS = new CompareSequence(this,hdr.seqString().toUpperCase(),null, null, true, "");
 			hdrCS.determineFlankPositions(false);
-			System.err.println(hdrCS.toStringOneLine());
+			//System.err.println(hdrCS.toStringOneLine());
 		}
 		if(hdrCS!=null) {
 			if(hdrCS.getDel().contentEquals(cs.getDel()) && hdrCS.getInsertion().contentEquals(cs.getInsertion())) {

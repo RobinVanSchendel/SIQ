@@ -31,15 +31,15 @@ public class TestSingleSequence {
 		
 		//FILL IN
 		
-		String refFile = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\PPOlocus.txt";
+		String refFile = "E:\\temp\\PPO_RBrev_HO.fa";
 		//String seqS = "gctgttgctcgtatttcttcaggaactatctacagctcctcactctttccaaatcgcgcaccgcccggaagaattttgctgttgaactacattggcgggtctacaaacaccggaattctgtccaaggtaaaaaacagcaaacactggtaccacatctttattcaaccaagtaaacctaagaactg";
-		String seqS = "GCTGTTGCTCGTATTTCTTCAGGAACTATCTACAGCTCCTCACTCTTTCCAAATCGCGCACCGCCCGGAAGAATTTTGCTGTTGAACATGATTGGCGGGTCTACAAACACCGGAATTCTGTCCAAGGTAAAAAACAGCAAACACTTGTAACACATCTTTATTCAACCAAGTAAACCTAAGAACTG";
-		String left = "attttgctgttgaactacat";
-		String right = "tggcgggtctacaaacaccgg";
-		String leftPrimer = "gctgttgctcgtatttcttc";
-		String rightPrimer = "cagttcttaggtttacttgg";
+		String seqS = "CTGAATGGCGAATGAGCTTGAGCTTGGATCAGATTGTCGTTTCCCGCCTTCAGTTTGCGATCGCGTAGTTCAACAGCAAAATTCTTCCGGGCGGTGCGCGATTTGGAAAGAGTGAGGAGCTGTAGATAGTTCCTGAAGAAATACGAGCAACAGC";
+		String left = "AATAAACTATCAGTGTTTGA";
+		String right = "ATGTAGTTCAACAGCAAAAT";
+		String leftPrimer = "CTGAATGGCGAATGAGCTTG";
+		String rightPrimer = "GCTGTTGCTCGTATTTCTTC";
 		
-		File hdr = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\PPO_HDR.txt");
+		File hdr = null; //new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\PPO_HDR.txt");
 		RichSequence hdrSeq = null;
 		//String left = null;
 		//String right = null;
@@ -97,10 +97,12 @@ public class TestSingleSequence {
 			subjectObject.setHDR(hdrSeq);
 			
 			CompareSequence kmerWith = new CompareSequence(subjectObject,seqS.toUpperCase(),null, null, true, "");
+			
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);
 			//kmerWith.setAndDetermineCorrectRange(0.05);
 			//kmerWith.maskSequenceToHighQualityRemove();
+			
 			kmerWith.determineFlankPositions(false);
 			String outputKMER = kmerWith.toStringOneLine();
 			System.out.println(outputKMER);

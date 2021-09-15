@@ -30,34 +30,25 @@ public class DemultiplexMarco {
 
 	public static void main(String[] args) {
 		
-		// TODO Auto-generated method stub
-		File dir = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Marco_Signature_Screen");
-		File dirOut = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Marco_Signature_Screen\\javaDemultiplex");
+		File dir = new File("E:\\temp\\GenomeScan104596\\MB");
+		File dirOut = new File("E:\\temp\\GenomeScan104596\\MB\\out");
 		String endOfBarCodeString = "ggtgtttcgtccttt".toUpperCase();
 		String startOfBarCodeString = "gcatagctcttaaac".toUpperCase();
+		boolean write = true;
+		boolean countNonMatched = false;
+		boolean addBarcodeToFQ = true;
 		
 		ArrayList<PairedEnd> files = getPairedEnd(dir);
-		HashMap<String, String> barcodes = createHashMap("screenBarcodes.txt");
+		HashMap<String, String> barcodes = createHashMap("104596_barcodes_MB.txt");
 		try {
 			for(PairedEnd pe: files) {
-				if(!pe.getR1().getName().contains("Sample4")) {
-					continue;
+				if(!pe.getR1().getName().contains("567")) {
+					//continue;
 				}
 				//System.out.println(pe.toString());
 				//HashMap<String, File> hmR2 = createHashMap("hashmap.txt", pe.getR2());
 				HashMap<String, FastqWriter> hmWriterR1 = new HashMap<String, FastqWriter>();
 				HashMap<String, FastqWriter> hmWriterR2 = new HashMap<String, FastqWriter>();
-				
-				/*
-				for(String key: hmR1.keySet()) {
-					System.out.println(key+"\t"+hmR1.get(key));
-					hmWriterR1.put(key, new FastqWriterBuilder(hmR1.get(key)).build());
-				}
-				for(String key: hmR2.keySet()) {
-					System.out.println(key+"\t"+hmR2.get(key));
-					hmWriterR2.put(key, new FastqWriterBuilder(hmR2.get(key)).build());
-				}
-				*/
 				
 				FastqDataStore datastoreR1 = new FastqFileDataStoreBuilder(pe.getR1())
 						.qualityCodec(FastqQualityCodec.SANGER)
@@ -72,28 +63,43 @@ public class DemultiplexMarco {
 				StreamingIterator<FastqRecord> iterR2 = datastoreR2.iterator();
 				
 				int nr = 0;
+				int hit = 0;
+				int nonhit = 0;
 				HashMap<String, Integer> barcodeHits = new HashMap<String,Integer>();
 				while(iterR1.hasNext()) {
 					FastqRecord fqR1 = iterR1.next();
 					FastqRecord fqR2 = iterR2.next();
-					String R1S = fqR1.getNucleotideSequence().toString();
+					//String R1S = fqR1.getNucleotideSequence().toString();
 					String R2S = fqR2.getNucleotideSequence().toString();
 					
 					//System.out.println(R1S.substring(0, endOfBarCode));
 					int start = R2S.indexOf(startOfBarCodeString);
 					int end = R2S.indexOf(endOfBarCodeString);
-					if(start>=0 && end>=0 && end > start) {
+					if(start>=0 && end>=0 && end > (start+startOfBarCodeString.length())) {
 						start += startOfBarCodeString.length();
 						//System.out.println(R2S);
 						String barcode = R2S.substring(start, end);
 						String barcodeAlt = R2S.substring(start, end-1);
+						//System.out.println(barcode+" "+barcodes.containsKey(barcode));
+						//System.out.println(barcodeAlt);
+						//System.out.println(barcodes.get(barcode));
+						//System.out.println(barcodes.get(barcodeAlt));
+						//System.out.println();
 						//System.out.println(R2S.substring(start, end));
 						if(barcodes.containsKey(barcode) || barcodes.containsKey(barcodeAlt)) {
 							String foundBarcode = barcodes.get(barcode);
+							String correctBarcode = barcode;
+							
 							if(foundBarcode == null) {
 								//reset this when needed
-								//foundBarcode = barcodes.get(barcodeAlt);
-								foundBarcode = "library";
+								foundBarcode = barcodes.get(barcodeAlt);
+								correctBarcode = barcodeAlt;
+								//foundBarcode = "library";
+							}
+							//overwrite barcode if required
+							String barcodeLookup = foundBarcode;
+							if(addBarcodeToFQ) {
+								foundBarcode = "therecanonlybeone";
 							}
 							if(!barcodeHits.containsKey(foundBarcode)){
 								barcodeHits.put(foundBarcode, 0);
@@ -102,25 +108,45 @@ public class DemultiplexMarco {
 							//	System.out.println("key ["+key+"] ["+barcodeHits.get(key)+"]");
 							//}
 							//System.out.println(barcodeHits.size() +  barcodeHits.get(foundBarcode));
-							
 							barcodeHits.put(foundBarcode, barcodeHits.get(foundBarcode)+1);
 							
 							//Write to file
 							if(!hmWriterR1.containsKey(foundBarcode)) {
 								String fileName = pe.getR1().getName().replace("R1_001.fastq.gz", "");
-								hmWriterR1.put(foundBarcode, new FastqWriterBuilder(new File(dirOut.getAbsolutePath()+File.separatorChar+fileName+"_"+foundBarcode+"_R1.fastq")).build());
-								hmWriterR2.put(foundBarcode, new FastqWriterBuilder(new File(dirOut.getAbsolutePath()+File.separatorChar+fileName+"_"+foundBarcode+"_R2.fastq")).build());
+								fileName = fileName.replace("R1.fastq.gz", "");
+								if(write) {
+									hmWriterR1.put(foundBarcode, new FastqWriterBuilder(new File(dirOut.getAbsolutePath()+File.separatorChar+fileName+"_"+foundBarcode+"_R1.fastq")).build());
+									hmWriterR2.put(foundBarcode, new FastqWriterBuilder(new File(dirOut.getAbsolutePath()+File.separatorChar+fileName+"_"+foundBarcode+"_R2.fastq")).build());
+								}
+								else {
+									hmWriterR1.put(foundBarcode,null);
+									hmWriterR2.put(foundBarcode,null);
+								}
 								//hmWriterR2.put(key.getCombiBarcode(), new FastqWriterBuilder(new File(pe.getR2().getParent()+"\\"+key.getName()+"R2.fastq")).build());
 							}
-							hmWriterR1.get(foundBarcode).write(fqR1);
-							hmWriterR2.get(foundBarcode).write(fqR2);
+							if(write) {
+								if(addBarcodeToFQ) {
+									FastqRecord fqTestR1 = fqR1.toBuilder().comment("BC:"+barcodeLookup).build();
+									FastqRecord fqTestR2 = fqR2.toBuilder().comment("BC:"+barcodeLookup).build();
+									hmWriterR1.get(foundBarcode).write(fqTestR1);
+									hmWriterR2.get(foundBarcode).write(fqTestR2);
+								}
+								else {
+									hmWriterR1.get(foundBarcode).write(fqR1);
+									hmWriterR2.get(foundBarcode).write(fqR2);
+								}
+							}
+							hit++;
 						}
 						else {
-							if(!barcodeHits.containsKey(barcode)){
-								barcodeHits.put(barcode, 0);
+							if(countNonMatched) {
+								if(!barcodeHits.containsKey(barcode)){
+									barcodeHits.put(barcode, 0);
+								}
+								barcodeHits.put(barcode, barcodeHits.get(barcode)+1);
 							}
-							barcodeHits.put(barcode, barcodeHits.get(barcode)+1);
-							//System.out.println(barcodes.containsKey(barcodeAlt));
+							//System.out.println(barcode+" "+barcodeAlt);
+							nonhit++;
 						}
 						
 					}
@@ -155,23 +181,31 @@ public class DemultiplexMarco {
 					nr++;
 					if(nr%100000==0) {
 						System.out.println("Already processed "+nr+" records");
+						//System.out.println("hit "+hit+" non-hit: "+nonhit);
+						//System.out.println(hmWriterR1.size()+" different barcodes");
+						//System.exit(0);
+						//iterR1.close();
+						//iterR2.close();
 					}
 				}
-				System.out.println("found "+barcodeHits.size()+" barcodes");
+				//System.out.println("found "+barcodeHits.size()+" barcodes");
+				System.out.println(pe.getR2().getName()+"\tWritten\t"+hmWriterR1.size()+"\tfiles");
 				for(String key: barcodeHits.keySet()) {
-					System.out.println(pe.getR2().getName()+"\t"+key+"\t"+barcodeHits.get(key));
+					//System.out.println(pe.getR2().getName()+"\t"+key+"\t"+barcodeHits.get(key));
 				}
 				iterR1.close();
 				iterR2.close();
-				for(String key: hmWriterR1.keySet()) {
-					hmWriterR1.get(key).close();
-					//File f = hmR1.get(key);
-					//compressGZIP(f);
-				}
-				for(String key: hmWriterR2.keySet()) {
-					hmWriterR2.get(key).close();
-					//File f = hmR2.get(key);
-					//compressGZIP(f);
+				if(write) {
+					for(String key: hmWriterR1.keySet()) {
+						hmWriterR1.get(key).close();
+						//File f = hmR1.get(key);
+						//compressGZIP(f);
+					}
+					for(String key: hmWriterR2.keySet()) {
+						hmWriterR2.get(key).close();
+						//File f = hmR2.get(key);
+						//compressGZIP(f);
+					}
 				}
 			}
 			
@@ -204,6 +238,20 @@ public class DemultiplexMarco {
 						al.add(pe);
 					}
 				}
+				else if(R1.getName().endsWith("R1.fastq.gz")){
+					String str = R1.getAbsolutePath().replace("R1.fastq.gz", "R2.fastq.gz");
+					File R2 = new File(str);
+					String str3 = R1.getAbsolutePath().replace("R1.fastq.gz", "R3.fastq.gz");
+					File R3 = new File(str3);
+					if(R3.exists()) {
+						PairedEnd pe = new PairedEnd(R1, R3);
+						al.add(pe);
+					}
+					else if(R2.exists()) {
+						PairedEnd pe = new PairedEnd(R1, R2);
+						al.add(pe);
+					}
+				}
 			}
 		}
 		return al;
@@ -213,20 +261,33 @@ public class DemultiplexMarco {
 	private static HashMap<String, String> createHashMap(String string) {
 		HashMap<String, String> hm = new HashMap<String, String>();
 		System.out.println("Taking column 2 and 1 for barcode and ID");
+		int idColumn = 2;
+		int sgColumn = 3;
+		boolean takeRevCom = false;
+		boolean removeAAAC = true;
 		try {
 			Scanner s = new Scanner(new File(string));
 			while(s.hasNextLine()) {
 				String line = s.nextLine();
 				String[] parts = line.split("\t");
-				String revCom = Utils.reverseComplement(parts[1]).toUpperCase();
+				String revCom = parts[sgColumn].toUpperCase();
+				if(takeRevCom) {
+					revCom = Utils.reverseComplement(revCom);
+				}
 				//FastqWriter fw = new FastqWriterBuilder(outFile).build();
-				String id = parts[0].replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+				String id = parts[idColumn].replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+				
+				if(removeAAAC) {
+					revCom = revCom.substring(4);
+				}
+				//System.out.println("Adding ["+revCom+"] "+revCom.length());
 				hm.put(revCom, id);
 			}
 			s.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.exit(0);
 		}
 		System.out.println("Added "+hm.size()+" barcodes");
 		return hm;

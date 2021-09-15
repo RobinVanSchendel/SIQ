@@ -80,6 +80,8 @@ import javax.swing.table.TableColumnModel;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.biojava.bio.BioException;
@@ -174,8 +176,8 @@ public class GUI implements ActionListener, MouseListener {
 		//guiFrame.setIconImage(icon.getImage());
 		this.version = version;
 		this.pm = pm;
-		//this.switchToNGS(true);
-		switchToAB1(true);
+		this.switchToNGS(true);
+		//switchToAB1(true);
 		return;
     }
 	private void addOutputPanel() {
@@ -552,6 +554,10 @@ public class GUI implements ActionListener, MouseListener {
 		else if(e.getActionCommand().contentEquals("dirChooserPanel")) {
 			chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 			chooser.setMultiSelectionEnabled(false);
+			String dirString = dirChooserPanel.getText();
+			if(dirString!=null && dirString.length()>0) {
+				chooser.setCurrentDirectory(new File(dirString));
+			}
 			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
 				File dir = chooser.getSelectedFile();
 				if(dir.isDirectory()) {
@@ -716,8 +722,9 @@ public class GUI implements ActionListener, MouseListener {
 		Vector<NGS> v = ngsModel.getData();
 		boolean firstFile = true;
 		int totalRow = 0;
-		XSSFWorkbook workbook = new XSSFWorkbook();
-        XSSFSheet sheet = workbook.createSheet("rawData");
+		SXSSFWorkbook workbook = new SXSSFWorkbook(1000);
+        SXSSFSheet sheet = workbook.createSheet("rawData");
+       
 		for(NGS n: v) {
 			File tempInput = n.getOutput();
 			int index = 0;
@@ -754,9 +761,11 @@ public class GUI implements ActionListener, MouseListener {
 			try {
 				Scanner s = new Scanner(tempInput);
 				//to skip first line which contains the header
-				String dummy = s.nextLine();
-				if(totalRow==0) {
-					printLineToExcel(sheet,dummy,totalRow++);
+				if(s.hasNextLine()) {
+					String dummy = s.nextLine();
+					if(totalRow==0) {
+						printLineToExcel(sheet,dummy,totalRow++);
+					}
 				}
 				while(s.hasNext()) {
 					String line = s.nextLine();
@@ -835,6 +844,7 @@ public class GUI implements ActionListener, MouseListener {
 		
 		try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
             workbook.write(outputStream);
+            outputStream.close();
         } catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -844,6 +854,7 @@ public class GUI implements ActionListener, MouseListener {
 		}
         try {
 			workbook.close();
+			workbook.dispose();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -851,7 +862,7 @@ public class GUI implements ActionListener, MouseListener {
 		
 	}
 
-	private void printLineToExcel(XSSFSheet sheet, String line, int rowNr) {
+	private void printLineToExcel(SXSSFSheet sheet, String line, int rowNr) {
 		 Row row = sheet.createRow(rowNr);
 		 String[] parts = line.split("\t");
 		 int columnCount = 0;
