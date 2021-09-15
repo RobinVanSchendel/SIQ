@@ -55,16 +55,16 @@ public class InsertionSolverTwoSides {
 	}
 	private void checkDNA() {
 		if(!left.matches("[atgc]*")){
-			System.err.println("left DNA contains different sequence than [agtc]");
-			System.err.println(left);
+			//System.err.println("left DNA contains different sequence than [agtc]");
+			//System.err.println(left);
 		}
 		if(!right.matches("[atgc]*")){
-			System.err.println("right DNA contains different sequence than [agtc]");
-			System.err.println(right);
+			//System.err.println("right DNA contains different sequence than [agtc]");
+			//System.err.println(right);
 		}
 		if(!insertion.matches("[atgc]*")){
-			System.err.println("insertion contains different sequence than [agtc]");
-			System.err.println(insertion);
+			//System.err.println("insertion contains different sequence than [agtc]");
+			//System.err.println(insertion);
 		}
 	}
 	public void setMinimumMatch(int min, boolean safety){
