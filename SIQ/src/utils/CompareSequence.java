@@ -750,6 +750,9 @@ public class CompareSequence {
 			}
 			
 			RandomInsertionSolverTwoSides ris = new RandomInsertionSolverTwoSides(left,right, insert);
+			if(this.additionalSearchSequence != null){
+				ris.setTDNA(additionalSearchSequence);
+			}
 			this.isFlankInsert = ris.isNonRandomInsert(0.9, is.getLargestMatch());
 		}
 	}

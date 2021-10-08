@@ -213,4 +213,15 @@ public class MyOptions {
 		}
 		return null;
 	}
+	public long getSearchSpace() {
+		if(cmd.hasOption("search")) {
+			try {
+				return (Long) cmd.getParsedOptionValue("search");
+			} catch (ParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return -1;
+	}
 }

@@ -148,6 +148,7 @@ public class SequenceController {
 			}
 			sft.setFileF(options.getSingleFileF());
 			sft.setFileR(options.getSingleFileR());
+			sft.setTinsDistance((int)options.getSearchSpace());
 			fileNr++;
 		}
 		sft.runReal();
