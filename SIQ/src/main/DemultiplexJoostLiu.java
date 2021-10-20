@@ -29,21 +29,47 @@ public class DemultiplexJoostLiu {
 	public static String unmatchedTriplet = "XXX";
 
 	public static void main(String[] args) {
+		File R1 = null;				
+		File R2 = null;
+		File barcodeFile = null;
+		if(args.length==3) {
+			String fileString = args[0];
+			R1 = new File(fileString);
+			R2 = new File(args[1]);
+			barcodeFile = new File(args[2]);
+			if(!R1.exists()) {
+				System.err.println("file "+R1.getAbsolutePath()+" does not exist");
+				System.exit(0);
+			}
+			if(!R2.exists()) {
+				System.err.println("file "+R2.getAbsolutePath()+" does not exist");
+				System.exit(0);
+			}
+			if(!barcodeFile.exists()) {
+				System.err.println("barcodefile "+barcodeFile.getAbsolutePath()+" does not exist");
+				System.exit(0);
+			}
+		}
+		else {
+			System.out.println("Run as java -jar xx.jar <fastqR1> <fastqR2> <barcodefile>");
+			System.exit(0);
+		}
 		
-		File dir = new File("E:\\Joost_Repair_Seq\\");
-		File dirOut = new File("E:\\Joost_Repair_Seq\\out");
 		String endOfBarCodeString = "ggtgtttcgtccttt".toUpperCase();
 		String startOfBarCodeString = "gcatagctcttaaac".toUpperCase();
 		boolean write = true;
 		boolean countNonMatched = false;
 		boolean addBarcodeToFQ = true;
 		//10M
+		//is not used at the moment
 		int maxNumberOfReadsPerFile = 10000000;
 		boolean splitInFiles = true;
 		int postFix = 1;
 		
-		ArrayList<PairedEnd> files = getPairedEnd(dir);
-		HashMap<String, String> barcodes = createHashMap("JoostLiu.txt");
+		PairedEnd p = new PairedEnd(R1,R2);
+		ArrayList<PairedEnd> files = new ArrayList<PairedEnd>();
+		files.add(p);
+		HashMap<String, String> barcodes = createHashMap(barcodeFile);
 		try {
 			for(PairedEnd pe: files) {
 				//System.out.println(pe.toString());
@@ -100,7 +126,7 @@ public class DemultiplexJoostLiu {
 							//overwrite barcode if required
 							String barcodeLookup = foundBarcode;
 							if(addBarcodeToFQ) {
-								foundBarcode = "therecanonlybeone";
+								foundBarcode = "allToOne";
 							}
 							if(!barcodeHits.containsKey(foundBarcode)){
 								barcodeHits.put(foundBarcode, 0);
@@ -121,8 +147,8 @@ public class DemultiplexJoostLiu {
 								}
 								fileName = fileName.replace("R1.fastq.gz", "");
 								if(write) {
-									hmWriterR1.put(foundBarcode, new FastqWriterBuilder(new File(dirOut.getAbsolutePath()+File.separatorChar+fileName+"_"+foundBarcode+"_R1.fastq")).build());
-									hmWriterR2.put(foundBarcode, new FastqWriterBuilder(new File(dirOut.getAbsolutePath()+File.separatorChar+fileName+"_"+foundBarcode+"_R2.fastq")).build());
+									hmWriterR1.put(foundBarcode, new FastqWriterBuilder(new File(fileName+"_"+foundBarcode+"_R1.fastq")).build());
+									hmWriterR2.put(foundBarcode, new FastqWriterBuilder(new File(fileName+"_"+foundBarcode+"_R2.fastq")).build());
 								}
 								else {
 									hmWriterR1.put(foundBarcode,null);
@@ -283,7 +309,7 @@ public class DemultiplexJoostLiu {
 		
 	}
 
-	private static HashMap<String, String> createHashMap(String string) {
+	private static HashMap<String, String> createHashMap(File f) {
 		HashMap<String, String> hm = new HashMap<String, String>();
 		System.out.println("Taking column 2 and 1 for barcode and ID");
 		int idColumn = 4;
@@ -291,10 +317,10 @@ public class DemultiplexJoostLiu {
 		boolean takeRevCom = false;
 		boolean removeAAAC = false;
 		try {
-			Scanner s = new Scanner(new File(string));
+			Scanner s = new Scanner(f);
 			while(s.hasNextLine()) {
 				String line = s.nextLine();
-				//System.out.println(line);
+				System.out.println(line);
 				String[] parts = line.split("\t");
 				String revCom = parts[sgColumn].toUpperCase();
 				if(takeRevCom) {
