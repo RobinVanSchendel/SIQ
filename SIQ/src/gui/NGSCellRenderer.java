@@ -113,6 +113,20 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     	  }
       }
       else if (column == 8) {
+    	  if(wine.getHDR()!=null) {
+    		  if(wine.getHDR().exists()) {
+    			  setForeground(greenFont);
+    		  }
+    	  		//filled in but does not exist
+    		  else {
+    			  setForeground(problem);
+    		  }
+    	  }
+      		else {
+      		setForeground(greenFont);
+      		}
+      }
+      else if (column == 9) {
     	  if(wine.getMinPassedPrimer()>=0 && wine.getMinPassedPrimer()<=15) {
     		  setForeground(greenFont);
     	  }

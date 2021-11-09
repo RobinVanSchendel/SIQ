@@ -448,14 +448,15 @@ public class NGS {
 		return new File(getAssembledFile()+"_"+this.getRowNumber()+"_top_stats_output.txt");
 	}
 	public File getHDR() {
-		//return new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\pICL-pso_cut.fa");
-		return null;
-		//return new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104406\\ref\\pICL-pso_cut.fa");
+		return hdr;
 	}
 	public boolean R1equalsR2() {
 		if(R1 !=null && R2 != null && R1.getAbsolutePath().contentEquals(R2.getAbsolutePath())) {
 			return true;
 		}
 		return false;
+	}
+	public void setHDR(String hdrString) {
+		this.hdr = new File(hdrString);
 	}
 }
