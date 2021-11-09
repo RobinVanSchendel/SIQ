@@ -70,7 +70,7 @@ public class CompareSequence {
 	
 	
 	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName) {
-		this.queryName = queryName;
+		this.queryName = queryName.split(" ")[0];
 		this.query = query;//.toLowerCase();
 		this.dir = dir;
 		this.quals = quals;
@@ -750,6 +750,7 @@ public class CompareSequence {
 			}
 			
 			RandomInsertionSolverTwoSides ris = new RandomInsertionSolverTwoSides(left,right, insert);
+			//TODO: needed for really small insertions??
 			if(this.additionalSearchSequence != null){
 				ris.setTDNA(additionalSearchSequence);
 			}
@@ -1113,24 +1114,45 @@ public class CompareSequence {
 				for(Range r: ranges){
 					//System.out.println(r);
 					String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
-					String lcsL = Utils.longestCommonSubstring(sub, subjectObject.getLeftFlank());
-					String lcsR = Utils.longestCommonSubstring(sub, subjectObject.getRightFlank());
-					//System.out.println(lcsL.length());
-					//System.out.println(lcsR.length());
-					if(largestCommon == null || (lcsL.length()+lcsR.length()) >largestCommon.length()){
-						largestCommon = lcsL+"_"+lcsR;
-						rangeContainingLargest = r;
+					//maybe also do this for non-PacBio?
+					if(subjectObject.isPacBio()) {
+						Left left  = subjectObject.getKmerl().getMatchLeft(sub, subjectObject.getStartOfRightFlank(), true, subjectObject.getEndOfLeftFlank(), -1);
+						LCS right = null;
+						if(left!=null) {
+							right = subjectObject.getKmerl().getMatchRight(sub, left.getSubjectEnd(), minimumSizeWithLeftRight, true, -1);
+						}
+						//System.out.println(left);
+						//System.out.println(right);
+						if(left!=null && right!=null) {
+							int tempLength = left.getString().length()+right.getString().length();
+							if(tempLength>largestRangeLength) {
+								correct = r;
+								largestRangeLength = tempLength;
+								//System.out.println("Setting correct "+left);
+								//System.out.println("Setting correct "+correct);
+							}
+						}
 					}
-					if(r.getLength()>largestRangeLength){
-						largestRangeLength = r.getLength();
-						largestRange = r;
-					}
-					//take the first
-					if(largestCommon.length()>=10){
-						correct = rangeContainingLargest;
-					}
-					else{
-						correct = largestRange;
+					else {
+						String lcsL = Utils.longestCommonSubstring(sub, subjectObject.getLeftFlank());
+						String lcsR = Utils.longestCommonSubstring(sub, subjectObject.getRightFlank());
+						//System.out.println(lcsL.length());
+						//System.out.println(lcsR.length());
+						if(largestCommon == null || (lcsL.length()+lcsR.length()) >largestCommon.length()){
+							largestCommon = lcsL+"_"+lcsR;
+							rangeContainingLargest = r;
+						}
+						if(r.getLength()>largestRangeLength){
+							largestRangeLength = r.getLength();
+							largestRange = r;
+						}
+						//take the first
+						if(largestCommon.length()>=10){
+							correct = rangeContainingLargest;
+						}
+						else{
+							correct = largestRange;
+						}
 					}
 					//removed break
 					//break;
@@ -1208,7 +1230,11 @@ public class CompareSequence {
 		if(this.getInsertion().length()==1){
 			insert = this.getInsertion();
 		}
-		String ret = this.getName()+s+this.getType()+s+this.getDelStart()+s+this.getDelEnd()+s+insert;
+		String prefix = this.getBarcode();
+		if(prefix==null) {
+			prefix = this.getName();
+		}
+		String ret = prefix+s+this.getType()+s+this.getDelStart()+s+this.getDelEnd()+s+insert;
 		return ret;
 	}
 	public void flagPossibleDouble(boolean b) {
