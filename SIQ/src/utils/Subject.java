@@ -263,7 +263,11 @@ public class Subject {
 		this.minPassedPrimer = (int) minPassedPrimer;
 	}
 	public int getMinLocationStartEvent() {
-		if(this.endOfLeftPrimer==0 && this.minPassedPrimer == 0) {
+		//overwrite if there are no primers
+		if(!this.hasPrimers()) {
+			return -1;
+		}
+		else if(this.endOfLeftPrimer==0 && this.minPassedPrimer == 0) {
 			return -1;
 		}
 		return this.endOfLeftPrimer+this.minPassedPrimer;

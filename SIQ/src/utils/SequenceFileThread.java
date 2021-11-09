@@ -362,6 +362,8 @@ public class SequenceFileThread extends Thread {
 					}
 					else {
 						//AtomicLong tempProcessFlank = new AtomicLong(System.nanoTime());
+						//put here because that makes debugging easier
+						cs.setCurrentAlias(alias, f.getName());
 						cs.determineFlankPositions(true);
 						//processFlank.set(System.nanoTime()-tempProcessFlank.get()+processFlank.get());
 						leftCorrect = cs.isCorrectPositionLeft();
@@ -391,7 +393,6 @@ public class SequenceFileThread extends Thread {
 							if(leftCorrect && rightCorrect) {
 								cs.setAdditionalSearchString(hmAdditional);
 								cs.setCurrentFile(f);
-								cs.setCurrentAlias(alias, f.getName());
 							}
 							else {
 								if(cs.getRemarks().length()>0) {
@@ -542,7 +543,7 @@ public class SequenceFileThread extends Thread {
 			if(collapseEvents){
 				//get the total
 				HashMap<String, Integer> totals = new HashMap<String, Integer>();
-				for(String key: csEvents.keySet()){
+				for(String key: csEvents.keySet()){ 
 					if(countEvents.get(key)>=minimalCount) {
 						String barcode = csEvents.get(key).getBarcode();
 						if(barcode == null) {
