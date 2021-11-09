@@ -247,6 +247,13 @@ public class HPRTFastQ {
                 .desc("The fasta file representing an HR event" )
                 .build();
 				o.addOption(hr);
+				
+		Option search = Option.builder("search")
+				.hasArg()
+				.type(Number.class)
+				.desc("the search space used to call templated insertions")
+				.build();
+				o.addOption(search);
 		
 		return o;
 	}
