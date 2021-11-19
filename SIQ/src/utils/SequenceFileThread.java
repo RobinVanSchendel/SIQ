@@ -123,9 +123,14 @@ public class SequenceFileThread extends Thread {
 			if(ngs!=null) {
 				System.out.println("Assembling the file via R1 R2");
 				tableModel.setStatus(ngs,-1);
+				tableModel.setTextStatus(ngs,"Merging");
 				assembleFile();
 				tableModel.setStatus(ngs, 0);
+				
 			}
+		}
+		if(tableModel!=null) {
+			tableModel.setTextStatus(ngs,"Counting reads");
 		}
 		
 		if(writeToOutput){
@@ -282,6 +287,7 @@ public class SequenceFileThread extends Thread {
 					int min = (int) Math.min(totalReads.get(), this.maxReads);
 					totalReads.set(min);
 				}
+				tableModel.setTextStatus(ngs,"Analyzing reads");
 			}
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
@@ -528,6 +534,7 @@ public class SequenceFileThread extends Thread {
 				this.tableModel.setTotal(ngs, counter.get());
 				this.tableModel.setCorrect(ngs, correct.get());
 				this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
+				this.tableModel.setTextStatus(ngs,"Writing");
 			}
 			
 			
@@ -650,6 +657,9 @@ public class SequenceFileThread extends Thread {
 			}
 			writerTopStats.close();
 			System.out.println("Written writerTopStats to: "+outputTopStats.getAbsolutePath());
+		}
+		if(this.tableModel!= null) {
+			tableModel.setTextStatus(ngs,"Done");
 		}
 		
 		long end = System.nanoTime();
@@ -792,12 +802,29 @@ public class SequenceFileThread extends Thread {
 	private void runFlash(){
 		//test for blast
 		try {
+			File f = new File(flashExec);
+			System.out.println("Flash file "+f.getAbsolutePath()+ " exists");
+			System.out.println("Flash file "+f.canExecute()+ " <= can execute");
+			ArrayList<String> commandParts = new ArrayList<String>();
+			commandParts.add(flashExec);
+			commandParts.add(ngs.getR1().getAbsolutePath());
+			commandParts.add(ngs.getR2().getAbsolutePath());
+			commandParts.add("-M");
+			commandParts.add("5000");
+			commandParts.add("-O");
+			commandParts.add("-x");
+			commandParts.add("0");
+			commandParts.add("-z");
+			commandParts.add("-t");
+			commandParts.add(""+cpus);
+			commandParts.add("-o");
+			commandParts.add(ngs.getAssembledFileDerived().getName());
 			
-			//String execTotal = exec +" -query query.fa -db "+db+" -word_size 18 -outfmt \"6 std qseq sseq\"";
-			String execTotal = flashExec+ " \""+ngs.getR1()+"\" \""+ngs.getR2()+"\" -M 5000 -O -x 0 -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
+			//String execTotal = "'"+flashExec+ "'  \""+ngs.getR1()+"\" \""+ngs.getR2()+"\" -M 5000 -O -x 0 -z -t "+this.cpus+;
 			//String execTotal = flashExec+ " "+ngs.getR1()+" "+ngs.getR2()+" -r 300 -M 5000 -O -z -t "+this.cpus+" -o "+ngs.getAssembledFileDerived().getName();
-			System.out.println(execTotal);
-			Process p = Runtime.getRuntime().exec(execTotal);
+			System.out.println(String.join(" ", commandParts));
+			//Process p = Runtime.getRuntime().exec(commandParts);
+			Process p = new ProcessBuilder(commandParts).start();
 			//Process p = Runtime.getRuntime().exec("ping");
 			// any error message?get
             StreamGobbler errorGobbler = new 
@@ -816,6 +843,7 @@ public class SequenceFileThread extends Thread {
             File flashOutput = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".extendedFrags.fastq.gz");
             File flashOutputunassF = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".notCombined_1.fastq.gz");
             File flashOutputunassR = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".notCombined_2.fastq.gz");
+            
             System.out.println("File "+flashOutput.getAbsolutePath());
             System.out.println(flashOutput.exists());
             if(flashOutput.exists()) {
@@ -838,7 +866,29 @@ public class SequenceFileThread extends Thread {
             	System.err.println("Something went wrong with the assembly "+flashOutputunassR.getName());
             	System.err.println(flashOutputunassR.getAbsolutePath());
             }
-			
+            ArrayList<File> toDelete = new ArrayList<File>();
+            File hist = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".hist");
+            File histIn = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".hist.innie");
+            File histOut = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".hist.outie");
+            File histogram = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".histogram");
+            File histogramIn = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".histogram.innie");
+            File histogramOut = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".histogram.outie");
+            
+            //Remove this unmoved files
+            toDelete.add(hist);
+            toDelete.add(histIn);
+            toDelete.add(histOut);
+            toDelete.add(histogram);
+            toDelete.add(histogramIn);
+            toDelete.add(histogramOut);
+            for(File deleteFile: toDelete) {
+            	if(deleteFile.exists()) {
+            		deleteFile.delete();
+            	}
+            }
+            
+            
+            
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
