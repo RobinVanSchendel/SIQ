@@ -81,7 +81,7 @@ public class Subject {
 		return 0;
 	}
 	public void setRightFlank(String tempRightFlank) {
-		if(tempRightFlank!=null) {
+		if(tempRightFlank!=null && tempRightFlank.length()>=15) {
 			this.rightFlank = tempRightFlank.toUpperCase();
 			if(this.rightFlank.length()==0) {
 				this.rightFlank = null;
@@ -99,9 +99,15 @@ public class Subject {
 				rightSet = true;
 			}
 		}
+		else {
+			this.startOfRightFlank = -1;
+			this.endOfRightFlank = -1;
+			rightSet = false;
+			rightFlank = null;
+		}
 	}
 	public void setLeftPrimer(String tempLeftPrimer) {
-		if(tempLeftPrimer !=null && tempLeftPrimer.length()>0) {
+		if(tempLeftPrimer !=null && tempLeftPrimer.length()>=15) {
 			this.leftPrimer = tempLeftPrimer.toUpperCase();
 			//can also be in reverse complement orientation
 			if(subject.indexOf(this.leftPrimer)<0) {
@@ -125,9 +131,16 @@ public class Subject {
 			this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
 			this.leftPrimerSet = true;
 		}
+		else {
+			this.startOfLeftPrimer = -1;
+			this.endOfLeftPrimer = -1;
+			this.leftPrimerSet = false;
+			leftPrimer = null;
+		}
+		
 	}
 	public void setRightPrimer(String tempRightPrimer) {
-		if(tempRightPrimer!=null && tempRightPrimer.length()>0) {
+		if(tempRightPrimer!=null && tempRightPrimer.length()>=15) {
 			this.rightPrimer = tempRightPrimer.toUpperCase();
 			//take rc
 			if(rightPrimer!=null) {
@@ -154,15 +167,18 @@ public class Subject {
 			this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
 			this.rightPrimerSet = true;
 		}
+		else {
+			startOfRightPrimer = -1;
+			endOfRightPrimer = -1;
+			rightPrimerSet = false;	
+			rightPrimer = null;
+		}
+		
+		System.out.println("rightPrimerSet "+rightPrimerSet+" "+rightPrimer);
 	}
 	public void setLeftFlank(String tempLeftFlank, String right) {
-		if(tempLeftFlank!=null) {
+		if(tempLeftFlank!=null && tempLeftFlank.length()>=15) {
 			this.leftFlank = tempLeftFlank.toUpperCase();
-			if(this.leftFlank.length()==0) {
-				this.leftFlank = null;
-				leftSet = false;
-				return;
-			}
 			if(subject.indexOf(this.leftFlank)<0) {
 				System.err.println("Cannot find leftFlank "+leftFlank+" "+subject.indexOf(this.leftFlank));
 				System.err.println(subject);
@@ -195,6 +211,11 @@ public class Subject {
 					leftSet = true;
 				}
 			}
+		}
+		else {
+			leftFlank = null;
+			leftSet = false;
+			endOfLeftFlank = -1;
 		}
 	}
 	public boolean hasLeft() {
