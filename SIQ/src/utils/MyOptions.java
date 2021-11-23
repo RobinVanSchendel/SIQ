@@ -34,7 +34,8 @@ public class MyOptions {
 		return cmd.getOptionValue("in");
 	}
 	public double getMaxError() {
-		double maxError = 0.05;
+		//changed to 0.08
+		double maxError = 0.08;
 		try {
 			if(cmd.getParsedOptionValue("e") != null) {
 				Double number = (Double) cmd.getParsedOptionValue("e");
