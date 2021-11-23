@@ -49,7 +49,7 @@ public class SequenceFileThread extends Thread {
 	private File f, output, outputStats, outputTopStats;
 	private boolean writeToOutput;
 	private Subject subject;
-	private HashMap<String, Integer> countEvents = new HashMap<String, Integer>();
+	private BarcodeCounter countEvents = new BarcodeCounter();
 	private HashMap<String, CompareSequence> csEvents = new HashMap<String, CompareSequence>();
 	private HashMap<String, String> colorMap;
 	private boolean collapse = true;
@@ -355,10 +355,9 @@ public class SequenceFileThread extends Thread {
 				//at this point has to be true because of earlier check
 				if(cs.isMasked()) {
 					//check if exists in cache
-					String lookupDoneKey = lookupDone.get(cs.getBarcode()+"|"+cs.getQuery());
+					String lookupDoneKey = lookupDone.get(cs.getQuery());
 					if(lookupDoneKey != null) {
-						//String key = lookupDone.get(cs.getQuery());
-						countEvents.put(lookupDoneKey, countEvents.get(lookupDoneKey)+1);
+						countEvents.putOrAdd(lookupDoneKey,cs.getBarcode(),1);
 						correct.getAndIncrement();
 						cacheHit.getAndIncrement();
 						
@@ -429,11 +428,11 @@ public class SequenceFileThread extends Thread {
 							String key = cs.getKey(includeStartEnd);
 							//this is for the cache
 							
-							lookupDone.put(cs.getBarcode()+"|"+cs.getQuery(),key);
+							lookupDone.put(cs.getQuery(),key);
 							//now really count the event
-							Integer countEventsNr = countEvents.get(key);
+							Integer countEventsNr = countEvents.get(key, cs.getBarcode());
 							if(countEventsNr!=null){
-								countEvents.put(key, countEventsNr+1);
+								countEvents.putOrAdd(key, cs.getBarcode(), 1);
 								//while this works, it might be slow and/or incorrect!
 								//the best would be to give the majority here
 								//replaced not so great sequences with more accurate ones
@@ -449,7 +448,7 @@ public class SequenceFileThread extends Thread {
 								}
 							}
 							else{
-								countEvents.put(key, 1);
+								countEvents.putOrAdd(key,cs.getBarcode(), 1);
 								//save the object instead
 								csEvents.put(key, cs);
 							}
@@ -550,16 +549,16 @@ public class SequenceFileThread extends Thread {
 			if(collapseEvents){
 				//get the total
 				HashMap<String, Integer> totals = new HashMap<String, Integer>();
-				for(String key: csEvents.keySet()){ 
-					if(countEvents.get(key)>=minimalCount) {
-						String barcode = csEvents.get(key).getBarcode();
-						if(barcode == null) {
-							barcode = "dummy";
+				for(String key: csEvents.keySet()){
+					ArrayList<String> barcodes = countEvents.getBarcodes(key);
+					//System.out.println("Requesting "+key);
+					for(String barcode: barcodes) {
+						if(countEvents.get(key, barcode)>=minimalCount) {
+							if(!totals.containsKey(barcode)) {
+								totals.put(barcode,0);
+							}
+							totals.put(barcode,totals.get(barcode)+countEvents.get(key,barcode));
 						}
-						if(!totals.containsKey(barcode)) {
-							totals.put(barcode,0);
-						}
-						totals.put(barcode,totals.get(barcode)+countEvents.get(key));
 					}
 				}
 				//System.out.println("Writing events "+csEvents.size()+" to: "+output.getAbsolutePath());
@@ -571,20 +570,25 @@ public class SequenceFileThread extends Thread {
 				}
 				for(String key: csEvents.keySet()){
 					//only output if we saw it minimalCount times
-					if(countEvents.get(key)>=minimalCount) {
-						String barcode = csEvents.get(key).getBarcode();
-						if(barcode == null) {
-							barcode = "dummy";
+					ArrayList<String> barcodes = countEvents.getBarcodes(key);
+					CompareSequence cs = csEvents.get(key);
+					cs.setTINSSearchDistance(this.tinsDistValue);
+					String eventString = null;
+					for(String barcode: barcodes) {
+						if(countEvents.get(key, barcode)>=minimalCount) {
+							//get the Event String
+							if(eventString == null) {
+								eventString = cs.toStringOneLine("<DUMMY>").replace("\n", "_");
+							}
+							double total = 0;
+							if(totals.containsKey(barcode)) {
+								total = totals.get(barcode);
+							}
+							double fraction = countEvents.get(key,barcode)/total;
+							//overwrite barcode here
+							writer.println(countEvents.get(key,barcode)+"\t"+fraction+"\t"+eventString.replaceFirst("<DUMMY>", barcode));
+							count++;
 						}
-						double total = 0;
-						if(totals.containsKey(barcode)) {
-							total = totals.get(barcode);
-						}
-						double fraction = countEvents.get(key)/total;
-						CompareSequence cs = csEvents.get(key);
-						cs.setTINSSearchDistance(this.tinsDistValue);
-						writer.println(countEvents.get(key)+"\t"+fraction+"\t"+csEvents.get(key).toStringOneLine().replace("\n", "_"));
-						count++;
 					}
 				}
 				System.out.println("Written "+count+" events to: "+output.getAbsolutePath());
@@ -640,10 +644,20 @@ public class SequenceFileThread extends Thread {
 					//check if this read is called
 					for(String key: csEvents.keySet()){
 						//only output if we saw it minimalCount times
-						if(countEvents.get(key)>=minimalCount) {
-							CompareSequence cs = csEvents.get(key);
-							if(cs.getRaw().contentEquals(seq)) {
-								found = true;
+						ArrayList<String> barcodes = countEvents.getBarcodes(key);
+						for(String barcode: barcodes) {
+							boolean breakLoop = false; 
+							if(countEvents.get(key, barcode)>=minimalCount) {
+								CompareSequence cs = csEvents.get(key);
+								if(cs.getRaw().contentEquals(seq)) {
+									found = true;
+									breakLoop = true;
+									if(breakLoop) {
+										break;
+									}
+								}
+							}
+							if(breakLoop) {
 								break;
 							}
 						}
@@ -652,7 +666,7 @@ public class SequenceFileThread extends Thread {
 					cs.determineFlankPositions(true);
 					cs.setCurrentFile(f);
 					cs.setCurrentAlias(alias, f.getName());
-					writerTopStats.println(alias+"\t"+found+"\t"+csEvents.containsKey(cs.getKey(includeStartEnd))+"\t"+times+"\t"+fractionTotal+"\t"+cs.isCorrectPositionLeft()+"\t"+cs.isCorrectPositionLeft()+"\t"+seq+"\t"+cs.toStringOneLine());
+					writerTopStats.println(alias+"\t"+found+"\t"+csEvents.containsKey(cs.getKey(includeStartEnd))+"\t"+times+"\t"+fractionTotal+"\t"+cs.isCorrectPositionLeft()+"\t"+cs.isCorrectPositionLeft()+"\t"+seq+"\t"+cs.toStringOneLine(""));
 				}
 			}
 			writerTopStats.close();

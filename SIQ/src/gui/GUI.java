@@ -27,9 +27,18 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -95,6 +104,8 @@ import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.FrameworkUtil;
 
 import batch.SequenceController;
 import batch.SequenceControllerThread;
@@ -975,7 +986,7 @@ public class GUI implements ActionListener, MouseListener {
 		if(printCompare){
 			return cs.toStringCompare(100);
 		}
-		return cs.toStringOneLine();
+		return cs.toStringOneLine("");
 	}
 	/*
 	private String analyzeFileTryToMatch(File f, String left, String right, boolean checkLeftRight, boolean printCompare) {
@@ -1436,9 +1447,9 @@ public class GUI implements ActionListener, MouseListener {
         
         
         JLabel maxBaseErrro = new JLabel("Max base error");
-        maxBaseErrro.setToolTipText("The maximum base error tolerated, more reads will be correct if higher, but more sequencing errors are included (default: 0.05)");
+        maxBaseErrro.setToolTipText("The maximum base error tolerated, more reads will be correct if higher, but more sequencing errors are included (default: 0.08)");
         placeComp(maxBaseErrro,guiFrame,5,3,1,1);
-        SpinnerModel model3 = new SpinnerNumberModel(0.05, 0, 1, 0.01);
+        SpinnerModel model3 = new SpinnerNumberModel(0.08, 0, 1, 0.01);
         baseError = new JSpinner(model3);
         baseError.setPreferredSize(new Dimension(80, 16));
         placeComp(baseError,guiFrame,6,3,1,1);
@@ -1537,12 +1548,59 @@ public class GUI implements ActionListener, MouseListener {
 			File flashFile = new File(flash);
 			if(!flashFile.exists()) {
 				//erase
-				pm.setProperty("flash", null);
+				pm.setProperty("flash", "");
 			}
+			//exists
 			else {
-				
+				//return;
 			}
         }
+		//try to get it on different OS
+		//flash == null
+		String os = System.getProperty("os.name");
+		System.out.println(os);
+		URI jarPath = null;
+		try {
+			jarPath = GUI.class.getProtectionDomain()
+					.getCodeSource()
+					.getLocation()
+					.toURI();
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		String executable = "/resources/flash2";
+		String executableTarget = "flashLinux";
+		if(os.contains("Windows")) {
+			executable = "/resources/flash.exe";
+			executableTarget = "flashWin.exe";
+		}
+		try {
+			InputStream in = getClass().getResourceAsStream(executable);
+			String out = executableTarget;
+			File mainFile = Paths.get(jarPath).toFile().getParentFile();
+			Path outPath = Paths.get(mainFile.getAbsolutePath());
+			System.out.println("Copying to "+outPath.toString());
+			Path outPathFile = null;
+			if(os.contains("Windows")) {
+				outPathFile = Paths.get(mainFile.getAbsolutePath(),"flash.exe");
+				Files.copy(in, outPathFile);
+			}
+			else {
+				outPathFile = Paths.get(mainFile.getAbsolutePath(),"flash2");
+				//copy to the directory in Linux
+				Files.copy(in, outPathFile);
+				File file = outPathFile.toFile();
+				//chmod +x
+				file.setExecutable(true);
+			}
+			pm.setProperty("flash", outPathFile.toString());
+			System.out.println(outPathFile.toString());
+			
+		} catch (IOException | ExceptionInInitializerError er) {
+			// TODO Auto-generated catch block
+			er.printStackTrace();
+		}
 	}
 
 	private void addJTableNGS() {
@@ -1562,6 +1620,8 @@ public class GUI implements ActionListener, MouseListener {
                     "the right part of the cut site (>=15nt) (case insensitive)",
                     "the left primer used in your NGS experiment. Has to be present in the reference file (case insensitive)",
                     "the right primer (5'->3') used in your NGS experiment. Has to be present in the reference file (case insensitive)",
+                    "<html>Reference HDR file (in fasta format)<br>"
+                    		+ "Make sure that the left and right primer are also present",
                     "events can only start at X bases from the left and right primer. This is to ensure your primers bound at the primer site. In our hands 5 is a good value",
                     "% of total reads analyzed",
                     "# of reads analyzed (orange means reads are being assembled)",

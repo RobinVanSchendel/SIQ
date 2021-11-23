@@ -208,7 +208,7 @@ public class ReportPanel extends JFrame implements ActionListener {
 		Vector<Vector<Object>> v = new Vector<Vector<Object>>();
 		for(CompareSequence cs: result) {
 			Vector<Object> w = new Vector<Object>();
-			for(String s: cs.toStringOneLine().split("\t")) {
+			for(String s: cs.toStringOneLine("").split("\t")) {
 				try{
 					if(s.contentEquals("true") || s.contentEquals("false")) {
 						w.add(Boolean.parseBoolean(s));

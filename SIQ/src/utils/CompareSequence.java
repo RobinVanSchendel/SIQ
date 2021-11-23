@@ -422,7 +422,7 @@ public class CompareSequence {
 		}
 		return false;
 	}
-	public String toStringOneLine(){
+	public String toStringOneLine(String barcode){
 		//switched to StringBuffer
 		String s = "\t";
 		int size = 20;
@@ -474,14 +474,14 @@ public class CompareSequence {
 		//if(cutType == null && kmerl != null) {
 		//	ret.append("KMERL!").append(s);
 		//}
-		ret.append(getName()).append(s);
-		ret.append(isSplit).append(s);
 		if(barcode!=null) {
 			ret.append(barcode).append(s);
 		}
 		else {
 			ret.append(s);
 		}
+		ret.append(getName()).append(s);
+		ret.append(isSplit).append(s);
 		ret.append(dir).append(s);
 		if(file != null) {
 			ret.append(file.getAbsolutePath()).append(s);
@@ -614,7 +614,8 @@ public class CompareSequence {
 				System.out.println("Alias:"+alias);
 				System.out.println(getName());
 				System.out.println(this.getRemarks());
-				System.exit(0);
+				this.setRemarks("QUERY BROKEN");
+				//System.exit(0);
 			}
 			//set a variable here
 			if(query.replace("X", "").equals(totalquery)) {
@@ -987,7 +988,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "Name\tSplit\tBarcode\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%"
+		String ret = "Barcode\tName\tSplit\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%"
 				+ "\thomologyMismatch10%ref\thomologyLengthMismatch10%ref"
 				+ "\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
 				+ "Remarks\tReversed\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight"+s+"entireQueryUsed";
@@ -1314,9 +1315,10 @@ public class CompareSequence {
 		String s = "_";
 		//name of file should be enough
 		StringBuffer ret = new StringBuffer(file.getName()).append(s);
-		if(barcode!=null) {
-			ret.append(barcode).append(s);
-		}
+		//do not append barcode anymore
+		//if(barcode!=null) {
+			//ret.append(barcode).append(s);
+		//}
 		ret.append(getType()).append(s);
 		ret.append(getDelStart()).append(s);
 		ret.append(getDelEnd()).append(s);

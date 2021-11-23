@@ -213,7 +213,7 @@ public class AnalyzedFileController implements Runnable{
 		sb.append(CompareSequence.getOneLineHeader());
 		for(CompareSequence cs: result) {
 			sb.append("\n");
-			sb.append(cs.toStringOneLine());
+			sb.append(cs.toStringOneLine(""));
 		}
 		return sb.toString();
 	}
