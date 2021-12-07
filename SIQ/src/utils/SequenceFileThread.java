@@ -456,7 +456,7 @@ public class SequenceFileThread extends Thread {
 					}
 				}
 				if(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect){
-					//System.out.println("correct\t"+cs.toStringOneLine());
+					//System.out.println("correct\t"+cs.toStringOneLine("dum"));
 					//if(cs.getBarcode().contentEquals("RVsg_mmPolq-2")) {
 						//System.out.println("correct\t"+cs.toStringOneLine());
 					//}
@@ -465,7 +465,7 @@ public class SequenceFileThread extends Thread {
 					//if(cs.getBarcode().contentEquals("RVsg_mmPolq-2")) {
 						//System.out.println("incorrect\t"+cs.toStringOneLine());
 					//}
-					//System.out.println("incorrect\t"+cs.toStringOneLine());
+					//System.out.println("incorrect\t"+cs.toStringOneLine("dum"));
 					//System.out.println(subject.isHDREvent(cs));
 				}
 				if(!(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect)){
@@ -861,12 +861,18 @@ public class SequenceFileThread extends Thread {
             System.out.println("File "+flashOutput.getAbsolutePath());
             System.out.println(flashOutput.exists());
             if(flashOutput.exists()) {
+            	if(ngs.getAssembledFileDerived().exists()) {
+            		ngs.getAssembledFileDerived().delete();
+            	}
             	flashOutput.renameTo(ngs.getAssembledFileDerived());
             }
             else {
             	System.err.println("Something went wrong with the assembly");
             }
             if(flashOutputunassF.exists()) {
+            	if(ngs.getUnassembledFFileDerived().exists()) {
+            		ngs.getUnassembledFFileDerived().delete();
+            	}
             	flashOutputunassF.renameTo(ngs.getUnassembledFFileDerived());
             }
             else {
@@ -874,6 +880,9 @@ public class SequenceFileThread extends Thread {
             	System.err.println(flashOutputunassF.getAbsolutePath());
             }
             if(flashOutputunassR.exists()) {
+            	if(ngs.getUnassembledRFileDerived().exists()) {
+            		ngs.getUnassembledRFileDerived().delete();
+            	}
             	flashOutputunassR.renameTo(ngs.getUnassembledRFileDerived());
             }
             else {
