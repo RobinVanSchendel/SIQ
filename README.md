@@ -15,15 +15,14 @@ Contents
 ### Installation
 
 * latest Java .jar file from this repository
-* FLASH
 
 Download the latest .jar file from this repository. You can double click it and it should work directly. The only thing you require is a working Java version (1.8 and up). 
-
-If you also want to be able to merge NGS reads, please download FLASH (https://sourceforge.net/projects/flashpage/) for Windows or for Linux (https://github.com/dstreett/FLASH2).
 
 ### Running
 
 when SIQ is started you should see the following screen:
+
+<TODO>
 
 SIQ can be used to analyze the following type of data:
 
