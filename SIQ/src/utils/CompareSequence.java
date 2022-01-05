@@ -530,7 +530,7 @@ public class CompareSequence {
 		ret.append(masked).append(s);
 		ret.append(remarks).append(s);
 		ret.append(reversed).append(s);
-		ret.append(getUniqueClass()).append(s);
+		ret.append(getUniqueClass(barcode)).append(s);
 		ret.append(inZone()).append(s);
 		ret.append(leftFlankLength).append(s);
 		ret.append(rightFlank.length()).append(s);
@@ -1224,14 +1224,14 @@ public class CompareSequence {
 		}
 		return colors[length];
 	}
-	public String getUniqueClass(){
+	public String getUniqueClass(String barcode){
 		String s = "|";
 		String insert = ""+this.getInsertion().length();
 		//insertions of one nucleotide can be different, so add the actual insert
 		if(this.getInsertion().length()==1){
 			insert = this.getInsertion();
 		}
-		String prefix = this.getBarcode();
+		String prefix = barcode;
 		if(prefix==null) {
 			prefix = this.getName();
 		}

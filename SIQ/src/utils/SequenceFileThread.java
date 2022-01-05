@@ -255,7 +255,7 @@ public class SequenceFileThread extends Thread {
 							}
 						}
 					}
-					if(count>=maxReads) {
+					if(maxReads!= 0 && count>=maxReads) {
 						break;
 					}
 					if(count%10000==0 && count>0){
@@ -586,7 +586,7 @@ public class SequenceFileThread extends Thread {
 							}
 							double fraction = countEvents.get(key,barcode)/total;
 							//overwrite barcode here
-							writer.println(countEvents.get(key,barcode)+"\t"+fraction+"\t"+eventString.replaceFirst("<DUMMY>", barcode));
+							writer.println(countEvents.get(key,barcode)+"\t"+fraction+"\t"+eventString.replaceAll("<DUMMY>", barcode));
 							count++;
 						}
 					}
@@ -809,6 +809,17 @@ public class SequenceFileThread extends Thread {
 	}
 	public void setNGS(NGS n) {
 		this.ngs = n;
+		if(ngs!=null) {
+			if(ngs.getR2()!=null && ngs.assembledOK()) {
+				//could still be not present
+				if(ngs.getUnassembledFFileDerived()!=null && ngs.getUnassembledRFileDerived()!=null) {
+					System.out.println(ngs.getUnassembledFFileDerived());
+					System.out.println(ngs.getUnassembledRFileDerived());
+					this.setFileF(ngs.getUnassembledFFileDerived());
+					this.setFileR(ngs.getUnassembledRFileDerived());
+				}
+			}
+		}
 	}
 	private void assembleFile() {
 		runFlash();
