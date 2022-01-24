@@ -9,15 +9,15 @@ import javax.swing.table.AbstractTableModel;
 
 public class NGSTableModel extends AbstractTableModel {
 	// holds the strings to be displayed in the column headers of our table
-	   final String[] columnNames = {"R1 file", "R2 file", "reference", "alias", "left flank", "right flank", "left primer", "right primer","HDR", "<html>#bases past<br>primer</html>","%Complete", "#Reads", "#Correct","%Correct"};
+	   final String[] columnNames = {"R1 file", "R2 file", "reference", "alias", "left flank", "right flank", "left primer", "right primer","HDR", "<html>#bases past<br>primer</html>","%Complete", "#Reads", "#Correct","%Correct","Status"};
 	  
 	   // holds the data types for all our columns
-	   Class[] columnClasses = {File.class, File.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, Float.class, Integer.class, Integer.class, Float.class};
+	   Class[] columnClasses = {File.class, File.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, Float.class, Integer.class, Integer.class, Float.class, String.class};
 	  
 	   // holds our data
 	   Vector<NGS> data = new Vector<NGS>();
 
-	private boolean enabled = true;;
+	   private boolean enabled = true;
 	   
 	   public void removeAll() {
 		   data.removeAllElements();
@@ -82,6 +82,8 @@ public class NGSTableModel extends AbstractTableModel {
 	      else if (col == 11) return wine.getTotalReads();
 	      else if (col == 12) return wine.getCorrectReads();
 	      else if (col == 13) return wine.getCorrectPercentage();
+	      else if (col == 14) return wine.getTextStatus();
+	      
 	      else return null;
 	   }
 	  
@@ -194,6 +196,11 @@ public class NGSTableModel extends AbstractTableModel {
 				   wine.setPercentage(correct);
 			   }
 		   }
+		   else if(columnIndex == 14) {
+			   if(aValue !=null && aValue instanceof String) {
+				   wine.setTextStatus((String)aValue);
+			   }
+		   }
 		   this.fireTableRowsUpdated(rowIndex, rowIndex);
 		   //fireTableCellUpdated(rowIndex, columnIndex);
 	   }
@@ -240,6 +247,16 @@ public class NGSTableModel extends AbstractTableModel {
 	public void setPercentage(NGS ngs, float i) {
 		updatePercentage(ngs.getRowNumber(),i);
 	}
+	
+	public void setTextStatus(NGS ngs, String string) {
+		int textStatusColumn = getColumnNr("Status");
+		int rowNumber = ngs.getRowNumber();
+		NGS wine = (NGS) data.elementAt(rowNumber);
+        if (wine != null) {
+        	setValueAt(string, rowNumber, textStatusColumn);
+        	fireTableCellUpdated(rowNumber, textStatusColumn);
+        }
+	}
 
 	private void updatePercentage(int rowNumber, float i) {
 		int progressBarColumn = getColumnNr("%Correct");
@@ -256,5 +273,14 @@ public class NGSTableModel extends AbstractTableModel {
 	}
 	public boolean isEnabled() {
 		return this.enabled;
+	}
+	public void resetNumbers() {
+		for(NGS n: this.data) {
+			this.setCorrect(n, 0);
+			this.setPercentage(n, 0);
+			this.setTotal(n, 0);
+			this.setStatus(n, 0);
+			this.setTextStatus(n,"");
+		}
 	}
 }

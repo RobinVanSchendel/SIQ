@@ -1153,7 +1153,8 @@ public class GUI implements ActionListener, MouseListener {
 		System.out.println(f.getAbsolutePath());
 		return f.getAbsolutePath().endsWith(".fastq") 
 				|| f.getAbsolutePath().endsWith(".fastq.gz")
-				|| f.getAbsolutePath().endsWith(".fq");
+				|| f.getAbsolutePath().endsWith(".fq")
+				|| f.getAbsolutePath().endsWith(".fq.gz");
 	}
 
 	private boolean isSangerFile(File f) {
@@ -1572,7 +1573,7 @@ public class GUI implements ActionListener, MouseListener {
 		String executable = "/resources/flash2";
 		String executableTarget = "flashLinux";
 		if(os.contains("Windows")) {
-			executable = "/resources/flash.exe";
+			executable = "/resources/flash2.exe";
 			executableTarget = "flashWin.exe";
 		}
 		try {
@@ -1580,11 +1581,13 @@ public class GUI implements ActionListener, MouseListener {
 			String out = executableTarget;
 			File mainFile = Paths.get(jarPath).toFile().getParentFile();
 			Path outPath = Paths.get(mainFile.getAbsolutePath());
-			System.out.println("Copying to "+outPath.toString());
 			Path outPathFile = null;
 			if(os.contains("Windows")) {
+				System.out.println("Copying to "+outPath.toString());
 				outPathFile = Paths.get(mainFile.getAbsolutePath(),"flash.exe");
-				Files.copy(in, outPathFile);
+				if(!Files.exists(outPathFile)) {
+					Files.copy(in, outPathFile);
+				}
 			}
 			else {
 				outPathFile = Paths.get(mainFile.getAbsolutePath(),"flash2");

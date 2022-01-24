@@ -8,21 +8,29 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 public class NGSCellRenderer extends DefaultTableCellRenderer {
 	public static Color problem = new Color(255,102,102);
+	public static Color problemDark = new Color(0,0,0);
 	public static Color ok = new Color(102,255,102);
 	public static Color optional = new Color(255,204,51);
 	public static Color greenFont = new Color(0,102,51);
+	
+	public NGSCellRenderer() {
+		super();
+	}
+	
 	public Component getTableCellRendererComponent(
             JTable table, Object value, boolean isSelected,
             boolean hasFocus, int row, int column)
    {
 	  NGSTableModel wtm = (NGSTableModel) table.getModel();
       NGS wine = (NGS) wtm.getValueAtRow(row);
+      
       //System.out.println("hier Render!"+row+" c: "+column);
       //BUG: make sure the info is not changed anymore at this point as it causes disasters
       if(!wtm.isEnabled()) {
     	  return super.getTableCellRendererComponent(table, value, isSelected,
                   hasFocus, row, column);
       }
+     
       //R1
       if (column == 0) {
     	  if(wine.R1equalsR2()) {
@@ -58,7 +66,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     	  }
     	  else {
     		  this.setBackground(problem);
-    		  setForeground(problem);
+    		  setForeground(problemDark);
     	  }
       }
       else if (column == 3) {
@@ -80,7 +88,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  this.setBackground(Color.white);
     	  }
     	  else {
-    		  setForeground(problem);
+    		  setForeground(problemDark);
     		  this.setBackground(problem);
     	  }
       }
@@ -90,7 +98,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  this.setBackground(Color.white);
     	  }
     	  else {
-    		  setForeground(problem);
+    		  setForeground(problemDark);
     		  this.setBackground(problem);
     	  }
       }
@@ -113,8 +121,9 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     	  }
       }
       else if (column == 8) {
+    	  this.setBackground(Color.white);
     	  if(wine.getHDR()!=null) {
-    		  if(wine.getHDR().exists()) {
+    		  if(wine.getHDROK()) {
     			  setForeground(greenFont);
     		  }
     	  		//filled in but does not exist
@@ -127,6 +136,7 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
       		}
       }
       else if (column == 9) {
+    	  this.setBackground(Color.white);
     	  if(wine.getMinPassedPrimer()>=0 && wine.getMinPassedPrimer()<=15) {
     		  setForeground(greenFont);
     	  }
@@ -134,11 +144,22 @@ public class NGSCellRenderer extends DefaultTableCellRenderer {
     		  setForeground(problem);
     	  }
       }
+      else if(column == 14) {
+    	  setForeground(Color.black);
+    	  setBackground(Color.white);
+      }
       else {
          setBackground(Color.white);
       }
-  
-      return super.getTableCellRendererComponent(table, value, isSelected,
-                                                 hasFocus, row, column);
+      Color foreground = this.getForeground();
+      DefaultTableCellRenderer renderer =  (DefaultTableCellRenderer) super.getTableCellRendererComponent(table, value, isSelected,
+              hasFocus, row, column);
+      
+      if(isSelected) {
+    	this.setBackground(new Color(192,218,255));
+    	this.setForeground(foreground);  
+      }
+      
+      return renderer;
    }
 }

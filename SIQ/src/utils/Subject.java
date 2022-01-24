@@ -29,6 +29,8 @@ public class Subject {
 	private KMERLocation kmerl;
 	//for testing it is now true
 	private boolean isPacBio = false;
+	private String leftPrimerMatchPacBio;
+	private String rightPrimerMatchPacBio;
 	
 	public Subject(RichSequence subject) {
 		this.subject = subject.seqString().toString().toUpperCase();
@@ -129,6 +131,7 @@ public class Subject {
 			}
 			this.startOfLeftPrimer = subject.indexOf(leftPrimer);
 			this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
+			this.leftPrimerMatchPacBio = subject.substring(startOfLeftPrimer,endOfLeftPrimer+this.minPassedPrimer);
 			this.leftPrimerSet = true;
 		}
 		else {
@@ -165,6 +168,7 @@ public class Subject {
 			}
 			this.startOfRightPrimer = subject.indexOf(rightPrimer);
 			this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
+			this.rightPrimerMatchPacBio = subject.substring(startOfRightPrimer-this.minPassedPrimer,endOfRightPrimer);
 			this.rightPrimerSet = true;
 		}
 		else {
@@ -482,5 +486,11 @@ public class Subject {
 	}
 	public String getRightPrimer() {
 		return this.rightPrimer;
+	}
+	public String getLeftPrimerMatchPacBio() {
+		return leftPrimerMatchPacBio;
+	}
+	public String getRightPrimerMatchPacBio() {
+		return rightPrimerMatchPacBio;
 	}
 }

@@ -45,7 +45,7 @@ public class NGSPair {
 					done.add(R1);
 				}
 			}
-			else if(!f.getName().contains("R2") && (f.getName().contains("fastq") || f.getName().endsWith(".fq"))) {
+			else if(!f.getName().contains("R2") && (f.getName().contains("fastq") || f.getName().contains("fq"))) {
 				System.out.println("adding2 "+f.getAbsolutePath());
 				NGSPair ngspair = new NGSPair(f, null);
 				pairs.add(ngspair);

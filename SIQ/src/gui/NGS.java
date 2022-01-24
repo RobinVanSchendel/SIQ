@@ -29,6 +29,7 @@ public class NGS {
 	private int correctReads;
 	private float percentage;
 	private File outputDir;
+	private String textStatus = "";
 	
 	
 	public NGS(File R1, File R2, String Subject, String alias, String leftFlank, String rightFlank
@@ -457,6 +458,34 @@ public class NGS {
 		return false;
 	}
 	public void setHDR(String hdrString) {
-		this.hdr = new File(hdrString);
+		if(hdrString == null) {
+			this.hdr = null;
+		}
+		else {
+			this.hdr = new File(hdrString);
+		}
+	}
+	public boolean getHDROK() {
+		if(this.hdr==null) {
+			return true;
+		}
+		else {
+			File f = hdr;
+			if(f.exists()) {
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+	}
+	public void setTextStatus(String status) {
+		this.textStatus = status;
+	}
+	public String getTextStatus() {
+		if(textStatus.length()==0 && allOK()) {
+			return "Ready";
+		}
+		return this.textStatus ;
 	}
 }

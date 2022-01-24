@@ -45,7 +45,7 @@ public class CompareSequence {
 	private ArrayList<Blast> blasts;
 	private boolean entireQueryUsed = false;
 	
-	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR, TINS, HDR1MM};
+	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR, TINS, HDR1MM, DELINS_SNV};
 	public String dir;
 	private Vector<Sequence> additionalSearchSequence;
 	private boolean possibleDouble = false;
@@ -840,11 +840,39 @@ public class CompareSequence {
 			else if(this.isFlankInsert) {
 				return Type.TINS;
 			}
+			//disabled for now
+			//else if(isDELINS_SNV()) {
+			//	return Type.DELINS_SNV;
+			//}
 			else {
 				return Type.DELINS;
 			}
 		}
 		return Type.UNKNOWN;
+	}
+	/**Could a deletion + insertion also be explained by a SNV at the first or last position
+	 * of the deletion?
+	 * for example:   DEL ACGTTTG + INS TCGT
+	 * could also be: DEL  CGTTTG + SNV A>T (first base) 
+	 * 
+	 * experimental code, not yet in use
+	 * 
+	 * @return
+	 */
+	@SuppressWarnings("unused")
+	private boolean isDELINS_SNV() {
+		if(del!= null && insert != null && del.length()>insert.length() && this.getRemarks().length()==0 && insert.length()>2) {
+			String insPart = insert.substring(1);
+			String delPart = del.substring(1);
+			boolean SNVatStart = delPart.startsWith(insPart);
+			
+			String insPartEnd = insert.substring(0, insert.length()-1);
+			String delPartEnd = del.substring(0, del.length()-1);
+			boolean SNVatEnd = delPartEnd.endsWith(insPartEnd);
+			
+			return SNVatStart || SNVatEnd;
+		}
+		return false;
 	}
 	public String getSecondaryType() {
 		if(this.remarks.length() != 0) {

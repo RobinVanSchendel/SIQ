@@ -269,7 +269,7 @@ public class SequenceFileThread extends Thread {
 						break;
 					}
 				}
-				System.out.println("CorrectPositions:\t"+correctPositionFR);
+				//System.out.println("CorrectPositions:\t"+correctPositionFR);
 				itF.close();
 				itR.close();
 				datastoreF.close();
@@ -330,7 +330,7 @@ public class SequenceFileThread extends Thread {
 				}
 				cs.setAndDetermineCorrectRange(maxError);
 				//if there are primers specified it makes sense to call this
-				if(subject.hasPrimers()) {
+				if(!subject.isPacBio() && subject.hasPrimers()) {
 					cs.maskSequenceToHighQualityRemoveSingleRange();
 				}
 				//PacBio data for instance should keep the best sequence
@@ -371,8 +371,15 @@ public class SequenceFileThread extends Thread {
 						cs.setCurrentAlias(alias, f.getName());
 						cs.determineFlankPositions(true);
 						//processFlank.set(System.nanoTime()-tempProcessFlank.get()+processFlank.get());
-						leftCorrect = cs.isCorrectPositionLeft();
-						rightCorrect = cs.isCorrectPositionRight();
+						if(subject.isPacBio() && subject.hasPrimers()) {
+							leftCorrect = cs.getRaw().indexOf(subject.getLeftPrimerMatchPacBio()) >= 0; 
+							rightCorrect = cs.getRaw().indexOf(subject.getRightPrimerMatchPacBio()) >= 0;
+						}
+						//Illumina
+						else {
+							leftCorrect = cs.isCorrectPositionLeft();
+							rightCorrect = cs.isCorrectPositionRight();
+						}
 						if(leftCorrect && rightCorrect) {
 							correctPositionFRassembled.getAndIncrement();
 						}
@@ -769,52 +776,12 @@ public class SequenceFileThread extends Thread {
 		this.tableModel = m;
 		
 	}
-	public static int countLinesNew(File f2) throws IOException {
-	    InputStream is = new BufferedInputStream(new FileInputStream(f2));
-	    try {
-	        byte[] c = new byte[1024];
-
-	        int readChars = is.read(c);
-	        if (readChars == -1) {
-	            // bail out if nothing to read
-	            return 0;
-	        }
-
-	        // make it easy for the optimizer to tune this loop
-	        int count = 0;
-	        while (readChars == 1024) {
-	            for (int i=0; i<1024;) {
-	                if (c[i++] == '\n') {
-	                    ++count;
-	                }
-	            }
-	            readChars = is.read(c);
-	        }
-
-	        // count remaining characters
-	        while (readChars != -1) {
-	            System.out.println(readChars);
-	            for (int i=0; i<readChars; ++i) {
-	                if (c[i] == '\n') {
-	                    ++count;
-	                }
-	            }
-	            readChars = is.read(c);
-	        }
-	        //System.out.println("CountLines is: "+count);
-	        return count == 0 ? 1 : count;
-	    } finally {
-	        is.close();
-	    }
-	}
 	public void setNGS(NGS n) {
 		this.ngs = n;
 		if(ngs!=null) {
-			if(ngs.getR2()!=null && ngs.assembledOK()) {
+			if(ngs.getR2()!=null) { 
 				//could still be not present
 				if(ngs.getUnassembledFFileDerived()!=null && ngs.getUnassembledRFileDerived()!=null) {
-					System.out.println(ngs.getUnassembledFFileDerived());
-					System.out.println(ngs.getUnassembledRFileDerived());
 					this.setFileF(ngs.getUnassembledFFileDerived());
 					this.setFileR(ngs.getUnassembledRFileDerived());
 				}
@@ -870,7 +837,6 @@ public class SequenceFileThread extends Thread {
             File flashOutputunassR = new File(currentDir+File.separator+ngs.getAssembledFileDerived().getName()+".notCombined_2.fastq.gz");
             
             System.out.println("File "+flashOutput.getAbsolutePath());
-            System.out.println(flashOutput.exists());
             if(flashOutput.exists()) {
             	if(ngs.getAssembledFileDerived().exists()) {
             		ngs.getAssembledFileDerived().delete();

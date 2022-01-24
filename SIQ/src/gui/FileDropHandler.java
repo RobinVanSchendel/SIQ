@@ -34,17 +34,20 @@ final class FileDropHandler extends TransferHandler {
             // should never happen (or JDK is buggy)
             return false;
         }
-        File one = null;
-        for (File file: files) {
-        	one = file;
-        	break;
-        }
         JTable.DropLocation dl = (JTable.DropLocation) support.getDropLocation();
         int row = dl.getRow();
         int column = dl.getColumn();
         JTable jt = (JTable)support.getComponent();
         NGSTableModel ngsmodel = (NGSTableModel)jt.getModel();
-        ngsmodel.setValueAt( files.get(0).getAbsolutePath(), row, column);
+        for(File f: files) {
+        	//add row if required
+        	if(row>=ngsmodel.getRowCount()) {
+        		NGS ngs = new NGS();
+        		ngsmodel.addNGS(ngs);
+        	}
+        	ngsmodel.setValueAt( f.getAbsolutePath(), row, column);
+        	row++;
+        }
         return true;
     }
 }
