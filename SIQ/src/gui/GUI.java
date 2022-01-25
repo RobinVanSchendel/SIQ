@@ -1,21 +1,13 @@
 package gui;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.dnd.DnDConstants;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -27,39 +19,33 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.Vector;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
-import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
-import javax.swing.DropMode;
-import javax.swing.ImageIcon;
 import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -69,7 +55,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -79,42 +64,25 @@ import javax.swing.KeyStroke;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
-import javax.swing.TransferHandler;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumnModel;
-
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.Sequence;
 import org.biojava.bio.seq.SequenceIterator;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequence.IOTools;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.widgets.Label;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.FrameworkUtil;
-
-import batch.SequenceController;
 import batch.SequenceControllerThread;
-import dnaanalysis.Utils;
 import utils.AnalyzedFileController;
 import utils.CompareSequence;
-import utils.KMERLocation;
 import utils.NGSPair;
-import utils.StreamGobbler;
 import utils.Subject;
 
 public class GUI implements ActionListener, MouseListener {
@@ -456,7 +424,7 @@ public class GUI implements ActionListener, MouseListener {
 			if(isOK) {
 				JPanel panel = new JPanel(new GridLayout(4,2));
 				
-				String dirString = "<dir>";
+				String dirString = System.getProperty("user.dir");
 				if(pm.getProperty("lastDir") != null) {
 					File dir = new File(pm.getProperty("lastDir"));
 					if(dir !=null && dir.isDirectory()) {
@@ -579,6 +547,13 @@ public class GUI implements ActionListener, MouseListener {
 			chooser.setMultiSelectionEnabled(false);
 			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		}
+		else if(e.getActionCommand().contentEquals("exampleData")) {
+			//copy data to right location
+			HashMap<String,File> files = copyExampleData();
+			
+			//load Input Table
+			loadExampleTable(files,"dataTable.txt");
+		}
 		System.out.println("ActionCommand: "+e.getActionCommand());
 	}
 
@@ -698,6 +673,163 @@ public class GUI implements ActionListener, MouseListener {
 		return sb.toString();
 	}
 	*/
+
+	private void loadExampleTable(HashMap<String, File> files, String string) {
+		//remove the dummy row
+		ngsModel.removeAll();
+		File table = files.get(string);
+		if(table != null && table.exists()) {
+			try {
+				Scanner s = new Scanner(table);
+				//remove header
+				s.nextLine();
+				while(s.hasNextLine()) {
+					String line = s.nextLine();
+					String[] parts = line.split("\t");
+					//get all parts
+					File R1 = files.get(parts[0]);
+					File R2 = files.get(parts[1]);
+					File ref = files.get(parts[2]);
+					
+					String alias = parts[3];
+					String left = parts[4];
+					String right = parts[5];
+					
+
+					//create NGS
+					NGS ngs = new NGS();
+					ngs.setR1(R1);
+					ngs.setR2(R2);
+					ngs.setAlias(alias);
+					ngs.setSubject(ref.getAbsolutePath());
+					ngs.setLeftFlank(left);
+					ngs.setRightFlank(right);
+					
+					if(parts.length>=8) {
+						String leftP = parts[6];
+						String rightP = parts[7];
+						ngs.setLeftPrimer(leftP);
+						ngs.setRightPrimer(rightP);
+					}
+					
+					ngsModel.addNGS(ngs);
+				}
+				s.close();
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
+		
+	}
+	private HashMap<String,File> copyExampleData() {
+		HashMap<String,File> fileHash = new HashMap<String,File>();
+		String path = "/resources/fastq/";
+		
+		URI jarPath = null;
+		File jarFile = null;
+		try {
+			jarPath = GUI.class.getProtectionDomain()
+					.getCodeSource()
+					.getLocation()
+					.toURI();
+			
+			jarFile = new File(GUI.class.getProtectionDomain()
+					.getCodeSource()
+					.getLocation().getPath());
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		List<String> files = null;
+		
+		//inside a jar?
+		if(jarFile!=null && jarFile.isFile()) {
+			JarFile jar;
+			//inside jar it works without '/'
+			path = "resources/fastq/";
+			files = new ArrayList<>();
+			try {
+				
+				jar = new JarFile(jarFile);
+			    final Enumeration<JarEntry> entries = jar.entries(); //gives ALL entries in jar
+			    while(entries.hasMoreElements()) {
+			        final String name = entries.nextElement().getName();
+			        if (name.startsWith(path) && !name.contentEquals(path)) { //filter according to the path
+			            //to copy the file the additional '/' is required
+			            files.add("/"+name);
+			        }
+			    }
+			    jar.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			//restore path
+			path = "/resources/fastq/";
+		}
+		else {
+			try {
+				files = getResourceFiles(path);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		String os = System.getProperty("os.name");
+		
+		if(files!=null) {
+			for(String s: files) {
+				String executable = s;
+				String executableTarget = new File(s).getName();
+				
+				try {
+					InputStream in = getClass().getResourceAsStream(executable);
+					File mainFile = Paths.get(jarPath).toFile().getParentFile();
+					Path outPathFile = Paths.get(mainFile.getAbsolutePath(),executableTarget);
+					if(os.contains("Windows")) {
+						if(Files.exists(outPathFile)){
+							Files.delete(outPathFile);
+						}
+						if(!Files.exists(outPathFile)) {
+							Files.copy(in, outPathFile);
+						}
+					}
+					else {
+						//copy to the directory in Linux
+						Files.copy(in, outPathFile);
+					}
+					//create a fileHash to fill the NGS table with paths
+					fileHash.put(executableTarget,new File(outPathFile.toString()));
+					in.close();
+					
+				} catch (IOException | ExceptionInInitializerError er) {
+					// TODO Auto-generated catch block
+					er.printStackTrace();
+				}
+			}
+		}
+		return fileHash;
+	}
+	
+	private List<String> getResourceFiles(String path) throws IOException {
+	    List<String> filenames = new ArrayList<>();
+	    try (
+            InputStream in = getClass().getResourceAsStream(path);
+            BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
+	        String resource;
+	        while ((resource = br.readLine()) != null) {
+	            filenames.add(path+resource);
+	        }
+	    }
+	    catch(Exception e) {
+	    	e.printStackTrace();
+	    }
+	    return filenames;
+	}
 
 	private void exportToExcel() {
 		chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -1487,11 +1619,10 @@ public class GUI implements ActionListener, MouseListener {
         placeComp(removeRows,guiFrame,0,2,1,1);
         
         
-        JButton template = new JButton("Table template");
-        template.setActionCommand("template");
-        template.addActionListener(this);
-        placeComp(template,guiFrame,1,2,1,1);
-        //placeComp(new JLabel(" "),guiFrame,0,1,1,1);
+        JButton exampleData = new JButton("Load example data");
+        exampleData.setActionCommand("exampleData");
+        exampleData.addActionListener(this);
+        placeComp(exampleData,guiFrame,1,2,1,1);
         
         JLabel copyPaste = new JLabel("You can copy & paste your table below:");
         placeComp(copyPaste,guiFrame,0,3,1,1);
@@ -1578,7 +1709,6 @@ public class GUI implements ActionListener, MouseListener {
 		}
 		try {
 			InputStream in = getClass().getResourceAsStream(executable);
-			String out = executableTarget;
 			File mainFile = Paths.get(jarPath).toFile().getParentFile();
 			Path outPath = Paths.get(mainFile.getAbsolutePath());
 			Path outPathFile = null;
