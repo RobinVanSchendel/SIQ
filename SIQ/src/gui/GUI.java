@@ -493,6 +493,11 @@ public class GUI implements ActionListener, MouseListener {
 		else if(e.getActionCommand().contentEquals("flash")) {
 			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 			chooser.setMultiSelectionEnabled(false);
+			String flashFile = pm.getProperty("flash");
+			if(flashFile !=null) {
+				File f = new File(flashFile);
+				chooser.setSelectedFile(f);
+			}
 			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
 				File f = chooser.getSelectedFile();
 				if(f.exists()) {
@@ -724,6 +729,7 @@ public class GUI implements ActionListener, MouseListener {
 		
 	}
 	private HashMap<String,File> copyExampleData() {
+		System.out.println("copyExampleData");
 		HashMap<String,File> fileHash = new HashMap<String,File>();
 		String path = "/resources/fastq/";
 		
@@ -735,16 +741,13 @@ public class GUI implements ActionListener, MouseListener {
 					.getLocation()
 					.toURI();
 			
-			jarFile = new File(GUI.class.getProtectionDomain()
-					.getCodeSource()
-					.getLocation().getPath());
+			jarFile = Paths.get(jarPath).toFile();
 		} catch (URISyntaxException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
 		List<String> files = null;
-		
 		//inside a jar?
 		if(jarFile!=null && jarFile.isFile()) {
 			JarFile jar;
@@ -752,7 +755,6 @@ public class GUI implements ActionListener, MouseListener {
 			path = "resources/fastq/";
 			files = new ArrayList<>();
 			try {
-				
 				jar = new JarFile(jarFile);
 			    final Enumeration<JarEntry> entries = jar.entries(); //gives ALL entries in jar
 			    while(entries.hasMoreElements()) {
@@ -782,6 +784,7 @@ public class GUI implements ActionListener, MouseListener {
 		String os = System.getProperty("os.name");
 		
 		if(files!=null) {
+			String dir = "SIQtestData";
 			for(String s: files) {
 				String executable = s;
 				String executableTarget = new File(s).getName();
@@ -789,7 +792,13 @@ public class GUI implements ActionListener, MouseListener {
 				try {
 					InputStream in = getClass().getResourceAsStream(executable);
 					File mainFile = Paths.get(jarPath).toFile().getParentFile();
-					Path outPathFile = Paths.get(mainFile.getAbsolutePath(),executableTarget);
+					Path dirPath = Paths.get(mainFile.getAbsolutePath(),dir);
+					File dirFile = dirPath.toFile();
+					if(!dirFile.exists()) {
+						dirFile.mkdir();
+					}
+					
+					Path outPathFile = Paths.get(mainFile.getAbsolutePath(),dir,executableTarget);
 					if(os.contains("Windows")) {
 						if(Files.exists(outPathFile)){
 							Files.delete(outPathFile);
@@ -800,7 +809,12 @@ public class GUI implements ActionListener, MouseListener {
 					}
 					else {
 						//copy to the directory in Linux
-						Files.copy(in, outPathFile);
+						if(Files.exists(outPathFile)){
+							Files.delete(outPathFile);
+						}
+						if(!Files.exists(outPathFile)) {
+							Files.copy(in, outPathFile);
+						}
 					}
 					//create a fileHash to fill the NGS table with paths
 					fileHash.put(executableTarget,new File(outPathFile.toString()));
@@ -1702,30 +1716,37 @@ public class GUI implements ActionListener, MouseListener {
 			e.printStackTrace();
 		}
 		String executable = "/resources/flash2";
-		String executableTarget = "flashLinux";
 		if(os.contains("Windows")) {
 			executable = "/resources/flash2.exe";
-			executableTarget = "flashWin.exe";
+		}
+		else if(os.contains("Mac")) {
+			executable = "/resources/flash2_Mac";
 		}
 		try {
 			InputStream in = getClass().getResourceAsStream(executable);
 			File mainFile = Paths.get(jarPath).toFile().getParentFile();
 			Path outPath = Paths.get(mainFile.getAbsolutePath());
 			Path outPathFile = null;
+			//Windows only
 			if(os.contains("Windows")) {
 				System.out.println("Copying to "+outPath.toString());
 				outPathFile = Paths.get(mainFile.getAbsolutePath(),"flash.exe");
+				//only overwrite if not there
 				if(!Files.exists(outPathFile)) {
 					Files.copy(in, outPathFile);
 				}
 			}
+			//Linux and Mac go here
 			else {
 				outPathFile = Paths.get(mainFile.getAbsolutePath(),"flash2");
 				//copy to the directory in Linux
-				Files.copy(in, outPathFile);
-				File file = outPathFile.toFile();
-				//chmod +x
-				file.setExecutable(true);
+				//only overwrite if not there
+				if(!Files.exists(outPathFile)) {
+					Files.copy(in, outPathFile);
+					File file = outPathFile.toFile();
+					//chmod +x
+					file.setExecutable(true);
+				}
 			}
 			pm.setProperty("flash", outPathFile.toString());
 			System.out.println(outPathFile.toString());
