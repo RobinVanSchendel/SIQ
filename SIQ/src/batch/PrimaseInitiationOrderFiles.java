@@ -2,7 +2,6 @@ package batch;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.SortedSet;
@@ -10,13 +9,6 @@ import java.util.TreeSet;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-
-
-
-
-
-import utils.CompareSequence;
 
 public class PrimaseInitiationOrderFiles {
 

@@ -3,15 +3,25 @@ package batch;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Desktop;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.util.Vector;
 import java.util.concurrent.Semaphore;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+
+import org.biojava.bio.BioException;
+import org.biojava.bio.seq.Sequence;
+import org.biojava.bio.seq.SequenceIterator;
+import org.biojavax.bio.seq.RichSequence.IOTools;
 
 import gui.NGS;
 import gui.GUI;
@@ -34,10 +44,12 @@ public class SequenceControllerThread implements Runnable{
 	private File excelFile;
 	private File tsvFile;
 	private boolean remerge;
+	private NGSTableModel m;
 	
 	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, GUI GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue, boolean remerge) {
 		this.GUI = GUI;
 		this.v = v;
+		this.m = m;
 		readyToRun = true;
 		this.cpus = cpus;
 		this.remerge = remerge;
@@ -56,12 +68,31 @@ public class SequenceControllerThread implements Runnable{
 		
 		//Thread stuff
 		System.out.println("Gonna start "+cpus+" cpus");
+		System.out.println("Flash exec ["+flashExec+"]");
 		Semaphore mySemaphore = new Semaphore(cpus);
 		
 		int cpusForAssembly = 1;
 		if(v.size()<cpus) {
 			cpusForAssembly = cpus/v.size();
 		}
+		//HACK, remove later
+		String searchAdditional = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104722\\Refs\\p42_mmHPRTex3-PacBio-amplicon_references.txt";
+		BufferedReader is2;
+		HashMap<String, String> hmAdditional = new HashMap<String, String>();
+		try {
+			is2 = new BufferedReader(new FileReader(searchAdditional));
+			SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
+			while(si2.hasNext()){
+				Sequence seq = si2.nextSequence();
+				hmAdditional.put(seq.getName(),seq.seqString());
+			}
+			hmAdditional.clear();
+		} catch (FileNotFoundException | NoSuchElementException | BioException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
 		for(NGS n: v) {
 			//not really perfect, but this will do
 			System.out.println("Setting setMaxError "+maxError);
@@ -78,12 +109,12 @@ public class SequenceControllerThread implements Runnable{
 			//should we get the assembled
 			if(n.assembledOK()) {
 				System.out.println("Starting assembled");
-				sft = new SequenceFileThread(n.getAssembledFile(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null, n.getOutputTopStats(), remerge);
+				sft = new SequenceFileThread(n.getAssembledFile(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), hmAdditional, n.getOutputTopStats(), remerge);
 			}
 			else {
 				this.assembleRequired = true;
 				System.out.println("Starting assembled derived");
-				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null, n.getOutputTopStats(), remerge);
+				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), hmAdditional, n.getOutputTopStats(), remerge);
 			}
 			//leave out for now
 			/*
@@ -126,6 +157,7 @@ public class SequenceControllerThread implements Runnable{
 		}
 		GUI.guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 		enableButtons(false);
+		m.resetNumbers();
 		ArrayList<Thread> threads = new ArrayList<Thread>();
 		while(vThreads.size()>0) {
 			Thread t = vThreads.remove(0);
