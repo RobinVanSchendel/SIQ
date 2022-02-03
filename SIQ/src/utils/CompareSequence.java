@@ -3,23 +3,18 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.biojava.bio.seq.DNATools;
 import org.biojava.bio.seq.Sequence;
-import org.biojava.bio.symbol.IllegalSymbolException;
-import org.biojavax.bio.seq.RichSequence;
 import org.jcvi.jillion.core.Range;
-import org.jcvi.jillion.core.qual.PhredQuality;
 import org.jcvi.jillion.core.qual.QualitySequence;
 import org.jcvi.jillion.core.qual.QualitySequenceBuilder;
 
 import dnaanalysis.Blast;
 import dnaanalysis.InsertionSolverTwoSides;
 import dnaanalysis.RandomInsertionSolverTwoSides;
-import gui.PropertiesManager;
 
 
 public class CompareSequence {

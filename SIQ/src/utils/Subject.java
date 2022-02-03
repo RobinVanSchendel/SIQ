@@ -1,7 +1,5 @@
 package utils;
 
-import java.io.File;
-
 import org.biojavax.bio.seq.RichSequence;
 
 public class Subject {
@@ -178,7 +176,7 @@ public class Subject {
 			rightPrimer = null;
 		}
 		
-		System.out.println("rightPrimerSet "+rightPrimerSet+" "+rightPrimer);
+		//System.out.println("rightPrimerSet "+rightPrimerSet+" "+rightPrimer);
 	}
 	public void setLeftFlank(String tempLeftFlank, String right) {
 		if(tempLeftFlank!=null && tempLeftFlank.length()>=15) {

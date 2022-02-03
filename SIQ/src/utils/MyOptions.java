@@ -1,21 +1,10 @@
 package utils;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.UnknownHostException;
-import java.util.NoSuchElementException;
-
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Option;
 import org.apache.commons.cli.ParseException;
-import org.biojava.bio.BioException;
-import org.biojavax.bio.seq.RichSequenceIterator;
-import org.biojavax.bio.seq.RichSequence;
-import org.biojavax.bio.seq.RichSequence.IOTools;
 
 public class MyOptions {
 	//private String File; //in
