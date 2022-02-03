@@ -729,7 +729,6 @@ public class GUI implements ActionListener, MouseListener {
 		
 	}
 	private HashMap<String,File> copyExampleData() {
-		System.out.println("copyExampleData");
 		HashMap<String,File> fileHash = new HashMap<String,File>();
 		String path = "/resources/fastq/";
 		

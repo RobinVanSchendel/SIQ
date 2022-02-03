@@ -4,14 +4,19 @@ import java.io.File;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
-import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
 
 public class NGSTableModel extends AbstractTableModel {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1737120198061454641L;
+
 	// holds the strings to be displayed in the column headers of our table
 	   final String[] columnNames = {"R1 file", "R2 file", "reference", "alias", "left flank", "right flank", "left primer", "right primer","HDR", "<html>#bases past<br>primer</html>","%Complete", "#Reads", "#Correct","%Correct","Status"};
 	  
 	   // holds the data types for all our columns
+	   @SuppressWarnings("rawtypes")
 	   Class[] columnClasses = {File.class, File.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, Float.class, Integer.class, Integer.class, Float.class, String.class};
 	  
 	   // holds our data
