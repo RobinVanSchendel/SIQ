@@ -14,7 +14,7 @@ Contents
 
 ### Installation
 
-* latest Java .jar file from this repository
+* Download latest Java .jar file from this repository
 
 Download the latest .jar file from this repository. You can double click it and it should work directly. The only thing you require is a working Java version (1.8 and up). 
 
@@ -31,6 +31,8 @@ SIQ can be used to analyze the following type of data:
 * PacBio data (.fastq or .fastq.gz files)
 
 When setting up your targeted sequencing experiments you generally use two primers to amplify your locus of interest. Additionally, you (optionally) have expected target sites for your experiments. This is for example the case if you use CRISPR\Cas9, Cas13, I-SceI or any other enzyme to target the DNA. We have also used SIQ to analyze different sites, such as transposon sites, sites of G-quadruplex sequences. SIQ uses these locations to 1) try to identify sequence alterations preferably at this location. 2) to ensure your PCR primers amplified from the expected location (see [Filters](#filters) below).
+  
+ ![flanks](SIQ/images/flanks.jpg)
 
 SIQ has the possibilities for the following input:
 
@@ -38,7 +40,7 @@ SIQ has the possibilities for the following input:
 * R2 - paired end sequencing file. If provided SIQ will merge R1 and R2 using FLASH (optional)
 * reference - reference file containing your DNA sequence in FASTA format. Needs to contain the primer sequences as well if supplied. Keep the reference file small as this determines the runtime of SIQ (required)
 * alias - your sample name (required)
-* left flank - the stretch of DNA that just touches your expected target site. See below for a graphical example (required)
+* left flank - the stretch of DNA that just touches your expected target site. See below for a graphical example (required, see [flanks](#flanks))
 * right flank - the stretch of DNA that just touches your expected target site. See below for a graphical example. In the case of for example Cas9 nickases this can designate the second sgRNA target site (required)
 * #bases past primer - the number of bases your sequence reads at least have to pass the primer to be included as a real event. This filter is there to make sure your primers annealed at the target site in the DNA (default: 5, 0 disables this filter)
 
@@ -53,11 +55,38 @@ Optional settings:
 ### Filters
 
 ### Troubleshooting
+ 
+* SIQ does not start
 
+The problem is likely that you do not have the correct version of Java installed. Ensure you download and install the newest Java version:
+  
+[Download Java](https://www.java.com/en/download/)
 
+* SIQ still does not start
 
+Start SIQ from within a terminal (command prompt in windows):
 
+  1. Start a terminal
+  2. Go to the directory where the SIQ jar file is (for example Downloads): `cd Downloads`
+  3. Start SIQ (in this example the file is SIQ_1.0.jar: `java -jar SIQ_1.0.jar` 
+  4. Post the output as an [issue](https://github.com/RobinVanSchendel/SIQ/issues).
 
-
-
-
+* SIQ does not work on files that need merging of paired-end reads
+  
+The program Flash that is required for you operating system seems to be not working. When starting SIQ, Flash is copied to the directory that SIQ is running in. It might be that the program does not work for your operating system. Please check the output of the following commmands to see if Flash is working
+  
+  1. Start a terminal
+  2. Go to the directory where the SIQ jar file is (for example Downloads): `cd Downloads`
+  3. Run flash like this (Linux/MacOs)
+  ```
+    ./flash2  
+      Usage: flash [OPTIONS] MATES_1.FASTQ MATES_2.FASTQ
+      Run `./flash2 --help | less' for more information.
+  ```
+     or in windows:
+  ```
+    flash.exe
+      Usage: flash [OPTIONS] MATES_1.FASTQ MATES_2.FASTQ
+      Run `flash.exe --help | more' for more information.
+  ```
+   4. if the output is different, please post the output as an [issue](https://github.com/RobinVanSchendel/SIQ/issues). 
