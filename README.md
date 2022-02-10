@@ -26,7 +26,7 @@ when SIQ is started you should see the following screen:
 
 SIQ can be used to analyze the following type of data:
 
-* Sanger sequences (.ab1 files)
+* Sanger sequences (.ab1 files) (Note: only Sanger sequences containing a single mutation can be analyzed) 
 * Illumina single and paired-end sequence data (.fastq or .fastq.gz files)
 * PacBio data (.fastq or .fastq.gz files)
 
