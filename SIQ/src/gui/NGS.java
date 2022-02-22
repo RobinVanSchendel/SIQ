@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.NoSuchElementException;
 
 import org.biojavax.bio.seq.RichSequenceIterator;
@@ -133,12 +134,32 @@ public class NGS {
 		else {
 			File f = new File(this.subject);
 			if(f.exists()) {
-				return true;
-			}
-			else {
-				return false;
+				if(isFasta(f)) {
+					System.out.println("ISFASTA "+f.getName());
+					return true;
+				}
 			}
 		}
+		return false;
+	}
+	private static boolean isFasta(File f) {
+		BufferedReader br;
+		try {
+			br = new BufferedReader(new FileReader(f));
+			RichSequenceIterator si = IOTools.readFastaDNA(br, null);
+			if(si.hasNext()) {
+				//read it
+				si.nextRichSequence();
+				br.close();
+				return true;
+			}
+			br.close();
+		} catch (IOException | NoSuchElementException | BioException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return false;
 	}
 	public boolean R1OK() {
 		if(this.R1==null) {
