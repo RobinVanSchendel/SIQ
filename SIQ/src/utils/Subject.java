@@ -352,6 +352,14 @@ public class Subject {
 	}
 	public void setHDR(RichSequence hdr) {
 		this.hdr = hdr;
+		if(hdr.seqString().toUpperCase().indexOf(leftPrimer)<0) {
+			System.err.println(this.getLeftPrimer() +" "+hdr.seqString().toUpperCase().indexOf(leftPrimer));
+		}
+		if(hdr.seqString().toUpperCase().indexOf(rightPrimer)<0) {
+			System.err.println(this.getRightPrimer()+" "+hdr.seqString().toUpperCase().indexOf(rightPrimer));
+		}
+		
+		
 	}
 	public boolean isHDREvent(CompareSequence cs) {
 		if(this.hdr == null) {
@@ -388,10 +396,27 @@ public class Subject {
 		int endPart = 20;
 		int start = -1;
 		int end = -1;
+		//System.out.println(query);
+		//System.out.println(leftPrimer);
+		//System.out.println(rightPrimer);
+		int startQuery = -1;
+		int endQuery = -1;
+		
 		if(this.leftPrimerSet && rightPrimerSet) {
 			//not completely correct as query could be shortened
-			start = subject.indexOf(query.substring(0, leftPrimer.length()));
-			end = subject.indexOf(query.substring(query.length()-rightPrimer.length()));
+			start = subject.indexOf(leftPrimer);
+			end = subject.indexOf(rightPrimer);
+			//also find the left and rightPrimer in the query
+			startQuery = query.indexOf(leftPrimer.substring(0, 15));
+			//primer can be much longer, so cut it
+			endQuery = query.indexOf(rightPrimer.substring(0, 15));
+			
+			
+			//if not found, this will not work at all
+			if(startQuery < 0 || endQuery < 0 ) {
+				return -1;
+			}
+			query = query.substring(startQuery, endQuery);
 		}
 		else {
 			start = subject.indexOf(query.substring(0, startPart));
@@ -404,13 +429,16 @@ public class Subject {
 		//otherwise update ends and go on
 		else {
 			if(this.leftPrimerSet && rightPrimerSet) {
-				end+=rightPrimer.length();
+				//no this is not always correct
 			}
 			else {
+				//does this still work?
 				end+=endPart;
 			}
 		}
 		String subjectSub = subject.substring(start,end);
+		
+		//shortcut
 		if(Math.abs(query.length()-subjectSub.length())>1) {
 			return -1;
 		}
