@@ -1326,7 +1326,7 @@ public class GUI implements ActionListener, MouseListener {
         }
         guiFrame.setLayout(new GridBagLayout());
 		guiFrame.setMinimumSize(guiFrame.getSize());
-		guiFrame.pack();
+		System.out.println(guiFrame.getSize());
         
         //The first JPanel contains a JLabel and JCombobox
         //comboPanel.setLayout(new GridLayout(0,4));
@@ -1515,6 +1515,7 @@ public class GUI implements ActionListener, MouseListener {
         	File f = new File(pm.getProperty("lastDir"));
         	this.chooser.setCurrentDirectory(f);
         }
+        guiFrame.pack();
 	}
 
 	private String getMode() {
