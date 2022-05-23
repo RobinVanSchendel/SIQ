@@ -135,7 +135,6 @@ public class NGS {
 			File f = new File(this.subject);
 			if(f.exists()) {
 				if(isFasta(f)) {
-					System.out.println("ISFASTA "+f.getName());
 					return true;
 				}
 			}
