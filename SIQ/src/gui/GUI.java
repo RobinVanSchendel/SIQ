@@ -1326,7 +1326,6 @@ public class GUI implements ActionListener, MouseListener {
         }
         guiFrame.setLayout(new GridBagLayout());
 		guiFrame.setMinimumSize(guiFrame.getSize());
-		System.out.println(guiFrame.getSize());
         
         //The first JPanel contains a JLabel and JCombobox
         //comboPanel.setLayout(new GridLayout(0,4));
