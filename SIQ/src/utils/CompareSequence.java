@@ -431,12 +431,14 @@ public class CompareSequence {
 		//only do it when no weird things found
 		if(this.remarks.length() == 0 && insert.length()>0 && is == null){
 			//currently fixed value
-			if(this.tinsDistValue==-1) {
-				solveInsertion(solveInsertStart,solveInsertEnd, MAXIMUMTRIESSOLVING);
-			}
-			else {
-				solveInsertion(-tinsDistValue,tinsDistValue, MAXIMUMTRIESSOLVING);
-			}
+			//if(!this.isDELINS_SNV()) {
+				if(this.tinsDistValue==-1) {
+					solveInsertion(solveInsertStart,solveInsertEnd, MAXIMUMTRIESSOLVING);
+				}
+				else {
+					solveInsertion(-tinsDistValue,tinsDistValue, MAXIMUMTRIESSOLVING);
+				}
+			//}
 		}
 		if(del.length()>0 && insert.length() == 0){
 			homology = Utils.getHomologyAtBreak(leftFlank.getString(), del, rightFlank);
@@ -471,8 +473,10 @@ public class CompareSequence {
 		//}
 		if(barcode!=null) {
 			ret.append(barcode).append(s);
+			ret.append(barcode).append(s);
 		}
 		else {
+			ret.append(s);
 			ret.append(s);
 		}
 		ret.append(getName()).append(s);
@@ -832,13 +836,13 @@ public class CompareSequence {
 			else if(mismatches == 1) {
 				return Type.HDR1MM;
 			}
-			else if(this.isFlankInsert) {
-				return Type.TINS;
-			}
 			//disabled for now
 			//else if(isDELINS_SNV()) {
 			//	return Type.DELINS_SNV;
 			//}
+			else if(this.isFlankInsert) {
+				return Type.TINS;
+			}
 			else {
 				return Type.DELINS;
 			}
@@ -1011,7 +1015,7 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "Barcode\tName\tSplit\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%"
+		String ret = "Barcode\tGene\tName\tSplit\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%"
 				+ "\thomologyMismatch10%ref\thomologyLengthMismatch10%ref"
 				+ "\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
 				+ "Remarks\tReversed\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight"+s+"entireQueryUsed";

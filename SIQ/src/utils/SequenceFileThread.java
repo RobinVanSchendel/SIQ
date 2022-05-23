@@ -460,7 +460,8 @@ public class SequenceFileThread extends Thread {
 				}
 				else {
 					//if(cs.getBarcode().contentEquals("RVsg_mmPolq-2")) {
-						//System.out.println("incorrect\t"+cs.toStringOneLine());
+					//System.out.println("incorrect\t"+cs.toStringOneLine("dum"));
+					//System.out.println(leftCorrect+"\t"+rightCorrect);
 					//}
 					//System.out.println("incorrect\t"+cs.toStringOneLine("dum"));
 					//System.out.println(subject.isHDREvent(cs));
@@ -583,7 +584,10 @@ public class SequenceFileThread extends Thread {
 							}
 							double fraction = countEvents.get(key,barcode)/total;
 							//overwrite barcode here
-							writer.println(countEvents.get(key,barcode)+"\t"+fraction+"\t"+eventString.replaceAll("<DUMMY>", barcode));
+							String tempEventString = eventString.replaceFirst("<DUMMY>", barcode);
+							tempEventString = tempEventString.replaceFirst("<DUMMY>", getGene(barcode));
+							tempEventString = tempEventString.replaceAll("<DUMMY>", barcode);
+							writer.println(countEvents.get(key,barcode)+"\t"+fraction+"\t"+tempEventString);
 							count++;
 						}
 					}
@@ -730,6 +734,13 @@ public class SequenceFileThread extends Thread {
 	}
 	*/
 
+	private String getGene(String barcode) {
+		int index = barcode.lastIndexOf("-");
+		if(index>0) {
+			return barcode.substring(0, index);
+		}
+		return barcode;
+	}
 	public void setMinimalCount(long minimalCount) {
 		this.minimalCount = minimalCount;
 	}
