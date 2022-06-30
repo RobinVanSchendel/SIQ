@@ -1036,6 +1036,10 @@ public class GUI implements ActionListener, MouseListener {
 	        			cell.setCellValue(nr);
 	        		}
 	        		catch(Exception el) {
+	        			//keep max length
+	        			if(o.length()>32767) {
+	        				o = o.substring(0, 32767);
+	        			}
 	        			cell.setCellValue(o);
 	        		}
 	        	}
