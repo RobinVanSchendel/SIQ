@@ -14,7 +14,7 @@ Contents
 
 ### Installation
 
-* Download latest Java .jar file from this repository [here](https://github.com/RobinVanSchendel/SIQ/releases/download/v1.1/SIQ_1.0.jar)
+* Download latest Java .jar file from this repository [here](https://github.com/RobinVanSchendel/SIQ/releases/latest)
 
 Download the latest .jar file from this repository. You can double click it and it should work directly. The only thing you require is a working Java version (1.8 and up). 
 
