@@ -493,12 +493,12 @@ public class NGS {
 		else {
 			File f = hdr;
 			if(f.exists()) {
-				return true;
-			}
-			else {
-				return false;
+				if(isFasta(f)) {
+					return true;
+				}
 			}
 		}
+		return false;
 	}
 	public void setTextStatus(String status) {
 		this.textStatus = status;
