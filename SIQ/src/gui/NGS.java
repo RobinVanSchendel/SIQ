@@ -399,7 +399,8 @@ public class NGS {
 				&& this.leftFlankOK() 
 				&& this.rightFlankOK()
 				&& this.leftPrimerOK()
-				&& this.rightPrimerOK();
+				&& this.rightPrimerOK()
+				&& getHDROK();
 	}
 	public File getR1() {
 		return R1;
