@@ -974,7 +974,7 @@ public class GUI implements ActionListener, MouseListener {
 		}
 		
 		//write top 100 reads
-		sheet = workbook.createSheet("Top100Reads");
+		sheet = workbook.createSheet("Top100BadReads");
 		totalRow=0;
 		printLineToExcel(sheet,"File\tExactReadFound\tReadKeyFound\tReads\tfractionOfReads\tleftPrimerCorrect\trightPrimerCorrect\tSeq\t"+CompareSequence.getOneLineHeader(),totalRow++);
 		for(NGS n: v) {

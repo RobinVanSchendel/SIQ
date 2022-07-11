@@ -176,7 +176,7 @@ public class SequenceFileThread extends Thread {
 				StreamingIterator<FastqRecord> itF = datastoreF.iterator();
 				StreamingIterator<FastqRecord> itR = datastoreR.iterator();
 				int count = 0;
-				boolean first = true;
+				boolean reverseDecisionMade = false;
 				while(itF.hasNext() && itR.hasNext()) {
 					FastqRecord F = itF.next();
 					FastqRecord R = itR.next();
@@ -184,19 +184,14 @@ public class SequenceFileThread extends Thread {
 					totalRawReadsCounter.getAndIncrement();
 					//Forward
 					boolean checkReverse = false;
-					if(first) {
+					if(!reverseDecisionMade) {
 						checkReverse = true;
-						first = false;
 					}
 					if(checkReverseOverwrite) {
 						checkReverse = true;
 					}
 					CompareSequence cs = new CompareSequence(subject, F.getNucleotideSequence().toString(), F.getQualitySequence(), f.getParentFile().getName(), checkReverse, F.getId());
-					if(first && cs.isReversed()) {
-						takeRc.set(true);
-						first = false;
-					}
-					else if(takeRc.get()) {
+					if(reverseDecisionMade && takeRc.get()) {
 						cs.reverseRead();
 					}
 					cs.setAndDetermineCorrectRange(maxError);
@@ -208,9 +203,10 @@ public class SequenceFileThread extends Thread {
 						boolean leftCorrect = cs.isCorrectPositionLeft();
 						//speedup
 						if(leftCorrect) {
+							boolean wasReversed = cs.isReversed();
 							cs = new CompareSequence(subject, R.getNucleotideSequence().toString(), R.getQualitySequence(), f.getParentFile().getName(), checkReverse, R.getId());
 							//bug, needs to be opposite orientation of forward read
-							if(!takeRc.get()) {
+							if(!wasReversed) {
 								//System.out.println("reversing");
 								cs.reverseRead();
 							}
@@ -224,6 +220,12 @@ public class SequenceFileThread extends Thread {
 							if(leftCorrect && rightCorrect) {
 								correctPositionFR.getAndIncrement();
 								//System.out.println("correct "+Thread.activeCount());
+								if(!reverseDecisionMade) {
+									if(wasReversed) {
+										takeRc.set(true);
+									}
+									reverseDecisionMade = true;
+								}
 							}
 							else {
 								//System.out.println("not correct "+leftCorrect+":"+rightCorrect+" - "+Thread.activeCount());
@@ -279,6 +281,7 @@ public class SequenceFileThread extends Thread {
 				}
 				tableModel.setTextStatus(ngs,"Analyzing reads");
 			}
+			AtomicBoolean reverseDecisionMade = new AtomicBoolean(false);
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
 			    totalRawReadsCounter.getAndIncrement();
@@ -287,7 +290,8 @@ public class SequenceFileThread extends Thread {
 				
 				boolean checkReverse = false;
 				boolean flaggedAsWrong = false;
-				if(counter.get()==0) {
+				
+				if(!reverseDecisionMade.get()) {
 					checkReverse = true;
 					//check if these are PacBio reads
 					if(id.endsWith("ccs")) {
@@ -311,11 +315,8 @@ public class SequenceFileThread extends Thread {
 					cs.setBarcode(barcode);
 				}
 				
-				if(counter.get()==0 && cs.isReversed()) {
-					takeRc.set(true);
-				}
 				//bug if checkReverseOverwrite TRUE we already checked if we needed to reverse
-				else if(takeRc.get() && !checkReverseOverwrite) {
+				if(reverseDecisionMade.get() && takeRc.get() && !checkReverseOverwrite) {
 					cs.reverseRead();
 				}
 				cs.setAndDetermineCorrectRange(maxError);
@@ -395,6 +396,18 @@ public class SequenceFileThread extends Thread {
 							if(leftCorrect && rightCorrect) {
 								cs.setAdditionalSearchString(hmAdditional);
 								cs.setCurrentFile(f);
+								//now we now if we need to reverse or not
+								if(!reverseDecisionMade.get()) {
+									//set the takeRC always, because the single files might mess up the decision
+									if(cs.isReversed()) {
+										takeRc.set(true);
+									}
+									else {
+										takeRc.set(false);
+									}
+									reverseDecisionMade.set(true);
+								}
+								
 							}
 							else {
 								if(cs.getRemarks().length()>0) {
@@ -452,13 +465,16 @@ public class SequenceFileThread extends Thread {
 						}
 					}
 				}
+				
 				if(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect){
+					//System.out.println("CORRECT "+checkReverse);
 					//System.out.println("correct\t"+cs.toStringOneLine("dum"));
 					//if(cs.getBarcode().contentEquals("RVsg_mmPolq-2")) {
 						//System.out.println("correct\t"+cs.toStringOneLine());
 					//}
 				}
 				else {
+					//System.out.println("incorrect "+checkReverse);
 					//if(cs.getBarcode().contentEquals("RVsg_mmPolq-2")) {
 					//System.out.println("incorrect\t"+cs.toStringOneLine("dum"));
 					//System.out.println(leftCorrect+"\t"+rightCorrect);
@@ -592,6 +608,14 @@ public class SequenceFileThread extends Thread {
 						}
 					}
 				}
+				//setDir, Alias
+				String refString = subject.getRefString();
+				CompareSequence ref = new CompareSequence(subject,refString,null, f.getParentFile().getName(), true, "wt_query");
+				ref.setCurrentAlias(alias, f.getName());
+				ref.setCurrentFile(f);
+				ref.determineFlankPositions(false);
+				String outputString = ref.toStringOneLine("dummy");
+				writer.println(0+"\t"+0+"\t"+outputString);
 				System.out.println("Written "+count+" events to: "+output.getAbsolutePath());
 			}
 			writer.close();

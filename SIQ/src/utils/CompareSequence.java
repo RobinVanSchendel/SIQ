@@ -671,7 +671,7 @@ public class CompareSequence {
 		String left = subjectObject.getString().substring(0, pos);
 		String right = subjectObject.getString().substring(0, newPos);
 		String hom = "";
-		while(left.charAt(left.length()-1)==right.charAt(right.length()-1) && left.length()>0 && right.length()>0){
+		while(left.length()>0 && right.length()>0 && left.charAt(left.length()-1)==right.charAt(right.length()-1)){
 			//need the reverse
 			hom = left.charAt(left.length()-1)+hom;
 			left = left.substring(0, left.length()-1);
@@ -1442,6 +1442,7 @@ public class CompareSequence {
 		return this.reversed;
 	}
 	public void reverseRead() {
+		//System.out.println("REVERSING is called!");
 		//only do it once
 		if(!reversed) {
 			//System.out.println("reversing");

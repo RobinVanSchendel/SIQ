@@ -129,8 +129,17 @@ public class Subject {
 			}
 			this.startOfLeftPrimer = subject.indexOf(leftPrimer);
 			this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
-			this.leftPrimerMatchPacBio = subject.substring(startOfLeftPrimer,endOfLeftPrimer+this.minPassedPrimer);
-			this.leftPrimerSet = true;
+			//another safety
+			if(endOfLeftPrimer+this.minPassedPrimer<=subject.length()) {
+				this.leftPrimerMatchPacBio = subject.substring(startOfLeftPrimer,endOfLeftPrimer+this.minPassedPrimer);
+				this.leftPrimerSet = true;
+			}
+			else {
+				this.startOfLeftPrimer = -1;
+				this.endOfLeftPrimer = -1;
+				this.leftPrimerSet = false;
+				leftPrimer = null;
+			}
 		}
 		else {
 			this.startOfLeftPrimer = -1;
@@ -166,8 +175,16 @@ public class Subject {
 			}
 			this.startOfRightPrimer = subject.indexOf(rightPrimer);
 			this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
-			this.rightPrimerMatchPacBio = subject.substring(startOfRightPrimer-this.minPassedPrimer,endOfRightPrimer);
-			this.rightPrimerSet = true;
+			if(startOfRightPrimer-this.minPassedPrimer >= 0 && endOfRightPrimer <= subject.length()) {
+				this.rightPrimerMatchPacBio = subject.substring(startOfRightPrimer-this.minPassedPrimer,endOfRightPrimer);
+				this.rightPrimerSet = true;
+			}
+			else {
+				startOfRightPrimer = -1;
+				endOfRightPrimer = -1;
+				rightPrimerSet = false;	
+				rightPrimer = null;
+			}
 		}
 		else {
 			startOfRightPrimer = -1;
@@ -244,6 +261,9 @@ public class Subject {
 		return true;	
 	}
 	public String getString() {
+		return subject;
+	}
+	public String getRefString() {
 		return subject;
 	}
 	public String getLeftFlank() {
