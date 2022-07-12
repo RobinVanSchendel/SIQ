@@ -392,6 +392,7 @@ ui <- fluidPage(
                      "Set top alleles based on:",
                      c("Total","Sample"),
                      inline = T),
+        downloadButton('exportAlleles',"Export to PDF"),
       ),
       conditionalPanel(
         condition = "input.alleleTopOutcomesChoice == 'Sample'",
@@ -860,7 +861,8 @@ server <- function(input, output, session) {
   
   ##for the plots
   plotsForDownload <- reactiveValues(tornados=NULL, homs=NULL,sizeDiffs=NULL,types=NULL, size=NULL
-                                     , snvs=NULL, target=NULL, tornadoTI=NULL, tornadoTIcols=NULL, outcomes=NULL, samples=NULL)
+                                     , snvs=NULL, target=NULL, tornadoTI=NULL, tornadoTIcols=NULL, outcomes=NULL, samples=NULL,
+                                     alleles=NULL)
   
   applyColor <- function(el){
     start_time <- Sys.time()
@@ -1561,6 +1563,17 @@ server <- function(input, output, session) {
         height = nrow*input$plotHeight/72
         width = input$plotWidth/72
         ggsave(file, plotsForDownload$tornados,height=height, width=width,limitsize = FALSE, device = "pdf")  
+      }
+    }
+  )
+  output$exportAlleles = downloadHandler(
+    filename = function() {"plotsAlleles.pdf"},
+    content = function(file) {
+      if(!is.null(plotsForDownload$alleles)){
+        parts = length(plotsForDownload$alleles)
+        height = parts*input$plotHeight/72
+        width = input$plotWidth/72
+        ggsave(file, arrangeGrob(grobs=plotsForDownload$alleles, ncol=1, nrow=parts), height=height, width = width,limitsize = FALSE, device = "pdf")
       }
     }
   )
@@ -2677,6 +2690,7 @@ server <- function(input, output, session) {
     }
     #forTable = el %>% select(OutcomeText, Category) %>% distinct()
     #table = tableGrob(forTable)
+    plotsForDownload$alleles = plots
     grid.arrange(grobs = plots, ncol = 1)
     #plot2
   })
