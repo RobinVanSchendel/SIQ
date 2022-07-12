@@ -90,3 +90,16 @@ The program Flash that is required for you operating system seems to be not work
       Run `flash.exe --help | more' for more information.
   ```
    4. if the output is different, please post the output as an [issue](https://github.com/RobinVanSchendel/SIQ/issues). 
+   
+   https://github.com/RobinVanSchendel/SIQ/blob/master/Running_SIQ.mp4
+   
+   
+### Video Tutorials
+
+Video 1. Download & Installing SIQ
+
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/O15Z4ohQ2VU/0.jpg)](https://www.youtube.com/watch?v=O15Z4ohQ2VU "Download & Installing SIQ")
+
+Video 2. Running SIQ on your data
+
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/bgqxioQfYkU/0.jpg)](https://www.youtube.com/watch?v=bgqxioQfYkU "Running SIQ")
