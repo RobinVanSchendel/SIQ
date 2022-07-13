@@ -1,33 +1,45 @@
 # SIQ
-Sequence Interrogation and Qualification is there to perform analysis on sequencing data on user-defined DNA
+Sequence Interrogation and Qualification is there to perform analysis on targeted sequencing data. SIQ creates an mutation profile that can be interactively visualized using SIQPlotteR. It is written in Java so that anyone with a computer can use this program to analyse their sequences. We have designed and implemented this tool for anyone without a background in informatics to be able to analyse NGS data.
 
-It is written in Java so that anyone with a computer can use this program to analyse their sequences.
+For a detailed user guide please download and read:
 
-We have designed and implemented this tool for anyone without a background in informatics to be able to analyse NGS data.
+### [User guide](https://github.com/RobinVanSchendel/SIQ/blob/master/SIQ%20and%20SIQPlotteR%20User%20guide.docx)
 
-Contents
-========
+And in addition you can watch the Video Turials that we have made for you to make it easy to run SIQ:
+
+### [Video Tutorials ](#video-tutorials)
+
+If you have watched all the videos, have read the entire user guide and still have issues with running SIQ or analysing your data, please make an issue [here](https://github.com/RobinVanSchendel/SIQ/issues) or drop us an e-mail. See SIQ paper for contact details.
+
+For those who prefer to follow the README further, we have included a brief user guide below:
+
+## Contents
 
  * [Installation](#installation)
- * [Running SIQ](#running)
+ * [Running SIQ](#running-siq)
+ * [Analysing Data with SIQPlotteR](#siqplotter)
  * [Troubleshooting](#troubleshooting)
  * [Video Tutorials](#video-tutorials)
 
-### Installation
+## Installation
 
-* Download latest Java .jar file from this repository [here](https://github.com/RobinVanSchendel/SIQ/releases/latest)
+* Download latest Java .jar file containing SIQ from this repository [here](https://github.com/RobinVanSchendel/SIQ/releases/latest)
 
-Download the latest .jar file from this repository. You can double click it and it should work directly. The only thing you require is a working Java version (1.8 and up). 
+Download the latest .jar file from this repository. You can double click it and it should work directly. The only thing you require is a working Java version (1.8 and up). Download and install java [here](https://www.java.com/en/download/)
 
-### Running
+NOTE: Most operating systems such as MacOS and Windows distrust any file coming from the internet. For MacOS please hold 'Control' + click on the jar file to open it. This notification only appears the first time. 
+
+## Running SIQ
 
 when SIQ is started you should see the following screen:
 
-<TODO>
+<p align="center"  width="100%">
+  <img width="40%" src="https://user-images.githubusercontent.com/46730491/178683885-6af77b2c-864d-4264-b5c6-22d6dd75929d.jpg">
+ </p>
 
 SIQ can be used to analyze the following type of data:
 
-* Sanger sequences (.ab1 files) (Note: only Sanger sequences containing a single mutation can be analyzed) 
+* Sanger sequences (.ab1 files) (<b>Note: only Sanger sequences containing a single mutation can be analyzed</b>) 
 * Illumina single and paired-end sequence data (.fastq or .fastq.gz files)
 * PacBio data (.fastq or .fastq.gz files)
 
@@ -54,18 +66,23 @@ Optional settings:
 * Max cpus - the maximum number of CPUs SIQ can use at any given time. Note that SIQ uses a maximum of 1 CPU per file (default: All)
 * TINS search distance - the distance relative to the event junction to be included in the search space to search for the origin of insertions. A TINS is a templated insertion (default: 100)
 
+## SIQPlotteR
 
-### Filters
+When SIQ is done analysing your samples it will result in an Excel file. This Excel file can be uploaded and directly visualised by SIQPlotteR
 
-### Troubleshooting
+[Upload to SIQPlotteR](https://siq.researchlumc.nl/SIQPlotter/)
+
+See the [User Guide](#user-guide) or the [Video Tutorials](#video-tutorials) for more details on how to use SIQPlotteR.
+
+## Troubleshooting
  
-* SIQ does not start
+### SIQ does not start
 
-The problem is likely that you do not have the correct version of Java installed. Ensure you download and install the newest Java version:
+The problem is likely that you do not have (the correct version of) Java installed. Ensure you download and install the newest Java version:
   
 [Download Java](https://www.java.com/en/download/)
 
-* SIQ still does not start
+### SIQ still does not start
 
 Start SIQ from within a terminal (command prompt in windows):
 
@@ -74,7 +91,7 @@ Start SIQ from within a terminal (command prompt in windows):
   3. Start SIQ (in this example the file is SIQ_1.0.jar: `java -jar SIQ_1.0.jar` 
   4. Post the output as an [issue](https://github.com/RobinVanSchendel/SIQ/issues).
 
-* SIQ does not work on files that need merging of paired-end reads
+### SIQ does not work on files that need merging of paired-end reads
   
 The program Flash that is required for you operating system seems to be not working. When starting SIQ, Flash is copied to the directory that SIQ is running in. It might be that the program does not work for your operating system. Please check the output of the following commmands to see if Flash is working
   
@@ -93,11 +110,9 @@ The program Flash that is required for you operating system seems to be not work
       Run `flash.exe --help | more' for more information.
   ```
    4. if the output is different, please post the output as an [issue](https://github.com/RobinVanSchendel/SIQ/issues). 
+See the User Guide for more options
    
-   https://github.com/RobinVanSchendel/SIQ/blob/master/Running_SIQ.mp4
-   
-   
-### Video Tutorials
+## Video Tutorials
 
 Video 1. Download & Installing SIQ
 
