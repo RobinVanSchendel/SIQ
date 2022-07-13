@@ -11,6 +11,7 @@ Contents
  * [Installation](#installation)
  * [Running SIQ](#running)
  * [Troubleshooting](#troubleshooting)
+ * [Video Tutorials](#video-tutorials)
 
 ### Installation
 
@@ -32,7 +33,9 @@ SIQ can be used to analyze the following type of data:
 
 When setting up your targeted sequencing experiments you generally use two primers to amplify your locus of interest. Additionally, you (optionally) have expected target sites for your experiments. This is for example the case if you use CRISPR\Cas9, Cas13, I-SceI or any other enzyme to target the DNA. We have also used SIQ to analyze different sites, such as transposon sites, sites of G-quadruplex sequences. SIQ uses these locations to 1) try to identify sequence alterations preferably at this location. 2) to ensure your PCR primers amplified from the expected location (see [Filters](#filters) below).
   
- ![flanks](SIQ/images/flanks.jpg)
+ <p align="center"  width="100%">
+    <img width="40%" src="SIQ/images/flanks.jpg" >
+ </p>
 
 SIQ has the possibilities for the following input:
 
@@ -103,3 +106,15 @@ Video 1. Download & Installing SIQ
 Video 2. Running SIQ on your data
 
 [![IMAGE ALT TEXT](https://img.youtube.com/vi/bgqxioQfYkU/0.jpg)](https://www.youtube.com/watch?v=bgqxioQfYkU "Running SIQ")
+
+Video 3. Running SIQ with an HDR reference to detect edits
+  
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/F6PmLzDAA5g/0.jpg)](https://www.youtube.com/watch?v=F6PmLzDAA5g "Detect HDR with SIQ")
+
+Video 4. Advanced SIQ options
+
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/i8Grk_ndzwI/0.jpg)](https://www.youtube.com/watch?v=i8Grk_ndzwI "Advanced SIQ options")
+  
+Video 5. Analysing data using SIQPlotteR
+
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/If22p8KB4OI/0.jpg)](https://www.youtube.com/watch?v=If22p8KB4OI "SIQPlotteR")
