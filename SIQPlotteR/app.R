@@ -2228,35 +2228,42 @@ server <- function(input, output, session) {
     dfs = list()
     xmin = min(el$delRelativeStart)
     xmax = max(el$delRelativeEnd)
-    for(alias in input$multiGroup$order){
-      tempDF = subset(el, Alias == alias)
-      subject = unique(el$Subject[el$Alias == alias])
-      #-1 to exlude last position
-      if(nrow(tempDF)==0){
-        p = text_grob(paste(alias,"\nNO DATA"), size = 10)
-      }else{
-        testDF = do.call("rbind", mapply(function(x, y, z, a, b) cbind.data.frame(x:y, z, a, b),
-                                         tempDF$delRelativeStart, 
-                                         tempDF$delRelativeEnd-1,
-                                         tempDF$fraction, alias, subject, SIMPLIFY = FALSE)) %>%
-          as.data.frame(stringsAsFactors = FALSE)                 %>%
-          setNames(c("Locus", "Value","Alias","Subject"))   
-        testDFSum = testDF %>%
-          group_by(Locus)                 %>%
-          summarise(sum = sum(Value)) 
+    for(subject in input$Subject){
+      for(alias in input$multiGroup$order){
+        tempDF = subset(el, Alias == alias & Subject == subject)
+        if(length(input$Subject) > 1){
+          name = paste(subject, alias)
+        } else{
+          name = paste(alias)
+        }
         
-        
-        p = ggplot(testDFSum,aes(x = Locus, y = sum)) + 
-          geom_bar(stat = "identity") + labs(x = "Locus")+ggtitle(alias) + xlim(c(xmin,xmax))+
-          theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
-                legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10)) +
-          xlab("location")+ylab("fraction of total")
-      }
-      if(input$overlap == "separate"){
-        plots[[alias]] = p
-      }else{   
-        dfs[[alias]] = testDF
+        #-1 to exlude last position
+        if(nrow(tempDF)==0){
+          p = text_grob(paste(name,"\nNO DATA"), size = 10)
+        }else{
+          testDF = do.call("rbind", mapply(function(x, y, z, a, b) cbind.data.frame(x:y, z, a, b),
+                                           tempDF$delRelativeStart, 
+                                           tempDF$delRelativeEnd-1,
+                                           tempDF$fraction, alias, subject, SIMPLIFY = FALSE)) %>%
+            as.data.frame(stringsAsFactors = FALSE)                 %>%
+            setNames(c("Locus", "Value","Alias","Subject"))   
+          testDFSum = testDF %>%
+            group_by(Locus)                 %>%
+            summarise(sum = sum(Value)) 
+          
+          
+          p = ggplot(testDFSum,aes(x = Locus, y = sum)) + 
+            geom_bar(stat = "identity") + labs(x = "Locus")+ggtitle(name) + xlim(c(xmin,xmax))+
+            theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
+                  legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10)) +
+            xlab("location")+ylab("fraction of total")
+        }
+        if(input$overlap == "separate"){
+          plots[[name]] = p
+        }else{   
+          dfs[[name]] = testDF
+        }
       }
     }
     if(input$overlap =="separate"){
