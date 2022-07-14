@@ -1670,9 +1670,11 @@ server <- function(input, output, session) {
     }
     #test2 = test2 %>% mutate(row = row_number())
     if(input$datatableFraction == "relative"){
-      test2 = el %>% group_by(Alias, Subject) %>%  dplyr::count(Type = Type, wt = countEvents, .drop = FALSE) %>%   mutate(n = n / sum(n)) 
+      test2 = el %>% group_by(Alias, Subject) %>%  dplyr::count(Type = Type, wt = countEvents, .drop = FALSE) %>%   mutate(n = n / sum(n)) %>% 
+        filter(Type != "Reference")
       test3 = spread(test2,"Type","n")
     }else{
+      test2 = test2 %>% filter(Type != "Reference")
       test3 = spread(test2,"Type","n")
     }
     columns = ncol(test3)
