@@ -2755,11 +2755,17 @@ server <- function(input, output, session) {
     }
     
     if(input$sepBySubject == "Combined plot"){
-      test = el %>% group_by(Alias) %>% count (delRelativeStart,wt = fraction, name = "snv") 
+      test = el %>% group_by(Subject, Alias) %>% count (delRelativeStart,wt = fraction, name = "snv") 
       #test = merge(testDF,test,by="Alias")
       #test$snv = test$n/test$total
+      if(length(input$Subject) > 1){
+        test$Sample = paste(test$Alias, test$Subject)
+      } else{
+        test$Sample = test$Alias
+      }
       
-      plot = ggplot(test, aes(x=delRelativeStart,y=snv, color=Alias)) + geom_point() +
+      
+      plot = ggplot(test, aes(x=delRelativeStart,y=snv, group=Subject, color=Sample)) + geom_point() +
         theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
               panel.grid.minor = element_blank(), panel.background = element_blank(), legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
         xlab("Location")+ylab("Frequency")
@@ -2772,29 +2778,36 @@ server <- function(input, output, session) {
       #snvColors = c("GC->TA" = "#C1252B", "GC->CG" = "#211C1D", "GC->AT" = "#989797",
       #              "AT->TA" = "#89BAD4", "AT->GC" = "#2574B5", "AT->CG" = "#332B6E")
       #Get the info
-      test = el %>% group_by(Alias,insertion) %>% count (delRelativeStart,wt = fraction, name = "snv")
+      test = el %>% group_by(Subject, Alias,insertion) %>% count (delRelativeStart,wt = fraction, name = "snv")
       plots <- list()
       minX = min(test$delRelativeStart)-1
       maxX = max(test$delRelativeStart)+1
       
       yAllMax = -1
       if(input$yaxisSNV == "max of plots"){
-        countMax = test %>% group_by(Alias,delRelativeStart) %>% count (wt = snv)
+        countMax = test %>% group_by(Subject, Alias,delRelativeStart) %>% count (wt = snv)
         yAllMax = max(countMax$n)
-      } 
-      for(alias in input$multiGroup$order){
-        testPart = test[test$Alias == alias,]
-        plot <- ggplot(testPart, aes(x=delRelativeStart,y=snv, fill=insertion)) + geom_bar(stat = "identity", position = "stack") +
-          theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank(), panel.background = element_blank(), legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
-          ggtitle(alias)+
-          scale_fill_viridis_d()+
-          scale_x_continuous(limits = c(minX,maxX)) +
-          xlab("Location")+ylab("Frequency")
-        if(yAllMax!=-1){
-          plot = plot + scale_y_continuous(limits = c(0,yAllMax))
+      }
+      for(subject in input$Subject){
+        for(alias in input$multiGroup$order){
+          testPart = test[test$Alias == alias & test$Subject == subject,]
+          if(length(input$Subject)>1){
+            name = paste(subject, alias)
+          } else{
+            name = alias
+          }
+          plot <- ggplot(testPart, aes(x=delRelativeStart,y=snv, fill=insertion)) + geom_bar(stat = "identity", position = "stack") +
+            theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(), panel.background = element_blank(), legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
+            ggtitle(name)+
+            scale_fill_viridis_d()+
+            scale_x_continuous(limits = c(minX,maxX)) +
+            xlab("Location")+ylab("Frequency")
+          if(yAllMax!=-1){
+            plot = plot + scale_y_continuous(limits = c(0,yAllMax))
+          }
+          plots[[name]] <- plot 
         }
-        plots[[alias]] <- plot 
       }
       plotsOut = grid.arrange(grobs = plots, ncol=1)
       plotsForDownload$snvs = plots
