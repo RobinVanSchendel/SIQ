@@ -126,6 +126,14 @@ public class AnalyzedFileController implements Runnable{
 			current++;
 			progressBar.setValue(current);
 		}
+		if(queries.size()>1) {
+			String refString = subjectObject.getRefString();
+			CompareSequence ref = new CompareSequence(subjectObject,refString,null, queries.get(0).getParent(), true, "wt_query");
+			ref.setCurrentAlias("Reference", "Reference");
+			ref.determineFlankPositions(false);
+			result.add(ref);
+		}
+		
 		//progressBar.setIndeterminate(true);
 		//checkAndPerformBlast();
 		//progressBar.setIndeterminate(false);
