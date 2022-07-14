@@ -740,6 +740,9 @@ server <- function(input, output, session) {
     if(!"countEvents" %in% colnames(el)){
       el$countEvents = 1
       el$fraction = 1
+      ##the ref seq needs to have 0 count
+      el = el %>% mutate(countEvents = ifelse(el$Name == "wt_query",0, countEvents))
+      el = el %>% mutate(fraction = ifelse(el$Name == "wt_query",0, fraction))
     }
     ##sometimes people specify the same alias for different subject, which does not work
     #if(nrow(el)>0 && length(unique(el$Subject))>0){
@@ -1619,6 +1622,9 @@ server <- function(input, output, session) {
       #target = 1
     }
     el = el %>% mutate(insertion = ifelse(nchar(insertion)<60, insertion, paste(nchar(insertion),"bp")))
+    
+    ##summarise same events for spread
+    el = el %>% group_by_at(vars(-fraction)) %>% summarise(fraction = sum(fraction)) %>% ungroup()
     
     el = el %>%
       mutate(fraction = round(fraction,4)) %>%
@@ -2605,8 +2611,13 @@ server <- function(input, output, session) {
       leftPos = df$delRelativeStart[row]
       rightPos = df$delRelativeEnd[row]
       alias = df$Alias[row]
+      subject = df$Subject[row]
       delString = ""
-      dnaStringRow = dnaStrings %>% filter(Alias == alias)
+      dnaStringRow = dnaStrings %>% filter(Alias == alias & Subject == subject)
+      ##safety to at least select a reference
+      if(nrow(dnaStringRow) == 0){
+        dnaStringRow = dnaStrings %>% filter(Subject == subject) %>% filter(row_number() == 1)
+      }
       
       #dnaStringRow$delRelativeStart can be >0 which means we have two cut sites!
       startPosLeftDNA = dnaStringRow$delStart-dnaStringRow$delRelativeStart+leftSize
