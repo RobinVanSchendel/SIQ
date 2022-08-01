@@ -18,15 +18,6 @@ public class PropertiesManager {
 	private void readPropFile() {
 		String name = getPropFileName();
 		File f = new File(name);
-		if(f.canWrite()) {
-			System.out.println("current directory is writable");
-		} else {
-			File curDir = new File("");
-			System.out.println("current directory is NOT writable "+curDir.getAbsolutePath());
-			JOptionPane.showMessageDialog(null, "current directory is NOT writable: \n"+curDir.getAbsolutePath()+"\n"
-					+ "Please start SIQ from another directory", "Please run SIQ from another location", JOptionPane.ERROR_MESSAGE);
-			System.exit(0);
-		}
 		//create one if it does not exist
 		if(!f.exists()) {
 			System.out.println("Created properties file "+f.getName());
@@ -39,6 +30,16 @@ public class PropertiesManager {
 		}
 		else {
 			System.out.println("Found properties file "+f.getName());
+		}
+		//now test if it is writable
+		if(f.exists() && f.canWrite()) {
+			System.out.println("current directory is writable");
+		} else {
+			File curDir = new File("");
+			System.out.println("current directory is NOT writable "+curDir.getAbsolutePath());
+			JOptionPane.showMessageDialog(null, "current directory is NOT writable: \n"+curDir.getAbsolutePath()+"\n"
+					+ "Please start SIQ from another directory", "Please run SIQ from another location", JOptionPane.ERROR_MESSAGE);
+			System.exit(0);
 		}
 		props = new Properties();
 		try {
