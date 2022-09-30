@@ -100,7 +100,10 @@ public class SequenceController {
 		subjectObject.setRightPrimer(options.getRightPrimer());
 		subjectObject.swapPrimersIfNeeded();
 		subjectObject.setMinPassedPrimer(options.getMinPassedPrimer());
-		subjectObject.setHDR(hdr);
+		//only set if non NULL
+		if(hdr!=null) {
+			subjectObject.setHDR(hdr);
+		}
 		
 		//kmerl = null;
 		for(File seqs: ab1s){
