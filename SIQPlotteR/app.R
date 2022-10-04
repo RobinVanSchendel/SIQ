@@ -386,6 +386,10 @@ ui <- fluidPage(
       ),
       conditionalPanel(
         condition = "input.tabs == 'Alleles'",
+        radioButtons("alleleFractionBasedOn",
+                     "Set fraction:",
+                     c("relative","absolute"),
+                     inline = T),
         numericInput("alleleTopOutcomes","Set the number of alleles to be shown:", 
                      min =0, max=100, value = 10),
         radioButtons("alleleTopOutcomesChoice",
@@ -922,6 +926,14 @@ server <- function(input, output, session) {
   ###
   
   renewPlotData <- function(el){
+    ##remove in newer version as del and insertions should always be there
+    if(!"del" %in% colnames(el)){
+      el$del = ""
+    }
+    if(!"insertion" %in% colnames(el)){
+      el$insertion = ""
+    }
+    ##end of to be removed###
     if("fraction" %in% colnames(el)) {
       plot.data <- data.frame(size = el$delRelativeEndTD-el$delRelativeStartTD, start.points = el$delRelativeStartTD, 
                               end.points = el$delRelativeEndTD, type=el$TypeHom, typeTD=el$TypeTD, color=el$getHomologyColor, code=el$Alias, 
@@ -2544,6 +2556,11 @@ server <- function(input, output, session) {
       return()
     }
     el = filter_in_data()
+    ##recalculate fraction as this is not done within filter_in_data
+    if(input$alleleFractionBasedOn == "relative"){
+      el = el %>% filter(fraction != Inf) %>% group_by(Alias) %>% mutate(fraction = fraction/sum(fraction))
+    }
+    
     dnaRefStrings = getDNARefStrings(el) %>% mutate(Outcome = "Reference", totalFraction = Inf, fraction = Inf)
     
     elSub = el %>% ungroup() %>% group_by(Subject, Alias) %>% slice_max(fraction, n = input$alleleTopOutcomes)
