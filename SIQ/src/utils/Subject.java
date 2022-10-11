@@ -433,7 +433,8 @@ public class Subject {
 			
 			
 			//if not found, this will not work at all
-			if(startQuery < 0 || endQuery < 0 ) {
+			//or at the wrong location
+			if(startQuery < 0 || endQuery < 0 || startQuery >= endQuery) {
 				return -1;
 			}
 			query = query.substring(startQuery, endQuery);
