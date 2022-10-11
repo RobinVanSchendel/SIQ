@@ -1435,7 +1435,7 @@ server <- function(input, output, session) {
     } else if(sortType == "Type"){
       ##added this merge to allow the Type to be influenced by the order of the types
       newdata = merge(newdata, hardcodedTypesDFnonreactive(), by.x ="typeOrig", by.y = "Type")
-      newdata$Text = factor(newdata$Text, levels = input$multiType$order)
+      newdata$Text = factor(newdata$Text, levels = rev(input$multiType$order))
       newdata <- newdata[order(newdata$Text,-newdata$size), ] 
     }
     #newdata$y.end = cumsum(newdata$yheight)
