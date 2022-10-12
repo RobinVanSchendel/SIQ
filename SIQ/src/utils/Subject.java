@@ -427,10 +427,22 @@ public class Subject {
 			start = subject.indexOf(leftPrimer);
 			end = subject.indexOf(rightPrimer);
 			//also find the left and rightPrimer in the query
-			startQuery = query.indexOf(leftPrimer.substring(0, 15));
+			String leftPrimerPart = leftPrimer.substring(0, 15);
+			startQuery = query.indexOf(leftPrimerPart);
 			//primer can be much longer, so cut it
 			endQuery = query.indexOf(rightPrimer.substring(0, 15));
 			
+			//could be a mismatch within the start of the primer sequence
+			if(startQuery == -1 && query.length()>=20) {
+				String lcs = Utils.longestCommonSubstring(query.substring(0, 20), leftPrimerPart);
+				if(lcs.length()>=8) {
+					int pos = query.indexOf(lcs);
+					int primerPos = leftPrimerPart.indexOf(lcs);
+					startQuery = pos;
+					//update the subject position accordingly
+					start+=primerPos;
+				}
+			}
 			
 			//if not found, this will not work at all
 			//or at the wrong location
