@@ -1298,12 +1298,11 @@ public class GUI implements ActionListener, MouseListener {
 	}
 
 	private boolean isNGSFile(File f) {
-		System.out.println("hier");
 		System.out.println(f.getAbsolutePath());
-		return f.getAbsolutePath().endsWith(".fastq") 
-				|| f.getAbsolutePath().endsWith(".fastq.gz")
-				|| f.getAbsolutePath().endsWith(".fq")
-				|| f.getAbsolutePath().endsWith(".fq.gz");
+		return f.getAbsolutePath().endsWith("fastq")
+				|| f.getAbsolutePath().endsWith("fastq.gz")
+				|| f.getAbsolutePath().endsWith("fq")
+				|| f.getAbsolutePath().endsWith("fq.gz");
 	}
 
 	private boolean isSangerFile(File f) {
