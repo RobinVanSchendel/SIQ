@@ -2565,8 +2565,8 @@ server <- function(input, output, session) {
     }
     
     dnaRefStrings = getDNARefStrings(el) %>% mutate(Outcome = "Reference", totalFraction = Inf, fraction = Inf)
-    
-    elSub = el %>% ungroup() %>% group_by(Subject, Alias) %>% slice_max(fraction, n = input$alleleTopOutcomes)
+    #bug if Alias is a merge of more samples, we should select more events, so File was added to grouping
+    elSub = el %>% ungroup() %>% group_by(Subject, Alias, File) %>% slice_max(fraction, n = input$alleleTopOutcomes)
     el = rbind(elSub, dnaRefStrings)
     
     el = el %>% ungroup() %>% mutate(Category = paste(Type,delSize))
@@ -2635,8 +2635,8 @@ server <- function(input, output, session) {
       delString = ""
       dnaStringRow = dnaStrings %>% filter(Alias == alias & Subject == subject)
       ##safety to at least select a reference
-      if(nrow(dnaStringRow) == 0){
-        dnaStringRow = dnaStrings %>% filter(Subject == subject) %>% filter(row_number() == 1)
+      if(nrow(dnaStringRow) == 0 | nrow(dnaStringRow) > 1){
+        dnaStringRow = dnaStrings %>% ungroup () %>% filter(Subject == subject) %>% filter(row_number() == 1)
       }
       
       #dnaStringRow$delRelativeStart can be >0 which means we have two cut sites!
