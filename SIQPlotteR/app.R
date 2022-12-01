@@ -270,8 +270,8 @@ ui <- fluidPage(
                     value = 4),
         sliderInput(inputId = "xminmaxRange",
                     "X-axis range:",
-                    min = -500,
-                    max = 500,
+                    min = -1000,
+                    max = 1000,
                     value = c(-300,300),
                     step = 10
         ),
@@ -1138,10 +1138,21 @@ server <- function(input, output, session) {
         df[is.na(df)] <- 0
         pca_res <- prcomp(df, scale. = input$OutcomePCAScale)
         
-        dtp <- data.frame('Species' = rownames(df), pca_res$x[,1:2]) # the first two componets are selected (NB: you can also select 3 for 3D plottings or 3+)
-        plot1 = ggplot(data = dtp,aes(x = PC1, y = PC2, col = Species)) + 
-          geom_point() +
-          geom_text_repel(size = input$OutcomeSize,aes(label = rownames(df)), max.overlaps = Inf)+
+        dtp <- data.frame('Alias' = rownames(df), pca_res$x[,1:2]) # the first two componets are selected (NB: you can also select 3 for 3D plottings or 3+)
+        
+        if(!is.null(input$genotype) && !is.null(input$dose)){
+          dfPart = data %>% select(Alias, Subject,input$genotype, input$dose) %>% distinct(Alias, .keep_all = T)
+          dtp = merge(dtp,dfPart,by = "Alias")
+          if(input$genotype!=input$dose){
+            dtp$label = paste(dtp[[input$genotype]], dtp[[input$dose]])
+          } else {
+            dtp$label = dtp[[input$genotype]]
+          }
+        }
+        
+        plot1 = ggplot(data = dtp,aes_string(x = "PC1", y = "PC2", col = input$dose, fill = input$genotype)) + 
+          geom_point(shape = 21, size = input$OutcomeDotSize, stroke = input$OutcomeStrokeSize) +
+          geom_text_repel(size = input$OutcomeSize,aes(label = label), max.overlaps = Inf)+
           #geom_label(size = input$OutcomeSize,aes(label = rownames(df)))+
           theme_minimal()+
           theme(legend.position = "none")
