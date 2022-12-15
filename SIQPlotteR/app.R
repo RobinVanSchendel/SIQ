@@ -90,6 +90,12 @@ if(!require(data.table)){
   install.packages("data.table", repos = "https://mirror.lyrahosting.com/CRAN/")
   library(data.table)
 }
+if(!require(spatstat)){
+  install.packages("spatstat", repos = "https://mirror.lyrahosting.com/CRAN/")
+  library(spatstat)
+}
+
+
 
 options(shiny.maxRequestSize=2048*1024^2)
 
@@ -320,7 +326,7 @@ ui <- fluidPage(
         radioButtons(
           "TypePlot",
           "Select type of plot :",
-          c("heatmap","violin"),
+          c("heatmap","violin", "median size"),
           selected = "heatmap",
           inline = TRUE),
         radioButtons(
@@ -2334,18 +2340,19 @@ server <- function(input, output, session) {
       maxValue = min(el$delRelativeStartTD[el$Subject %in% input$Subject])
       minValue = max(el$delRelativeEndTD[el$Subject %in% input$Subject])
     }
-    if(maxValue<(-500)){
+    if(maxValue<(-1000)){
       minValueX = min(-2000, maxValue-20)
     }
     else{
-      minValueX = min(-500,maxValue-20)
+      minValueX = min(-1000,maxValue-20)
     }
     if(minValue>500){
       maxValueX = max(2000, minValue+20)
     }
     else{
-      maxValueX = max(500,minValue+20)
+      maxValueX = max(1000,minValue+20)
     }
+    print(paste(minValueX, maxValueX))
     updateSliderInput(session, "xminmaxRange", min = minValueX, max = maxValueX)
   })
   
@@ -2756,20 +2763,20 @@ server <- function(input, output, session) {
       return()
     }
     el = filter_in_data()
-    el = el[el$Alias %in% input$multiGroup$order,]
     #Get the totals
-    testDF = el %>% group_by(Alias) %>% dplyr::count(wt=countEvents)
-    test = el[el$Type != "WT",] %>% group_by(Alias) %>% count (wt = countEvents, name = "wt")
-    test = merge(testDF, test, by="Alias")
+    testDF = el %>% group_by(Subject, Alias) %>% dplyr::count(wt=countEvents)
+    test = el[el$Type != "WT",] %>% group_by(Subject, Alias) %>% count (wt = countEvents, name = "wt")
+    test = merge(testDF, test, by=c("Subject","Alias"))
     
     test$mut = test$wt/test$n
     
+    #disabled as this might not work
     #get the subject in there
-    keepAliases = filterAliases(el, d_minEvents(), input$multiGroup$order)
-    AliasSubject = getAliasSubjectDF(in_stat(),keepAliases)
-    if(nrow(AliasSubject)>0){
-      test = merge(AliasSubject,test,by = "Alias", all.x = T)
-    }
+    #keepAliases = filterAliases(el, d_minEvents(), input$multiGroup$order)
+    #AliasSubject = getAliasSubjectDF(in_stat(),keepAliases)
+    #if(nrow(AliasSubject)>0){
+    #  test = merge(AliasSubject,test,by = "Alias", all.x = T)
+    #}
     
     plot <- ggplot(test, aes(x=Alias,y=mut)) + geom_bar(stat = "identity") +
       theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
@@ -2868,41 +2875,52 @@ server <- function(input, output, session) {
   
   
   sizePlot <- function(el, column = "delSize", fraction = "absolute", ymin, ymax, useylimit){
-    keepAliases = filterAliases(el, d_minEvents(), input$multiGroup$order)
+    #disabled as change of Alias column might lead to loss of Subject separation
+    #keepAliases = filterAliases(el, d_minEvents(), input$multiGroup$order)
     
     if(column == "delSize"){
-      testData = el %>% group_by(Alias) %>% dplyr::count(sizeDiff = delSize, wt = fraction)
+      testData = el %>% group_by(Subject, Alias) %>% dplyr::count(sizeDiff = delSize, wt = fraction)
     }
     else if(column == "insSize"){
-      testData = el %>% group_by(Alias) %>% dplyr::count(sizeDiff = insSize, wt = fraction)
+      testData = el %>% group_by(Subject, Alias) %>% dplyr::count(sizeDiff = insSize, wt = fraction)
     }
     else{
-      testData = el[el$delSize>0,] %>% group_by(Alias) %>% dplyr::count(sizeDiff = -delSize, wt = fraction)
-      testData2 = el[el$insSize>0,] %>% group_by(Alias) %>% dplyr::count(sizeDiff = insSize, wt = fraction)
+      testData = el[el$delSize>0,] %>% group_by(Subject, Alias) %>% dplyr::count(sizeDiff = -delSize, wt = fraction)
+      testData2 = el[el$insSize>0,] %>% group_by(Subject, Alias) %>% dplyr::count(sizeDiff = insSize, wt = fraction)
       #count the 0 separate
-      testData3 = el[el$insSize==0 & el$delSize==0,] %>% group_by(Alias) %>% dplyr::count(sizeDiff = insSize, wt = fraction)
+      testData3 = el[el$insSize==0 & el$delSize==0,] %>% group_by(Subject, Alias) %>% dplyr::count(sizeDiff = insSize, wt = fraction)
       testData = rbind(testData,testData2,testData3)
     }
     if(fraction == "relative"){
-      testData = testData %>% group_by(Alias) %>% mutate(n = n / sum(n))
+      testData = testData %>% group_by(Subject, Alias) %>% mutate(n = n / sum(n))
     }
     
+    #disabled as change of Alias column might lead to loss of Subject separation
     #get the subject in there
-    AliasSubject = getAliasSubjectDF(in_stat(),keepAliases)
-    if(nrow(AliasSubject)>0){
-      testData = merge(AliasSubject,testData,by = "Alias", all.x=T)
-    }
+    #AliasSubject = getAliasSubjectDF(in_stat(),keepAliases)
+    #if(nrow(AliasSubject)>0){
+    #  testData = merge(AliasSubject,testData,by = "Alias", all.x=T)
+    #}
     testData$Alias = factor(testData$Alias, levels = input$multiGroup$order)
     
     if(input$TypePlot == "heatmap"){
       p <- ggplot(testData, aes(x=Alias,y=sizeDiff, fill=n))+geom_tile()+
         scale_fill_gradientn(colours=c("white", "blue"), limits = c(0,max(testData$n)))
-    }
-    #violin
-    else{
+    } else if(input$TypePlot == "violin"){ 
+      "violin"
       p <- ggplot(testData,aes(x=Alias,y=sizeDiff, weight=n))+geom_violin(lwd = 0.25)+
         geom_boxplot(width=0.1, lwd = 0.25,outlier.shape = NA)
+    } else{
+      #median size
+      if("Subject" %in% colnames(testData)){
+        medians = testData %>% group_by(Subject, Alias) %>% summarise(median = weighted.median(sizeDiff,n))
+      } else{
+        medians = testData %>% group_by(Alias) %>% summarise(median = weighted.median(sizeDiff,n))
+      }
+      p <- ggplot(medians,aes(x=Alias,y=median))+geom_point(color = "red")+
+        NULL
     }
+    
     p = p + 
       theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
             panel.grid.minor = element_blank(), panel.background = element_blank(), axis.title=element_blank(), legend.title = element_text(size = 8),legend.text = element_text( size = 6)) 
@@ -2916,8 +2934,6 @@ server <- function(input, output, session) {
         p = p+ scale_y_continuous(limits = c(ymin,ymax))
       }
     }
-    
-    
     p
   }
   
