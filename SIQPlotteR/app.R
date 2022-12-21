@@ -728,8 +728,8 @@ server <- function(input, output, session) {
         el = read_excel(fileNameXLS$datapath, sheet = sheet, guess_max = 100000)
       }
       else{
-        ## <100Mb
-        if(fileNameXLS$size<100*1024*1024){
+        ## <200Mb
+        if(fileNameXLS$size<200*1024*1024){
           el = read.csv(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, sep = "\t")
         }
         else{
@@ -1292,13 +1292,13 @@ server <- function(input, output, session) {
       if(length(input$Aliases) != length(input$multiGroup$order)){
         return()
       }
-      if(!"junction" %in% colnames(el) || !"isFirstHit" %in% colnames(el)){
+      el = filter_in_data()
+      if(!"isFirstHit" %in% colnames(el)){
         plots = list()
         plot = text_grob(paste("Columns with specific information is missing from your data that prevents showing Templated Insertions. \nYou need to rerun SIQ as some columns were stripped from your data."), size = 15)
         plots[["empty"]] = plot
         return(grid.arrange(grobs=plots, ncol=1))
       }
-      el = filter_in_data()
       el = el[el$Type=="TINS" | el$Type == "DELINS",]
       plots=list()
       el$junction = el$isFirstHit
