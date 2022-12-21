@@ -620,9 +620,9 @@ ui <- fluidPage(
                            uiOutput("ui_tornadplot_flankinsertions")),
                   tabPanel("Outcomes",
                            h3("Outcomes"),
-                           p("A newly designed interactive plot to show the origin of templated flank insertions.
-														The plot can be customized by altering the settings on the left.
-                             NOTE: only deletions with templated inserts are shown"),
+                           p("The outcomes plot is specifically designed to view all your data simultaneously. Especially when you have many samples
+                           this is a powerful method to look at differences between samples. It currently
+                             supports: UMAP, PCA, XY scatter, heatmap  and Top X alleles."),
                            uiOutput("ui_outcome")
                            ),
                   tabPanel("About",
@@ -1291,6 +1291,12 @@ server <- function(input, output, session) {
       #speedup multigroup order is lagging behind Aliases
       if(length(input$Aliases) != length(input$multiGroup$order)){
         return()
+      }
+      if(!"junction" %in% colnames(el) || !"isFirstHit" %in% colnames(el)){
+        plots = list()
+        plot = text_grob(paste("Columns with specific information is missing from your data that prevents showing Templated Insertions. \nYou need to rerun SIQ as some columns were stripped from your data."), size = 15)
+        plots[["empty"]] = plot
+        return(grid.arrange(grobs=plots, ncol=1))
       }
       el = filter_in_data()
       el = el[el$Type=="TINS" | el$Type == "DELINS",]
@@ -2584,7 +2590,11 @@ server <- function(input, output, session) {
     
     dnaRefStrings = getDNARefStrings(el) %>% mutate(Outcome = "Reference", totalFraction = Inf, fraction = Inf)
     #bug if Alias is a merge of more samples, we should select more events, so File was added to grouping
-    elSub = el %>% ungroup() %>% group_by(Subject, Alias, File) %>% slice_max(fraction, n = input$alleleTopOutcomes)
+    if("File" %in% colnames(el)){
+      elSub = el %>% ungroup() %>% group_by(Subject, Alias, File) %>% slice_max(fraction, n = input$alleleTopOutcomes)
+    } else{
+      elSub = el %>% ungroup() %>% group_by(Subject, Alias) %>% slice_max(fraction, n = input$alleleTopOutcomes)
+    }
     el = rbind(elSub, dnaRefStrings)
     
     el = el %>% ungroup() %>% mutate(Category = paste(Type,delSize))
@@ -2637,7 +2647,7 @@ server <- function(input, output, session) {
   }
   
   addOutcomeText <- function(df, dnaStrings, leftSize, rightSize){
-    if(nrow(dnaStrings) == 0){
+    if(nrow(dnaStrings) == 0 || !"Raw" %in% colnames(df)){
       df$OutcomeText = paste(df$leftFlank, tolower(df$del), df$del, df$insertion)
       return(df)
     }
@@ -2917,7 +2927,7 @@ server <- function(input, output, session) {
       } else{
         medians = testData %>% group_by(Alias) %>% summarise(median = weighted.median(sizeDiff,n))
       }
-      p <- ggplot(medians,aes(x=Alias,y=median))+geom_point(color = "red")+
+      p <- ggplot(medians,aes(x=Alias,y=median))+geom_point(color = "red", size = 5)+
         NULL
     }
     
@@ -3165,7 +3175,7 @@ server <- function(input, output, session) {
     position = NULL
     if(point$typeOrig != "WT"){
       if(point$size>1){
-        position = paste0("<b> position: </b>",point$start.points, " - ",point$end.points-1,"<br/>")
+        position = paste0("<b> position: </b>",point$start.points, " to ",point$end.points,"<br/>")
       } else{
         position = paste0("<b> position: </b>",point$start.points,"<br/>")
       }
