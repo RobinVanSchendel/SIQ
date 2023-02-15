@@ -96,11 +96,13 @@ public void actionPerformed(ActionEvent e)
       {
           int startRow=(jTable1.getSelectedRows())[0];
           int startCol=(jTable1.getSelectedColumns())[0];
+          int selectedRows = jTable1.getSelectedRowCount();
           try
           {
              String trstring= (String)(system.getContents(this).getTransferData(DataFlavor.stringFlavor));
              //System.out.println("String is:"+trstring);
              StringTokenizer st1=new StringTokenizer(trstring,"\n");
+             int totalRows = 0;
              for(int i=0;st1.hasMoreTokens();i++)
              {
                 rowstring=st1.nextToken();
@@ -110,10 +112,10 @@ public void actionPerformed(ActionEvent e)
                 	}
                 	//that's it then!
                 	else {
-                		return;
+               			return;
                 	}
                 }
-                
+                totalRows++;
                 String[] parts = rowstring.split("\t");
                 //maybe we need to insert a new row
                 if(startRow+i>=jTable1.getRowCount()) {
@@ -140,6 +142,30 @@ public void actionPerformed(ActionEvent e)
                 	  
                    }
                }
+            }
+            //copy downwards if one row provided, but multiple rows selected
+            if(totalRows == 1 && selectedRows>1) {
+            	String[] parts = rowstring.split("\t");
+            	for(int i = 1;i<selectedRows;i++) {
+            		 for(int j=0;j<parts.length;j++) {
+            			 value=parts[j];
+                         if (startRow+i< jTable1.getRowCount()  &&
+                             startCol+j< jTable1.getColumnCount()) {
+                      	   //jTable1.getModel().setValueAt(aValue, rowIndex, columnIndex);
+                      	   //System.out.println(jTable1.getModel());
+                      	   if(value.contentEquals("null")) {
+                      		   jTable1.setValueAt(null,startRow+i,startCol+j);
+                      	   }
+                      	   else {
+                      		   jTable1.setValueAt(value,startRow+i,startCol+j);
+                      	   }
+                            //System.out.println("Putting "+ value+" at row="+startRow+i+" column="+startCol+j);
+                         }
+                         else if(startRow+1> jTable1.getRowCount()) {
+                      	  
+                         }
+            		 }
+            	}
             }
          }
          catch(Exception ex){ex.printStackTrace();
