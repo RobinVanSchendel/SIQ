@@ -80,6 +80,7 @@ import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 import batch.SequenceControllerThread;
+import utils.AlphanumComparator;
 import utils.AnalyzedFileController;
 import utils.CompareSequence;
 import utils.NGSPair;
@@ -1863,6 +1864,7 @@ public class GUI implements ActionListener, MouseListener {
 				v.add(f);
 			}
 		}
+		v.sort(new AlphanumComparator());
 		Vector<NGSPair> pairs = NGSPair.obtainPairs(v);
 		if(pairs.size()>0) {
 			for(NGSPair ngsPair: pairs) {
