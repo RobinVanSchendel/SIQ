@@ -25,7 +25,7 @@ For those who prefer to follow the README further, we have included a brief user
 
 * Download latest Java .jar file containing SIQ from this repository [here](https://github.com/RobinVanSchendel/SIQ/releases/latest)
 
-Download the latest .jar file from this repository. You can double click it and it should work directly. The only thing you require is a working Java version (1.8 and up). Download and install java [here](https://www.java.com/en/download/)
+Download the latest .jar file from this repository. You can double click it and it should work directly. The only thing you require is a working Java version (1.8 and up). Please ensure to install a <b>64-bit</b> version of Java. Download and install java [here](https://www.java.com/en/download/)
 
 NOTE: Most operating systems such as MacOS and Windows distrust any file coming from the internet. For MacOS please hold 'Control' + click on the jar file to open it. This notification only appears the first time. 
 
