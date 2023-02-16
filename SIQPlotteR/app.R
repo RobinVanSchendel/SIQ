@@ -564,6 +564,7 @@ ui <- fluidPage(
                     value=T),
       uiOutput("type_list"),
       uiOutput("multi_list"),
+      uiOutput("multi_list_group"),
       uiOutput("color_test"),
     ),
     
@@ -2483,10 +2484,9 @@ server <- function(input, output, session) {
     }
     ##to enable sorting the levels have to be set
     ##but not if we will display the group as that removes the error bars
-    if(!addGroup){
-      el$Alias = factor(el$Alias, levels = input$multiGroup$order)
-    } else{
-      el[[input$GroupColumn]] = factor(el[[input$GroupColumn]], levels = input$multiGroup$order)      
+    el$Alias = factor(el$Alias, levels = input$multiGroup$order)
+    if(addGroup){
+      el[[input$GroupColumn]] = factor(el[[input$GroupColumn]], levels = input$multiGroupReplicate$order)      
     }
     
     if(fraction=="relative"){
@@ -2495,7 +2495,6 @@ server <- function(input, output, session) {
     else{
       test2 = el %>% group_by_at(group_by_columns) %>%  dplyr::count(Type = Type, wt = fraction) %>%   mutate(fraction = n ) 
     }
-    print(input$GroupColumn)
     #convert
     #keep all.x in case of 0 events in a sample
     test2 = merge(test2,hardcodedTypesDF(),by = "Type", all.x=T)
@@ -3154,13 +3153,6 @@ server <- function(input, output, session) {
   output$multi_list <- renderUI({
     req(input$Aliases)
     aliases = input$Aliases
-    ##Really make sure this is only done for the tabs that use the GroupColumn
-    ##otherwise it might get set, but it breaks other tabs
-    if(input$tabs == "Type" && !is.null(input$GroupColumn) & input$GroupColumn != "-"){
-      req(filter_in_data())
-      el = filter_in_data()
-      aliases = sort(unique(el[[input$GroupColumn]]))
-    }
     dropdown(
       tags$h3("Sort Samples"),
       bucket_list(
@@ -3175,6 +3167,34 @@ server <- function(input, output, session) {
       ),
       icon = icon("sort"),
       label = "Sort Samples"
+    )
+  })
+  output$multi_list_group <- renderUI({
+    req(input$Aliases)
+    aliases = NULL
+    ##Really make sure this is only done for the tabs that use the GroupColumn
+    ##otherwise it might get set, but it breaks other tabs
+    if(input$tabs == "Type" & !is.null(input$GroupColumn) & input$GroupColumn != "-"){
+      req(filter_in_data())
+      el = filter_in_data()
+      aliases = sort(unique(el[[input$GroupColumn]]))
+    } else{
+      return()
+    }
+    dropdown(
+      tags$h3("Sort Grouped Samples"),
+      bucket_list(
+        header = "This list determines the order in the graph if grouping is possible",
+        add_rank_list(
+          input_id= "order",
+          text = "Re-order Grouped Samples here",
+          labels = aliases
+        ),
+        group_name = "multiGroupReplicate"
+        
+      ),
+      icon = icon("sort"),
+      label = "Sort Grouped Samples"
     )
     
     
