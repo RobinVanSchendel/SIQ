@@ -1783,14 +1783,6 @@ server <- function(input, output, session) {
     if(nrow(el) == 0){
       return()
     }
-    el$Alias = factor(el$Alias, levels = input$multiGroup$order)
-    if(!is.null(input$plot1_data_rows_current)){
-      el$Alias = factor(el$Alias, levels = input$multiGroup$order[input$plot1_data_rows_current])
-      #print("multigrouporder")
-      #print(input$multiGroup$order)
-      #print(input$plot1_data_rows_current)
-      #print(input$multiGroup$order[order(input$plot1_data_rows_current)])
-    }
     plot = typeplot(el, types = input$Types, fraction = input$fraction)
     #plot <- plot + coord_flip()
     plots=list()
@@ -2489,6 +2481,13 @@ server <- function(input, output, session) {
     } else{
       group_by_columns = c("Subject", "Alias")
     }
+    ##to enable sorting the levels have to be set
+    ##but not if we will display the group as that removes the error bars
+    if(!addGroup){
+      el$Alias = factor(el$Alias, levels = input$multiGroup$order)
+    } else{
+      el[[input$GroupColumn]] = factor(el[[input$GroupColumn]], levels = input$multiGroup$order)      
+    }
     
     if(fraction=="relative"){
       test2 = el %>% group_by_at(group_by_columns) %>%  dplyr::count(Type = Type, wt = fraction) %>%   mutate(fraction = n / sum(n))
@@ -3154,6 +3153,14 @@ server <- function(input, output, session) {
   }
   output$multi_list <- renderUI({
     req(input$Aliases)
+    aliases = input$Aliases
+    ##Really make sure this is only done for the tabs that use the GroupColumn
+    ##otherwise it might get set, but it breaks other tabs
+    if(input$tabs == "Type" && !is.null(input$GroupColumn) & input$GroupColumn != "-"){
+      req(filter_in_data())
+      el = filter_in_data()
+      aliases = sort(unique(el[[input$GroupColumn]]))
+    }
     dropdown(
       tags$h3("Sort Samples"),
       bucket_list(
@@ -3161,7 +3168,7 @@ server <- function(input, output, session) {
         add_rank_list(
           input_id= "order",
           text = "Re-order Samples here",
-          labels = input$Aliases
+          labels = aliases
         ),
         group_name = "multiGroup"
         
@@ -3191,6 +3198,7 @@ server <- function(input, output, session) {
       icon = icon("sort"),
       label = "Sort Type"
     )
+  
     
     
   })
