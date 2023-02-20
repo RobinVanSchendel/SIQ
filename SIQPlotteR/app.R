@@ -426,6 +426,14 @@ ui <- fluidPage(
         ),
       ),
       conditionalPanel(
+        condition = "input.tabs == 'HeatmapEnds'",
+        radioButtons("HeatmapEndsRelative",
+                     "Set counts:",
+                     c("relative","absolute"),
+                     inline = T),
+      ),
+      
+      conditionalPanel(
         condition = "input.tabs == 'Alleles'",
         sliderInput("alleleOutcomeTable","Set the size around the flanks:", 
                      min=-500, max=500, value = c(-20,20), step = 5),
@@ -977,8 +985,13 @@ server <- function(input, output, session) {
     req(input$Aliases)
     data = filter_in_data()
     ####TAKE THE RIGHT column. These ones are not correct!!!
-    counts1 = data %>% group_by(Alias, delRelativeStartTD) %>% summarise(fraction = sum(fraction))
-    counts2 = data %>% group_by(Alias, delRelativeEndTD) %>% summarise(fraction = sum(fraction))
+    counts1 = data %>% group_by(Alias, Subject, delRelativeStartTD) %>% summarise(fraction = sum(fraction))
+    counts2 = data %>% group_by(Alias, Subject, delRelativeEndTD) %>% summarise(fraction = sum(fraction))
+    if(input$HeatmapEndsRelative == "relative"){
+      ##make the counts relative to the total selected fraction
+      counts1 = counts1 %>% ungroup() %>% group_by(Alias, Subject) %>% mutate(fraction = fraction/sum(fraction))
+      counts2 = counts2 %>% ungroup() %>% group_by(Alias, Subject) %>% mutate(fraction = fraction/sum(fraction))
+    }
     plot1 = ggplot(counts1, aes(x=delRelativeStartTD, y = Alias , fill = fraction)) + 
       geom_tile() +
       #scale_fill_viridis_c()
@@ -990,6 +1003,10 @@ server <- function(input, output, session) {
       scale_fill_gradientn(colours = c("white", "black", "red")) +
       theme_classic() +
       NULL
+    if(length(unique(data$Subject))>1){
+      plot1 = plot1 + facet_wrap(Subject ~., ncol = 1, scales = "free")
+      plot2 = plot2 + facet_wrap(Subject ~., ncol = 1, scales = "free")
+    }
     grid.arrange(plot1, plot2, ncol=2)
   })
   
