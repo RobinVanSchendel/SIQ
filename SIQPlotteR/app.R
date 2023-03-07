@@ -992,6 +992,9 @@ server <- function(input, output, session) {
       counts1 = counts1 %>% ungroup() %>% group_by(Alias, Subject) %>% mutate(fraction = fraction/sum(fraction))
       counts2 = counts2 %>% ungroup() %>% group_by(Alias, Subject) %>% mutate(fraction = fraction/sum(fraction))
     }
+    counts1$Alias = factor(counts1$Alias, levels = rev(input$multiGroup$order))
+    counts2$Alias = factor(counts2$Alias, levels = rev(input$multiGroup$order))
+    
     plot1 = ggplot(counts1, aes(x=delRelativeStartTD, y = Alias , fill = fraction)) + 
       geom_tile() +
       #scale_fill_viridis_c()
