@@ -1,9 +1,6 @@
 # SIQPlotteR down
 
-Unfortunately the link to SIQPlotteR is currently down. We are busy setting up a new server and will provide a new URL as soon at SIQPlotteR is available again
-
-
-
+Unfortunately the server that hosts SIQPlotteR is currently down. We are busy setting up a new server and will provide a new URL as soon at SIQPlotteR is available again
 
 # SIQ
 Sequence Interrogation and Qualification is there to perform analysis on targeted sequencing data. SIQ creates an mutation profile that can be interactively visualized using SIQPlotteR. It is written in Java so that anyone with a computer can use this program to analyse their sequences. We have designed and implemented this tool for anyone without a background in informatics to be able to analyse NGS data.
