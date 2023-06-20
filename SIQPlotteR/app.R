@@ -432,6 +432,10 @@ ui <- fluidPage(
                      "Set counts:",
                      c("relative","absolute"),
                      inline = T),
+        radioButtons("HeatmapEndsFilter",
+                     "Set max distance to Cas9 target site(s):",
+                     c("disabled","-2bp"),
+                     inline = T)
       ),
       
       conditionalPanel(
@@ -821,7 +825,7 @@ server <- function(input, output, session) {
         size = 10
       }
       #incorrect for TDs => fixed
-      #+1 neede
+      #+1 needed
       
       el = el[el$delRelativeStartRight<=size & el$delRelativeEnd>=-size+1,]
       #for SNVs be more stringent
@@ -997,6 +1001,13 @@ server <- function(input, output, session) {
     req(filter_in_data())
     req(input$Aliases)
     data = filter_in_data()
+    
+    ##filter for events that are outside of the region of interest
+    if(input$HeatmapEndsFilter == "-2bp"){
+      data = data %>% filter(delRelativeEndTD >= -2) 
+    }
+    
+    
     ####TAKE THE RIGHT column. These ones are not correct!!!
     counts1 = data %>% group_by(Alias, Subject, delRelativeStartTD) %>% summarise(fraction = sum(fraction))
     counts2 = data %>% group_by(Alias, Subject, delRelativeEndTD) %>% summarise(fraction = sum(fraction))
