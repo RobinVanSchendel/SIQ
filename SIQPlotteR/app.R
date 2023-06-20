@@ -2533,15 +2533,18 @@ server <- function(input, output, session) {
     ##experimental way to show erro bars on grouping variables
     if(addGroup){
       
-      test2 = test2 %>% group_by_at(c(input$GroupColumn,"Text")) %>% 
+      test2 = test2 %>% group_by_at(c("Subject", input$GroupColumn,"Text")) %>% 
         summarise(meanFraction = mean(fraction, na.rm=T), sdFraction = sd(fraction, na.rm=T))
-      test3 = test2 %>% ungroup() %>% group_by_at(input$GroupColumn) %>% arrange(desc(Text)) %>%
+      test3 = test2 %>% ungroup() %>% group_by_at(c("Subject", input$GroupColumn)) %>% arrange(desc(Text)) %>%
         mutate(sdpos = cumsum(meanFraction))
       
       plot <- ggplot(test3, aes_string(x=input$GroupColumn, y="meanFraction", fill="Text")) +
         geom_bar(stat="identity") +
         geom_errorbar(aes(ymin=sdpos-sdFraction, ymax=sdpos+sdFraction), width=.2, stat = "identity") +
         NULL
+      if(input$facet_wrap == TRUE){
+        plot <- plot + facet_grid(~Subject, scales = "free_x", space = "free_x")
+      }
       
     } else {
       
