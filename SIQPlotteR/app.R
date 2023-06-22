@@ -122,6 +122,7 @@ ui <- fluidPage(
         choices = 
           list("Load example SIQ paper data" = 1,
                "Upload file (TSV, Text, Excel)" = 2
+               #"MUSIC screen" = 3
           )
         ,
         selected =  2),
@@ -741,7 +742,9 @@ server <- function(input, output, session) {
     
     if(input$data_input == 1){
       el = exampleData
-    }else{
+    }
+    ##upload a file
+    else if(input$data_input == 2){
       fileNameXLS = input$file1
       req(fileNameXLS)
       if(grepl('xlsx$', fileNameXLS$datapath)){
@@ -765,6 +768,15 @@ server <- function(input, output, session) {
         }
       }
     }
+    ## MUSIC screen
+    else if(input$data_input == 3){
+      file = "MB_chunk_manifest.txt"
+      el = fread(file, header = T, stringsAsFactors = FALSE, data.table = FALSE)
+      
+      ##needed to not break down the process below
+      el$Type = "dummy"
+      el$insSize = 0
+    }
     if("Remarks" %in% colnames(el)){
       el = el %>% filter(is.na(Remarks))
     }
@@ -776,6 +788,8 @@ server <- function(input, output, session) {
       el$countEvents = 1
       el$fraction = 1
       ##the ref seq needs to have 0 count
+    }
+    if("Name" %in% colnames(el)){
       el = el %>% mutate(countEvents = ifelse(el$Name == "wt_query",0, countEvents))
       el = el %>% mutate(fraction = ifelse(el$Name == "wt_query",0, fraction))
     }
@@ -862,8 +876,38 @@ server <- function(input, output, session) {
     req(pre_filter_in_data())
     req(input$Aliases)
     
+    if(input$data_input == 3 & input$AliasColumn == "Alias"){
+      return()
+    }
     ##remove aliases not plotted
     el = pre_filter_in_data()
+    
+    ##so not load in the data
+    if(input$data_input == 3){
+      ##retrieve the filenames to be read in:
+      files = el %>% ungroup() %>% filter(!!as.symbol(input$AliasColumn) %in% input$Aliases) %>% select(fileName) %>% distinct()
+      if(nrow(files) == 0){
+        return()
+      }
+      files = files$fileName
+      
+      read_data <- function(z){
+        dat <- fread(file = z, sep = "\t", header = T)
+        return(dat)
+      }
+      
+      datalist <- lapply(files, read_data)
+      
+      el <- rbindlist(datalist, use.names = TRUE)
+      ##alter following columns
+      ##change this as this is undesired in the end
+      el = el %>% 
+        mutate(Subject = Alias) %>%
+        mutate(Alias = !!as.symbol(input$AliasColumn)) %>%
+        mutate(Type = SubType)
+    }
+    
+    
     #rename the references accordingly
     refType = "Reference"
     el = el %>% mutate(Type = ifelse(countEvents == 0 & Type == "WT",refType,Type))
@@ -1770,37 +1814,36 @@ server <- function(input, output, session) {
     dt %>% formatStyle(names(el),"white-space"="nowrap")
   })
   
-  
-  
-  ##type data
+  ##type data table
   output$plot1_data <- DT::renderDataTable({
-    req(input$Aliases)
-    
+    req(filter_in_data())
     el = filter_in_data()
     
-    el$Alias = factor(el$Alias, levels = input$multiGroupOrder)
-    types = input$Types
-    fraction = input$fraction
-    
-    if(fraction=="relative"){
-      test2 = el %>% group_by(Alias, Subject) %>%  dplyr::count(Type = Type, wt = countEvents, .drop = FALSE)
-    }
-    else{
-      test2 = el %>% group_by(Alias, Subject) %>%  dplyr::count(Type = Type, wt = countEvents, .drop = FALSE) #%>%   mutate(fraction = n / sum(n)) 
-      test2 = test2[test2$Type %in% types,]
-    }
-    #test2 = test2 %>% mutate(row = row_number())
     if(input$datatableFraction == "relative"){
-      test2 = el %>% group_by(Alias, Subject) %>%  dplyr::count(Type = Type, wt = countEvents, .drop = FALSE) %>%   mutate(n = n / sum(n)) %>% 
-        filter(Type != "Reference")
-      test3 = spread(test2,"Type","n")
-    }else{
-      test2 = test2 %>% filter(Type != "Reference")
-      test3 = spread(test2,"Type","n")
+      countDF = el %>% group_by(Alias, Subject) %>%  
+        dplyr::count(Type = Type, wt = fraction, .drop = FALSE)
+      
+      ##for relative recalculate the fractions
+      if(input$fraction=="relative"){
+        countDF = countDF %>%
+          mutate(n = n/sum(n))
+      }
     }
-    columns = ncol(test3)
+    ##show the actual read counts
+    else if(input$datatableFraction == "absolute"){
+      countDF = el %>% 
+        group_by(Alias, Subject) %>%  
+        dplyr::count(Type = Type, wt = countEvents, .drop = FALSE) 
+    }
+    ##remove the Reference type (used for alleles)
+    countDF = countDF %>% 
+      filter(Type != "Reference")
     
-    dt = DT::datatable(test3,rownames = FALSE,extensions = 'Buttons', options = list(
+    ##spread for viewing
+    countDFSpread = spread(countDF,"Type","n")
+    columns = ncol(countDFSpread)
+    
+    dt = DT::datatable(countDFSpread,rownames = FALSE,extensions = 'Buttons', options = list(
       pageLength = -1,
       dom = 'tB',
       buttons = c('copy', 'excelHtml5')
@@ -2074,7 +2117,13 @@ server <- function(input, output, session) {
   observe({
     req(in_data())
     req(hardcodedTypesDF())
-    choices = hardcodedTypesDF()[hardcodedTypesDF()$Type %in% unique(in_data()$Type),]
+    ##need to set the types for the screen
+    if(input$data_input == 3){
+      types = c("HDR","DELETION","DELINS","INSERTION","TINS","WT","INSERTION_1bp")
+      choices = hardcodedTypesDF()[hardcodedTypesDF()$Type %in% types,]
+    } else{
+      choices = hardcodedTypesDF()[hardcodedTypesDF()$Type %in% unique(in_data()$Type),]
+    }
     choices = choices[order(choices$Text), ]
     choicesInv = setNames(choices$Type, choices$Text)
     updatePickerInput(session, "Types", choices = choicesInv, selected = choicesInv)
@@ -2120,6 +2169,7 @@ server <- function(input, output, session) {
   observe({
     req(pre_filter_in_data())
     req(d_minEvents())
+    print("ObserveAliasesStart")
     totalAliases = in_stat()
     if("Alias" %in% colnames(totalAliases) & "Subject" %in% colnames(totalAliases)){
       aliases = totalAliases$Alias[totalAliases$Subject %in% input$Subject]
@@ -2128,11 +2178,19 @@ server <- function(input, output, session) {
       subAliases = in_data()[in_data()$Subject %in% input$Subject,]
       aliases = sort(unique(subAliases$Alias))
     }
+    print("ObserveAliasesStart2")
     #print(aliases)
     pre_filter_DF = pre_filter_in_data()
     ##additionalFilter for the max fraction to be included
     #remove Aliases that don't have enough counts
-    if(d_minEvents()>0){
+    print("ObserveAliasesStart3")
+    ##for the MUSIC screen this filtering does not work
+    ##the data is not there yet and causes a major slow down
+    ##You might have to fix this later on
+    if(input$data_input == 3){
+      plotAliases = unique(pre_filter_DF$Alias)
+    }
+    else if(d_minEvents()>0 && input$data_input != 3){
       if(input$minReadsOn == "mutagenic reads"){
         pre_filter_DF = pre_filter_DF %>%
           filter(Type !="WT")
@@ -2150,19 +2208,29 @@ server <- function(input, output, session) {
       ##==0 add all
       plotAliases = aliases
     }
+    print("ObserveAliasesStart3.5")
     if(input$AliasColumn == "Alias"){
       aliases = aliases[aliases %in% plotAliases]
     } else{
       aliases = plotAliases
     }
+    #intersect = intersect(aliases, input$Aliases)
+    #if(length(intersect) > 0 & length(intersect)<100){
+    #  #selected = intersect
+    #}
+    #else 
     if(length(aliases) >100){
       selected = NULL
-    } else{
+    } 
+    ##if no overlap between selected and these aliases, select them all
+    else{
       selected = aliases
     }
+    print("ObserveAliasesStart4")
     ##this does not contain the samples that have 0 reads anymore
     ##which may be an issue for the SampleInfo tab
     updatePickerInput(session, "Aliases", choices = aliases, selected = selected)
+    print("ObserveAliasesEnd")
   })
   
   observe({
