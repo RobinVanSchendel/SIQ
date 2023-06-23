@@ -121,8 +121,8 @@ ui <- fluidPage(
         "data_input", "",
         choices = 
           list("Load example SIQ paper data" = 1,
-               "Upload file (TSV, Text, Excel)" = 2
-               #"MUSIC screen" = 3
+               "Upload file (TSV, Text, Excel)" = 2,
+               "MUSIC screen" = 3
           )
         ,
         selected =  2),
@@ -922,7 +922,8 @@ server <- function(input, output, session) {
     ##add dummy rows
     aliases = unique(el$Alias)
     remAliases = setdiff(input$Aliases, aliases)
-    if(length(aliases)>0 & length(remAliases)>0){
+    ##do not do this for the MUSIC screen as that will remove the entire data frame
+    if(input$data_input != 3 && length(aliases)>0 && length(remAliases)>0){
       req(in_stat())
       dummies = in_stat()[in_stat()$Alias %in% remAliases,]
       bind_rows(el,dummies)
@@ -2090,6 +2091,13 @@ server <- function(input, output, session) {
     )
   })
   observe({
+    if(input$data_input == 3){
+      updatePickerInput(session, inputId = "AliasColumn", selected = "Gene")
+    }
+  })
+  
+  
+  observe({
     req(in_data())
     df = in_data()
     if(is.null(input$AliasColumn)){
@@ -2214,11 +2222,11 @@ server <- function(input, output, session) {
     } else{
       aliases = plotAliases
     }
-    #intersect = intersect(aliases, input$Aliases)
-    #if(length(intersect) > 0 & length(intersect)<100){
-    #  #selected = intersect
-    #}
-    #else 
+    intersect = intersect(aliases, input$Aliases)
+    if(length(intersect) > 0 & length(intersect)<100){
+      selected = intersect
+    }
+    else 
     if(length(aliases) >100){
       selected = NULL
     } 
@@ -2231,6 +2239,7 @@ server <- function(input, output, session) {
     ##which may be an issue for the SampleInfo tab
     updatePickerInput(session, "Aliases", choices = aliases, selected = selected)
     print("ObserveAliasesEnd")
+    print(paste("selected",selected))
   })
   
   observe({
