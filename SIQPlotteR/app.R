@@ -1774,13 +1774,13 @@ server <- function(input, output, session) {
   output$allele_data <- DT::renderDataTable({
     req(allelePlotData())
     el = allelePlotData()
+    colnames = c("OutcomeText", "insertion", "Outcome", "Alias", "fraction")
+    
     if(length(unique(el$Subject))>1){
-      el = el %>% select(Subject, OutcomeText, insertion, Outcome, Alias, fraction)
-      #target = 2
-    } else {
-      el = el %>% select(OutcomeText,insertion, Outcome, Alias, fraction) 
-      #target = 1
+      colnames = c("Subject", colnames)
     }
+    
+    el = el %>% select_at(colnames)
     el = el %>% mutate(insertion = ifelse(nchar(insertion)<60, insertion, paste(nchar(insertion),"bp")))
     
     ##summarise same events for spread
@@ -1820,8 +1820,13 @@ server <- function(input, output, session) {
     req(filter_in_data())
     el = filter_in_data()
     
+    group_names = c("Alias","Subject")
+    if(input$GroupColumn != "-")  {
+      group_names = c(input$GroupColumn, group_names)
+    }
+    
     if(input$datatableFraction == "relative"){
-      countDF = el %>% group_by(Alias, Subject) %>%  
+      countDF = el %>% group_by_at(group_names) %>%  
         dplyr::count(Type = Type, wt = fraction, .drop = FALSE)
       
       ##for relative recalculate the fractions
@@ -1833,7 +1838,7 @@ server <- function(input, output, session) {
     ##show the actual read counts
     else if(input$datatableFraction == "absolute"){
       countDF = el %>% 
-        group_by(Alias, Subject) %>%  
+        group_by_at(group_names) %>%  
         dplyr::count(Type = Type, wt = countEvents, .drop = FALSE) 
     }
     ##remove the Reference type (used for alleles)
