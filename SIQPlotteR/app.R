@@ -558,6 +558,12 @@ ui <- fluidPage(
           ), 
           multiple = F
         ),
+        numericInput(
+          inputId = "pca_max_overlap",
+          label = "Set max overlap for labels:",
+          value = 100,
+          step = 10
+        ),
         downloadButton('exportOutcome',"Export to PDF"),
       ),
       sliderInput("filterMaxFraction", "Set max fraction of event: ",
