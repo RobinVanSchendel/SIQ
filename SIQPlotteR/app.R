@@ -1293,7 +1293,7 @@ server <- function(input, output, session) {
         
         plot1 = ggplot(data = dtp,aes_string(x = "PC1", y = "PC2", col = input$dose, fill = input$genotype)) + 
           geom_point(shape = 21, size = input$OutcomeDotSize, stroke = input$OutcomeStrokeSize) +
-          geom_text_repel(size = input$OutcomeSize,aes(label = label), max.overlaps = Inf)+
+          geom_text_repel(size = input$OutcomeSize,aes(label = label), max.overlaps = input$pca_max_overlap)+
           #geom_label(size = input$OutcomeSize,aes(label = rownames(df)))+
           theme_minimal()+
           theme(legend.position = "none")
