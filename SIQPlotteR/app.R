@@ -125,7 +125,7 @@ ui <- fluidPage(
                "MUSIC screen" = 3
           )
         ,
-        selected =  2),
+        selected = 2),
       conditionalPanel(
         condition = "input.data_input=='2'",
         fileInput("file1",
@@ -313,6 +313,11 @@ ui <- fluidPage(
           "Y-axis value:",
           c("Fraction","#Reads"),
           selected = "Fraction",
+          inline = TRUE),
+        radioButtons(
+          "tornadoSubjectAlias",
+          "Order by:",
+          c("Target - Alias","Alias - Target"),
           inline = TRUE),
         checkboxInput(
           "expandYaxis",
@@ -2233,7 +2238,7 @@ server <- function(input, output, session) {
     }
     else 
     if(length(aliases) >100){
-      selected = NULL
+        selected = NULL
     } 
     ##if no overlap between selected and these aliases, select them all
     else{
@@ -3296,10 +3301,22 @@ server <- function(input, output, session) {
       }
     } else{
       if(input$YaxisValue == "Fraction"){
-        plot = plot + facet_wrap(Subject ~ Alias, ncol = input$nrCols, scales='free',
-                                 labeller = labeller(Alias = aliasesVec))
+        if(input$tornadoSubjectAlias == "Target - Alias"){
+          plot = plot + facet_wrap(Subject ~ Alias, ncol = input$nrCols, scales='free',
+                                   labeller = labeller(Alias = aliasesVec))
+        }
+        else{
+          plot = plot + facet_wrap(Alias ~ Subject, ncol = input$nrCols, scales='free',
+                                   labeller = labeller(Alias = aliasesVec))
+        }
+        
       } else{
-        plot = plot + facet_wrap(Subject ~ Alias, ncol = input$nrCols, scales='free')
+        if(input$tornadoSubjectAlias == "Target - Alias"){
+          plot = plot + facet_wrap(Subject ~ Alias, ncol = input$nrCols, scales='free')
+        }
+        else{
+          plot = plot + facet_wrap(Alias ~ Subject, ncol = input$nrCols, scales='free')
+        }
       }
     }
     plot = plot + theme(strip.background = element_blank())
