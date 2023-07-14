@@ -109,8 +109,8 @@ exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
 # Define UI for application that draws a histogram
 ui <- fluidPage(
   
-  # Application title
-  #titlePanel("SIQ Plotter"),
+  # logout button
+  div(class = "pull-right", shinyauthr::logoutUI(id = "logout")),
   
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
@@ -121,8 +121,7 @@ ui <- fluidPage(
         "data_input", "",
         choices = 
           list("Load example SIQ paper data" = 1,
-               "Upload file (TSV, Text, Excel)" = 2,
-               "MUSIC screen" = 3
+               "Upload file (TSV, Text, Excel)" = 2
           )
         ,
         selected = 2),
@@ -671,6 +670,11 @@ ui <- fluidPage(
                              shiny::tags$b("video tutorials "), a(href="https://github.com/RobinVanSchendel/SIQ", "here", target="_blank")),
                            p("SIQPlotteR Version - 1.0 created by Robin van Schendel"),
                            a(href="https://github.com/RobinVanSchendel/SIQ/releases","Download SIQ here", target="_blank")),
+                  tabPanel(
+                    id = 'login_tab',
+                    title = 'Login',
+                    shinyauthr::loginUI("login")
+                  ),
                   selected = "Tornado"
       )
     )
@@ -682,6 +686,49 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
+  
+  
+  observe({
+    req(credentials())
+    if(credentials()$user_auth){
+      updateRadioButtons(session,
+                         inputId = "data_input",
+                         choices =
+                           list("Load example SIQ paper data" = 1,
+                                "Upload file (TSV, Text, Excel)" = 2,
+                                "MUSIC screen" = 3,
+                                "MUSIC subscreen" = 4
+                           ),
+                         selected = as.numeric(input$data_input),
+                         )
+    }
+    else{
+      updateRadioButtons(session,
+                         inputId = "data_input",
+                         choices =
+                           list("Load example SIQ paper data" = 1,
+                                "Upload file (TSV, Text, Excel)" = 2
+                           ),
+                         selected = 2,
+      )
+    }
+      
+  })
+  
+  credentials <- shinyauthr::loginServer(
+    id = "login",
+    data = user_base,
+    user_col = user,
+    pwd_col = password,
+    sodium_hashed = TRUE,
+    log_out = reactive(logout_init())
+  )
+  
+  # Logout to hide
+  logout_init <- shinyauthr::logoutServer(
+    id = "logout",
+    active = reactive(credentials()$user_auth)
+  )
   
   hardcodedTypesDFnonreactive <- function(){
     ###THIS NEEDS TO BE RESTRUCTURED
@@ -750,7 +797,7 @@ server <- function(input, output, session) {
   }) %>% debounce(500)
   
   in_data <- reactive({
-    
+    req(input$data_input)
     if(input$data_input == 1){
       el = exampleData
     }
@@ -768,26 +815,36 @@ server <- function(input, output, session) {
       }
       else{
         ## <200Mb
-        if(fileNameXLS$size<200*1024*1024){
+        #if(fileNameXLS$size<200*1024*1024){
           el = read.csv(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, sep = "\t")
-        }
-        else{
-          start_time = start_time <- Sys.time()
-          el = fread(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, data.table = F)
-          end_time <- Sys.time()
-          print(paste("fread",end_time-start_time, "seconds"))
-        }
+        #}
+        #else{
+        #  start_time = start_time <- Sys.time()
+        #  el = fread(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, data.table = F)
+        #  end_time <- Sys.time()
+        #  print(paste("fread",end_time-start_time, "seconds"))
+        #}
       }
     }
-    ## MUSIC screen
-    else if(input$data_input == 3){
-      file = "MB_chunk_manifest.txt"
-      el = fread(file, header = T, stringsAsFactors = FALSE, data.table = FALSE)
+    ## MUSIC screen and subscree
+    else if(input$data_input == 3 || input$data_input == 4){
+      
+      dbnameCurrent = get_current_dbname()
+      con <- dbConnect(RSQLite::SQLite(), dbname = dbnameCurrent)
+      geneTable <- tbl(con, "genes")
+    
+      #el = fread(file, header = T, stringsAsFactors = FALSE, data.table = FALSE)
+      el = geneTable %>% collect()
+      el = el %>% mutate(Subject = Alias)
+      
+      dbDisconnect(conn = con)
       
       ##needed to not break down the process below
       el$Type = "dummy"
       el$insSize = 0
     }
+    
+    
     if("Remarks" %in% colnames(el)){
       el = el %>% filter(is.na(Remarks))
     }
@@ -819,6 +876,17 @@ server <- function(input, output, session) {
     print("endOf in_data")
     return(el)
   })
+  
+  get_current_dbname <- function(){
+    if(input$data_input == 3){
+      return(dbname)
+    }
+    if(input$data_input == 4){
+      return(dbnameSubScreen)
+    }
+    stop("Not an option")
+  }
+    
   pre_pre_filter_in_data <- reactive({
     req(in_data())
     if(!is.null(input$AliasColumn)){
@@ -887,29 +955,40 @@ server <- function(input, output, session) {
     req(pre_filter_in_data())
     req(input$Aliases)
     
-    if(input$data_input == 3 & input$AliasColumn == "Alias"){
+    if((input$data_input == 3 || input$data_input == 4) & input$AliasColumn == "Alias"){
       return()
     }
     ##remove aliases not plotted
     el = pre_filter_in_data()
     
-    ##so not load in the data
-    if(input$data_input == 3){
+    ##so now load in the data
+    if(input$data_input == 3 || input$data_input == 4){
+      dbnameCur = get_current_dbname()
+      
+      con <- dbConnect(RSQLite::SQLite(), dbname = dbnameCur)
+      geneTable <- tbl(con, "tornado")
+      
+      genes = input$Aliases
+      print("quering DB...")
+      el = geneTable %>% filter(!!as.symbol(input$AliasColumn) %in% genes) %>% collect()
+      print("quering done...")
+      dbDisconnect(conn = con)
+      
       ##retrieve the filenames to be read in:
-      files = el %>% ungroup() %>% filter(!!as.symbol(input$AliasColumn) %in% input$Aliases) %>% select(fileName) %>% distinct()
-      if(nrow(files) == 0){
-        return()
-      }
-      files = files$fileName
+      #files = el %>% ungroup() %>% filter(!!as.symbol(input$AliasColumn) %in% input$Aliases) %>% select(fileName) %>% distinct()
+      #if(nrow(files) == 0){
+      #  return()
+      #}
+      #files = files$fileName
       
-      read_data <- function(z){
-        dat <- fread(file = z, sep = "\t", header = T)
-        return(dat)
-      }
+      #read_data <- function(z){
+      #  dat <- fread(file = z, sep = "\t", header = T)
+     #   return(dat)
+      #}
       
-      datalist <- lapply(files, read_data)
+      #datalist <- lapply(files, read_data)
       
-      el <- rbindlist(datalist, use.names = TRUE)
+     # el <- rbindlist(datalist, use.names = TRUE)
       ##alter following columns
       ##change this as this is undesired in the end
       el = el %>% 
@@ -2085,6 +2164,7 @@ server <- function(input, output, session) {
   })
   
   output$subject_selection <- renderUI({
+    req(input$data_input)
     choices = sort(unique(in_data()$Subject))
     #data_input == 1 = example data
     if(input$data_input == 1){
@@ -2107,6 +2187,7 @@ server <- function(input, output, session) {
     )
   })
   observe({
+    req(input$data_input)
     if(input$data_input == 3){
       updatePickerInput(session, inputId = "AliasColumn", selected = "Gene")
     }
@@ -2142,7 +2223,7 @@ server <- function(input, output, session) {
     req(in_data())
     req(hardcodedTypesDF())
     ##need to set the types for the screen
-    if(input$data_input == 3){
+    if(input$data_input == 3 || input$data_input == 4){
       types = c("HDR","DELETION","DELINS","INSERTION","TINS","WT","INSERTION_1bp")
       choices = hardcodedTypesDF()[hardcodedTypesDF()$Type %in% types,]
     } else{
@@ -3293,7 +3374,7 @@ server <- function(input, output, session) {
     
     if(input$YaxisValue == "Fraction"){
       aliases = newdata %>% group_by(Alias, Subject) %>% summarise(Text = paste0(Alias," \n(n = ",sum(countEvents),")")) %>% distinct()
-      aliasesVec = aliases$Text
+        aliasesVec = aliases$Text
       names(aliasesVec) = aliases$Alias
     }
     
@@ -3310,13 +3391,13 @@ server <- function(input, output, session) {
         if(input$tornadoSubjectAlias == "Target - Alias"){
           plot = plot + facet_wrap(Subject ~ Alias, ncol = input$nrCols, scales='free',
                                    labeller = labeller(Alias = aliasesVec))
-        }
-        else{
+      }
+      else{
           plot = plot + facet_wrap(Alias ~ Subject, ncol = input$nrCols, scales='free',
                                    labeller = labeller(Alias = aliasesVec))
-        }
-        
-      } else{
+    }
+    
+    } else{
         if(input$tornadoSubjectAlias == "Target - Alias"){
           plot = plot + facet_wrap(Subject ~ Alias, ncol = input$nrCols, scales='free')
         }
