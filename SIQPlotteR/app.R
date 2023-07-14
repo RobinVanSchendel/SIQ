@@ -1691,7 +1691,13 @@ server <- function(input, output, session) {
     newdata = newdata %>% group_by(Alias, Subject) %>% mutate(y.end = cumsum(yheight), y.start = y.end-yheight)
     
     ##added this for hover later
-    newdata <- newdata %>% mutate(SubjectAlias = paste(Subject, Alias, sep = " - "))
+    if(length(unique(newdata$Subject)) > 1){
+      newdata <- newdata %>% mutate(SubjectAlias = paste(Subject, Alias, sep = " - "))
+    }
+    else{
+      ##keep it as Alias to ensure it can still be sorted
+      newdata <- newdata %>% mutate(SubjectAlias = Alias)
+    }
     
     newdata
   })
@@ -3330,6 +3336,11 @@ server <- function(input, output, session) {
       #put that order into a factor to ensure order is conserved in ggplot2
       newdata$SubjectAlias = factor(newdata$SubjectAlias, levels = order$SubjectAlias)
     }
+    ##take the ordering from the sample list
+    else{
+      newdata$SubjectAlias = factor(newdata$SubjectAlias, levels = input$multiGroupOrder)
+    }
+    
     
     plot = ggplot(newdata)
     
