@@ -1645,6 +1645,15 @@ server <- function(input, output, session) {
     }
     newdata = renewPlotData(el)
     
+    ##this code compresses events that are the same, but come from different files
+    ##into a single event
+    ##perhaps it would be wise to only do that if the Alias is combined of several files
+    ##but since the Alias column is overwritten we ware not sure at this moment if the data
+    ##is from multiple files
+    newdata = newdata %>% group_by(across(c(-yheight, -countEvents))) %>%
+      summarise(yheight = sum(yheight), countEvents = sum(countEvents))
+    
+    
     sortType = input$Sort
     
     rownames(newdata) <- 1:nrow(newdata)
@@ -1680,6 +1689,9 @@ server <- function(input, output, session) {
     #newdata$y.start = newdata$y.end - newdata$yheight
     
     newdata = newdata %>% group_by(Alias, Subject) %>% mutate(y.end = cumsum(yheight), y.start = y.end-yheight)
+    
+    ##added this for hover later
+    newdata <- newdata %>% mutate(SubjectAlias = paste(Subject, Alias, sep = " - "))
     
     newdata
   })
@@ -2274,7 +2286,6 @@ server <- function(input, output, session) {
   observe({
     req(pre_filter_in_data())
     req(d_minEvents())
-    print("ObserveAliasesStart")
     totalAliases = in_stat()
     if("Alias" %in% colnames(totalAliases) & "Subject" %in% colnames(totalAliases)){
       aliases = totalAliases$Alias[totalAliases$Subject %in% input$Subject]
@@ -2283,12 +2294,10 @@ server <- function(input, output, session) {
       subAliases = in_data()[in_data()$Subject %in% input$Subject,]
       aliases = sort(unique(subAliases$Alias))
     }
-    print("ObserveAliasesStart2")
     #print(aliases)
     pre_filter_DF = pre_filter_in_data()
     ##additionalFilter for the max fraction to be included
     #remove Aliases that don't have enough counts
-    print("ObserveAliasesStart3")
     ##for the MUSIC screen this filtering does not work
     ##the data is not there yet and causes a major slow down
     ##You might have to fix this later on
@@ -2313,17 +2322,18 @@ server <- function(input, output, session) {
       ##==0 add all
       plotAliases = aliases
     }
-    print("ObserveAliasesStart3.5")
     if(input$AliasColumn == "Alias"){
       aliases = aliases[aliases %in% plotAliases]
     } else{
       aliases = plotAliases
     }
-    intersect = intersect(aliases, input$Aliases)
-    if(length(intersect) > 0 & length(intersect)<100){
-      selected = intersect
-    }
-    else 
+    
+    ##not safe to update the selected aliases as that potentially results in an infinite loop
+    #intersect = intersect(aliases, input$Aliases)
+    #if(length(intersect) > 0 & length(intersect)<100){
+    #  selected = intersect
+    #}
+    #else 
     if(length(aliases) >100){
         selected = NULL
     } 
@@ -2331,12 +2341,9 @@ server <- function(input, output, session) {
     else{
       selected = aliases
     }
-    print("ObserveAliasesStart4")
     ##this does not contain the samples that have 0 reads anymore
     ##which may be an issue for the SampleInfo tab
     updatePickerInput(session, "Aliases", choices = aliases, selected = selected)
-    print("ObserveAliasesEnd")
-    print(paste("selected",selected))
   })
   
   observe({
@@ -3301,7 +3308,31 @@ server <- function(input, output, session) {
       return()
     }
     
+    
+    ## the number of target sites in our data
+    nrSubjects = length(unique(newdata$Subject))
+    
+    ##ensure we can order the way we want
+    if(nrSubjects > 1){
+      ##allow for sorting on either Target - Alias or vice versa
+      if(input$tornadoSubjectAlias == "Target - Alias") {
+        order = newdata %>% select(Subject, Alias) %>% 
+          distinct() %>%
+          arrange(Subject, Alias) %>%
+          mutate(SubjectAlias = paste(Subject, Alias, sep = " - "))
+      }
+      else{
+        order = newdata %>% select(Alias, Subject) %>% 
+          distinct() %>%
+          arrange(Alias, Subject) %>%
+          mutate(SubjectAlias = paste(Subject, Alias, sep = " - "))
+      }
+      #put that order into a factor to ensure order is conserved in ggplot2
+      newdata$SubjectAlias = factor(newdata$SubjectAlias, levels = order$SubjectAlias)
+    }
+    
     plot = ggplot(newdata)
+    
     
     colourCode = hardcodedTypesDF()$Color
     colourCode = setNames(colourCode,hardcodedTypesDF()$Type)
@@ -3331,12 +3362,6 @@ server <- function(input, output, session) {
         geom_rect(aes(xmin=closestto0-1, xmax=closestto0+1, ymin=y.start, ymax=y.end, fill = color), alpha=1)  
     }
     
-    #if(input$YaxisValue == "Fraction"){
-    #  ggtitleLabel = paste0(name,"\n(n=",sum(newdata$countEvents),")")
-    #} else{
-    #  ggtitleLabel = name
-    #}
-    
     plot = plot + 
       scale_fill_manual(values = colourCode, labels = ColorText$Text) + #no guid is produced
       
@@ -3362,52 +3387,34 @@ server <- function(input, output, session) {
     if(input$YaxisValue == "#Reads"){
       ##reset this for reads
       scale_y_continuous$limits = NULL
-      ##setting per facet does not work yet
-      
-      #number = formatC(sum(newdata$countEvents), format = "e", digits = 1)
-      #breaks = c(max(newdata$y.end))
-      #scale_y_continuous$labels = c(number)
-      #scale_y_continuous$breaks = c(breaks)
-      
     }
     plot = plot + scale_y_continuous
     
     if(input$YaxisValue == "Fraction"){
-      aliases = newdata %>% group_by(Alias, Subject) %>% summarise(Text = paste0(Alias," \n(n = ",sum(countEvents),")")) %>% distinct()
+      ##single target label
+      if(nrSubjects == 1){
+        aliases = newdata %>% group_by(SubjectAlias) %>% summarise(Text = paste0(Alias," \n(n = ",sum(countEvents),")")) %>% distinct()
         aliasesVec = aliases$Text
-      names(aliasesVec) = aliases$Alias
-    }
-    
-    
-    if(length(unique(newdata$Subject))==1){
-      if(input$YaxisValue == "Fraction"){
-        plot = plot + facet_wrap(Alias ~ . , ncol = input$nrCols, scales='free',
-                                 labeller = labeller(Alias = aliasesVec))
-      } else{
-        plot = plot + facet_wrap(Alias ~ ., ncol = input$nrCols, scales='free')
+        names(aliasesVec) = aliases$SubjectAlias
       }
-    } else{
-      if(input$YaxisValue == "Fraction"){
-        if(input$tornadoSubjectAlias == "Target - Alias"){
-          plot = plot + facet_wrap(Subject ~ Alias, ncol = input$nrCols, scales='free',
-                                   labeller = labeller(Alias = aliasesVec))
-      }
+      ##multi target label
       else{
-          plot = plot + facet_wrap(Alias ~ Subject, ncol = input$nrCols, scales='free',
-                                   labeller = labeller(Alias = aliasesVec))
-    }
-    
-    } else{
-        if(input$tornadoSubjectAlias == "Target - Alias"){
-          plot = plot + facet_wrap(Subject ~ Alias, ncol = input$nrCols, scales='free')
-        }
-        else{
-          plot = plot + facet_wrap(Alias ~ Subject, ncol = input$nrCols, scales='free')
-        }
+        aliases = newdata %>% group_by(SubjectAlias) %>% summarise(Text = paste0(Alias," \n(n = ",sum(countEvents),")\n\n", Subject)) %>% distinct()
+        aliasesVec = aliases$Text
+        names(aliasesVec) = aliases$SubjectAlias
       }
     }
+    
+    ##perform facet_wrap and add custom labeller for 'Fraction'
+    if(input$YaxisValue == "Fraction"){
+      plot = plot + facet_wrap(SubjectAlias ~ . , ncol = input$nrCols, scales='free',
+                               labeller = labeller(SubjectAlias = aliasesVec))
+    } else{
+      plot = plot + facet_wrap(SubjectAlias ~ ., ncol = input$nrCols, scales='free')
+    }
+    
+    ##add theme
     plot = plot + theme(strip.background = element_blank())
-    #grid.arrange(grobs=plots, ncol=input$nrCols)
     
     return(plot)
   }
@@ -3496,9 +3503,9 @@ server <- function(input, output, session) {
     }
     #only on Alias
     if(is.null(hover$panelvar2)){
-      point = df %>% filter(Alias == hover$panelvar1 & hover$y > y.start & hover$y < y.end)
+      point = df %>% filter(SubjectAlias == hover$panelvar1 & hover$y > y.start & hover$y < y.end)
     } else{
-      point = df %>% filter(Alias == hover$panelvar1 & Subject == hover$panelvar2 & hover$y > y.start & hover$y < y.end)
+      point = df %>% filter(SubjectAlias == hover$panelvar1 & Subject == hover$panelvar2 & hover$y > y.start & hover$y < y.end)
     }
     
     if (nrow(point) == 0) return(NULL)
