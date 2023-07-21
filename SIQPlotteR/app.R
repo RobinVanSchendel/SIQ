@@ -901,7 +901,7 @@ server <- function(input, output, session) {
     }
     #make sure the fractions will be set to 1 here already
     el = el %>% group_by(Alias, Subject) %>% 
-      mutate(fraction = fraction/sum(fraction))
+      mutate(totalFraction = sum(fraction), fraction = fraction/totalFraction)
     return(el)
     
   })
@@ -995,6 +995,8 @@ server <- function(input, output, session) {
         mutate(Subject = Alias) %>%
         mutate(Alias = !!as.symbol(input$AliasColumn)) %>%
         mutate(Type = SubType)
+      
+      el = el %>% group_by(Alias) %>% mutate(totalFraction = sum(fraction))
     }
     
     
@@ -1237,19 +1239,37 @@ server <- function(input, output, session) {
                      Outcome))
         
         
+        end_time = Sys.time()-start_time
+        print(paste("half2: outcomePlot",end_time))
+        
         #sometimes we are analysing data where outcomes are found multiple times
-        dataUnique <- data %>%
-          filter(Alias %in% input$controls) %>%
-          group_by(Subject, Outcome) %>%
-          count(wt = fraction, name = "fraction")
+        #dataUnique <- data %>%
+        #  filter(Alias %in% input$controls) %>%
+        #  group_by(Subject, Outcome) %>%
+        #  summarise(fraction = sum(fraction)) %>% 
+        #  data.frame()
         #needs to be a data.frame for the slice
-        dataUnique = data.frame(dataUnique)
+        #dataUnique = data.frame(dataUnique)
+        
+        end_time = Sys.time()-start_time
+        print(paste("half2.2: outcomePlot",end_time))
         
         dataUniqueAll <- data %>%
           group_by(Alias, Outcome, Subject) %>%
-          count(wt = fraction, name = "fraction")
+          summarise(fraction = sum(fraction)) %>%
+          data.frame()
         #needs to be a data.frame for the slice
-        dataUniqueAll = data.frame(dataUniqueAll)
+        dataUnique = dataUniqueAll %>% 
+          filter(Alias %in% input$controls) %>%
+          ungroup() %>%
+          group_by(Subject, Outcome) %>%
+          summarise(fraction = sum(fraction)) %>% 
+          data.frame()
+          
+        
+        
+        end_time = Sys.time()-start_time
+        print(paste("half3: outcomePlot",end_time))
         
         #dataNT1TopOutcomes <- data %>% 
         #  select(c(countEvents, fraction, Barcode, Gene, Outcome)) %>%  
@@ -1277,6 +1297,9 @@ server <- function(input, output, session) {
         
         ordered <- unique(dataNT1TopOutcomes$Outcome)
         
+        end_time = Sys.time()-start_time
+        print(paste("outcomePlot",end_time))
+        
       }
       plots = list()
       if(input$typePlotOutcome=="line"){
@@ -1303,10 +1326,17 @@ server <- function(input, output, session) {
         
         
         
-        plot <- ggplot(dataPlot1,aes(x = Outcome, y = fraction, group = Alias, color = rank))
+        
         ##only draw colors if we have something to color
         if(length(na.omit(dataPlot1$rank))>0){
-          plot <- plot + geom_text_repel(aes(label=rank, color = rank), na.rm = T, size=input$OutcomeSize, position = position_dodge(0.5), max.overlaps = Inf)
+          plot <- ggplot(dataPlot1,aes(x = Outcome, y = fraction, group = Alias, color = rank))
+          if(input$OutcomeSize > 0){
+            plot <- plot + geom_text_repel(aes(label=rank, color = rank), na.rm = T, size=input$OutcomeSize, position = position_dodge(0.5), max.overlaps = Inf)
+          }
+        }
+        ##if there is no rank, do not use color as rank
+        else{
+          plot <- ggplot(dataPlot1,aes(x = Outcome, y = fraction, group = Alias))
         }
           #scale_colour_manual()
           plot <- plot + geom_line(size=1.2, alpha=0.4) +
@@ -1627,6 +1657,9 @@ server <- function(input, output, session) {
       return()
     }
     
+    print("start: tornadoPlotData")
+    start_time = Sys.time()
+    
     # FIX this 100 limit
     maxTornadoes = 100
     subjectAliasList = el %>% select(Subject,Alias) %>% distinct() %>% ungroup()
@@ -1645,13 +1678,23 @@ server <- function(input, output, session) {
     }
     newdata = renewPlotData(el)
     
+    end_time = Sys.time()-start_time
+    print(paste("half: tornadoPlotData",end_time))
+    
     ##this code compresses events that are the same, but come from different files
     ##into a single event
     ##perhaps it would be wise to only do that if the Alias is combined of several files
     ##but since the Alias column is overwritten we ware not sure at this moment if the data
     ##is from multiple files
-    newdata = newdata %>% group_by(across(c(-yheight, -countEvents))) %>%
-      summarise(yheight = sum(yheight), countEvents = sum(countEvents))
+    maxFraction = max(el$totalFraction)
+    ##this expensive call is usually not needed, but sometimes it is
+    if(maxFraction > 1){
+      newdata = newdata %>% group_by(across(c(-yheight, -countEvents))) %>%
+        summarise(yheight = sum(yheight), countEvents = sum(countEvents))
+    }
+    
+    end_time = Sys.time()-start_time
+    print(paste("half2: tornadoPlotData",end_time))
     
     
     sortType = input$Sort
@@ -1698,6 +1741,8 @@ server <- function(input, output, session) {
       ##keep it as Alias to ensure it can still be sorted
       newdata <- newdata %>% mutate(SubjectAlias = Alias)
     }
+    end_time = Sys.time()-start_time
+    print(paste("end: tornadoPlotData",end_time))
     
     newdata
   })
@@ -1705,13 +1750,19 @@ server <- function(input, output, session) {
   output$subjectPlot <- renderPlot({
     req(tornadoPlotData())
     req(input$yaxis)
-    req(input$Aliases)
+    #req(input$Aliases)
     req(d_xminmaxRange())
+    start_time = Sys.time()
     #speedup multigroup order is lagging behind Aliases
     if(length(input$Aliases) != length(input$multiGroupOrder)){
       return()
     }
+    print("subjectPlot")
     plot.data = tornadoPlotData()
+    
+    end_time = Sys.time()-start_time
+    print(paste("half: subjectPlot",end_time))
+    
     
     ##recalculate the frequencies here:
     ### done
@@ -1727,6 +1778,8 @@ server <- function(input, output, session) {
       yAllMax = max(testDF$total)
       ymaxInput = yAllMax
     }
+    end_time = Sys.time()-start_time
+    print(paste("half2: subjectPlot",end_time))
     
         
     newdata <- plot.data #%>% 
@@ -1736,7 +1789,12 @@ server <- function(input, output, session) {
                              xmax = d_xminmaxRange()[2],
                              Type = input$Type)
     }
+    end_time = Sys.time()-start_time
+    print(paste("half3: subjectPlot",end_time))
     plotsForDownload$tornados <- plot
+    end_time = Sys.time()-start_time
+    print(paste("end: subjectPlot",end_time))
+    
     plot
   })
   
@@ -2349,7 +2407,9 @@ server <- function(input, output, session) {
     }
     ##this does not contain the samples that have 0 reads anymore
     ##which may be an issue for the SampleInfo tab
+    print("updatePickerInput Aliases")
     updatePickerInput(session, "Aliases", choices = aliases, selected = selected)
+    #updatePickerInput(session, "Aliases", choices = aliases)
   })
   
   observe({
@@ -3313,7 +3373,8 @@ server <- function(input, output, session) {
     if(is.null(newdata) || nrow(newdata) == 0){
       return()
     }
-    
+    start_time = Sys.time()
+    print("tornadoplot")
     
     ## the number of target sites in our data
     nrSubjects = length(unique(newdata$Subject))
@@ -3341,6 +3402,9 @@ server <- function(input, output, session) {
       newdata$SubjectAlias = factor(newdata$SubjectAlias, levels = input$multiGroupOrder)
     }
     
+    end_time = Sys.time()-start_time
+    print(paste("half: tornadoplot",end_time))
+    
     
     plot = ggplot(newdata)
     
@@ -3356,7 +3420,9 @@ server <- function(input, output, session) {
     ColorText = ColorText %>% filter(Type %in% names(colourCode))
     ColorText = rbind(ColorText, c("white","","white"))
     
-
+    end_time = Sys.time()-start_time
+    print(paste("half2: tornadoplot",end_time))
+    
     if(Type=="Regular"){
       plot = plot +
         geom_rect(aes(xmin=xmin, xmax=start.points+1, ymin=y.start, ymax=y.end, fill=color), alpha=1) + 
@@ -3383,6 +3449,8 @@ server <- function(input, output, session) {
       #ggtitle(ggtitleLabel) + 
       scale_x_continuous(limits = c(xmin, xmax))
     
+    end_time = Sys.time()-start_time
+    print(paste("half2.5: tornadoplot",end_time))
     
     #create an scale_y_continous object to adjust
     scale_y_continuous = scale_y_continuous()
@@ -3401,20 +3469,25 @@ server <- function(input, output, session) {
     }
     plot = plot + scale_y_continuous
     
+    end_time = Sys.time()-start_time
+    print(paste("half2.6: tornadoplot",end_time))
+    
     if(input$YaxisValue == "Fraction"){
+      aliases = newdata %>% group_by(Subject, SubjectAlias, Alias) %>% summarise(total = sum(countEvents)) 
       ##single target label
       if(nrSubjects == 1){
-        aliases = newdata %>% group_by(SubjectAlias) %>% summarise(Text = paste0(Alias," \n(n = ",sum(countEvents),")")) %>% distinct()
-        aliasesVec = aliases$Text
-        names(aliasesVec) = aliases$SubjectAlias
+        aliases = aliases %>% mutate(Text = paste0(Alias," \n(n = ",total,")"))
       }
       ##multi target label
       else{
-        aliases = newdata %>% group_by(SubjectAlias) %>% summarise(Text = paste0(Alias," \n(n = ",sum(countEvents),")\n\n", Subject)) %>% distinct()
-        aliasesVec = aliases$Text
-        names(aliasesVec) = aliases$SubjectAlias
+          aliases = aliases %>% mutate(Text = paste0(Alias," \n(n = ",total,")\n\n", Subject))
       }
+      aliasesVec = aliases$Text
+      names(aliasesVec) = aliases$SubjectAlias
     }
+    
+    end_time = Sys.time()-start_time
+    print(paste("half2.7: tornadoplot",end_time))
     
     ##perform facet_wrap and add custom labeller for 'Fraction'
     if(input$YaxisValue == "Fraction"){
@@ -3423,6 +3496,8 @@ server <- function(input, output, session) {
     } else{
       plot = plot + facet_wrap(SubjectAlias ~ ., ncol = input$nrCols, scales='free')
     }
+    end_time = Sys.time()-start_time
+    print(paste("half3: tornadoplot",end_time))
     
     ##add theme
     plot = plot + theme(strip.background = element_blank())
