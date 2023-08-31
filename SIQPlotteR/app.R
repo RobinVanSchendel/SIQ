@@ -94,10 +94,41 @@ if(!require(spatstat)){
   install.packages("spatstat", repos = "https://mirror.lyrahosting.com/CRAN/")
   library(spatstat)
 }
+if(!require(dbplyr)){
+  install.packages("dbplyr", repos = "https://mirror.lyrahosting.com/CRAN/")
+  library(dbplyr)
+}
+if(!require(RSQLite)){
+  install.packages("RSQLite", repos = "https://mirror.lyrahosting.com/CRAN/")
+  library(RSQLite)
+}
+if(!require(shinyauthr)){
+  install.packages("shinyauthr", repos = "https://mirror.lyrahosting.com/CRAN/")
+  library(shinyauthr)
+}
+if(!require(sodium)){
+  install.packages("sodium", repos = "https://mirror.lyrahosting.com/CRAN/")
+  library(sodium)
+}
+if(!require(heatmaply)){
+  install.packages("heatmaply", repos = "https://mirror.lyrahosting.com/CRAN/")
+  library(heatmaply)
+}
 
+# dataframe that holds usernames, passwords and other user data
+## really do not add to github!
+user_base <- tibble::tibble(
+  user = c("tijsterman"),
+  password = sapply(c("#######"), sodium::password_store),
+  permissions = c("standard"),
+  name = c("Tijsterman Music")
+)
 
+##Music DB name
+dbname = "data/MBCrisprMBAgain_1_1.db"
+dbnameSubScreen = "C:/Temp/MB_reseq/Full/MBCrisprMBSubscreeen_Full_1.db"
 
-options(shiny.maxRequestSize=2048*1024^2)
+options(shiny.maxRequestSize=4048*1024^2)
 
 #exampleExcel = "data/20210305_093157_SIQ.xlsx"
 #exampleExcel = "data/20220127_103430_SIQ_complete.xlsx"
@@ -338,7 +369,7 @@ ui <- fluidPage(
         radioButtons(
           "TypePlot",
           "Select type of plot :",
-          c("heatmap","violin", "median size"),
+          c("heatmap","violin", "lineplot", "median size"),
           selected = "heatmap",
           inline = TRUE),
         radioButtons(
@@ -531,6 +562,13 @@ ui <- fluidPage(
           min = 1,
           max = 100
         ),
+        numericInput(
+          inputId = "heatmapLimits",
+          label = "Set heatmap log2 limits",
+          value = 5,
+          min = 0,
+          max = 100
+        ),
         checkboxInput(
           "OutcomePCAScale",
           "Scale",
@@ -675,7 +713,7 @@ ui <- fluidPage(
                     title = 'Login',
                     shinyauthr::loginUI("login")
                   ),
-                  selected = "Tornado"
+                  selected = "Outcomes"
       )
     )
   ),
@@ -709,7 +747,7 @@ server <- function(input, output, session) {
                            list("Load example SIQ paper data" = 1,
                                 "Upload file (TSV, Text, Excel)" = 2
                            ),
-                         selected = 2,
+                         selected = 1,
       )
     }
       
@@ -951,6 +989,30 @@ server <- function(input, output, session) {
     df
   })
   
+  total_reads <- reactive({
+    req(pre_filter_in_data())
+    req(input$Aliases)
+    df = pre_filter_in_data()
+    df = df %>% group_by(Subject, Alias) %>%
+      summarise(counts = sum(countEvents))
+    df
+  })
+  
+  get_db_data <- reactive({
+    dbnameCur = get_current_dbname()
+    
+    con <- dbConnect(RSQLite::SQLite(), dbname = dbnameCur)
+    geneTable <- tbl(con, "tornado")
+    
+    genes = input$Aliases
+    print("quering DB...")
+    el = geneTable %>% filter(!!as.symbol(input$AliasColumn) %in% genes) %>% collect()
+    print("quering done...")
+    dbDisconnect(conn = con)
+    el
+  })
+  
+  
   filter_in_data <- reactive({
     req(pre_filter_in_data())
     req(input$Aliases)
@@ -963,16 +1025,7 @@ server <- function(input, output, session) {
     
     ##so now load in the data
     if(input$data_input == 3 || input$data_input == 4){
-      dbnameCur = get_current_dbname()
-      
-      con <- dbConnect(RSQLite::SQLite(), dbname = dbnameCur)
-      geneTable <- tbl(con, "tornado")
-      
-      genes = input$Aliases
-      print("quering DB...")
-      el = geneTable %>% filter(!!as.symbol(input$AliasColumn) %in% genes) %>% collect()
-      print("quering done...")
-      dbDisconnect(conn = con)
+      el = get_db_data()
       
       ##retrieve the filenames to be read in:
       #files = el %>% ungroup() %>% filter(!!as.symbol(input$AliasColumn) %in% input$Aliases) %>% select(fileName) %>% distinct()
@@ -1020,6 +1073,7 @@ server <- function(input, output, session) {
       dummies = in_stat()[in_stat()$Alias %in% remAliases,]
       bind_rows(el,dummies)
     }
+    print("filter_in_data")
     return(el)
   })
   
@@ -1174,21 +1228,56 @@ server <- function(input, output, session) {
     grid.arrange(plot1, plot2, ncol=2)
   })
   
+  ##this function still needs to be implemented
+  ##will save a lot of time
+  outcomePlotData <- reactive({
+    req(filter_in_data())
+    req(input$Aliases)
+    data = filter_in_data()
+    data <- data %>%
+      group_by(Subject, Alias) %>%
+      mutate(fraction = fraction/sum(fraction))
+    if(nrow(data)==0){
+      return()
+    }
+    ##add Outcomes
+    data = data %>% mutate(Outcome = paste(Type,delRelativeStart,delRelativeEnd,insSize,sep = "|"))
+    
+    if(!"insertion" %in% colnames(data)){
+      data$insertion = ""
+    }
+    #specify outcomes
+    ##in the future the rules might change dynamically
+    data = data %>%
+      mutate(Outcome = case_when(
+        Type == "SNV" ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
+        (Type == "INSERTION" | Type == "DELINS" ) & insSize < 7 ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
+        Type == "1BP INSERTION" ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
+        Type == "TANDEMDUPLICATION" | 
+          Type == "TANDEMDUPLICATION_COMPOUND" | 
+          Type == "TINS" | 
+          Type == "DELINS" ~ paste(Type,sep="|"),
+        TRUE ~ Outcome
+      )) 
+    print("outcomePlotData")
+    data
+  })
   
   
   output$outcomePlot <- renderPlot({
-    req(filter_in_data())
-    req(input$Aliases)
+    #req(filter_in_data())
+    #req(input$Aliases)
+    #req(outcomePlotData)
     if(is.null(input$controls) | length(input$controls) == 0){
       as_ggplot(text_grob("Please select a control sample on the left", size = 15))
     }else{
-      data = filter_in_data()
+      data = outcomePlotData()
       
       #scale data to fraction
       start_time = Sys.time()
       print("outcomePlot")
       data <- data %>%
-        group_by(Alias) %>%
+        group_by(Subject, Alias) %>%
         mutate(fraction = fraction/sum(fraction))
       if(nrow(data)==0){
         return()
@@ -1196,49 +1285,6 @@ server <- function(input, output, session) {
       
       ###not for all needed
       if(input$typePlotOutcome!="XY"){
-        #data$Outcome <- paste(data$Type)#,data$delRelativeStart,data$delRelativeEnd,data$insSize,sep = "|")
-        data$Outcome <- paste(data$Type,data$delRelativeStart,data$delRelativeEnd,data$insSize,sep = "|")
-        if(!"insertion" %in% colnames(data)){
-          data$insertion = ""
-        }
-        
-        #specify SNV
-        data = data %>%
-          mutate(Outcome = 
-                   ifelse( 
-                     Type == "SNV",     paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"), 
-                     Outcome)) 
-        
-        #specify insertion (to avoid duplicates)
-        data = data %>%
-          mutate(Outcome = 
-                   ifelse(
-                     Type == "INSERTION" | Type == "DELINS" & insSize < 7, paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"), 
-                     Outcome))
-        
-        #specify 1BP insertion
-        data = data %>%
-          mutate(Outcome = 
-                   ifelse(
-                     Type == "1BP INSERTION", paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"), 
-                     Outcome))
-        
-        #specify TDs together
-        #as we don't see any differences between them for now
-        ##also for TINS
-        data = data %>%
-          mutate(Outcome = 
-                   ifelse(
-                     Type == "TANDEMDUPLICATION" | Type == "TANDEMDUPLICATION_COMPOUND" | Type == "TINS", paste(Type,sep="|"), 
-                     Outcome))
-        
-        data = data %>%
-          mutate(Outcome = 
-                   ifelse(
-                     Type == "DELETION" , paste(Type,delRelativeStart,delRelativeEnd,paste0(homologyLength,"bp"),sep="|"), 
-                     Outcome))
-        
-        
         end_time = Sys.time()-start_time
         print(paste("half2: outcomePlot",end_time))
         
@@ -1252,7 +1298,7 @@ server <- function(input, output, session) {
         #dataUnique = data.frame(dataUnique)
         
         end_time = Sys.time()-start_time
-        print(paste("half2.2: outcomePlot",end_time))
+        #print(paste("half2.2: outcomePlot",end_time))
         
         dataUniqueAll <- data %>%
           group_by(Alias, Outcome, Subject) %>%
@@ -1356,21 +1402,65 @@ server <- function(input, output, session) {
           plots[['line']] <-plot
       }else if(input$typePlotOutcome=="heatmap"){
         
+        #dataPlot1 = dataPlot1 %>% group_by(Subject) %>% 
+        #  complete(Alias, Outcome, fill = list(fraction = 0))
+        dataPlot1 = dataPlot1 %>% group_by(Subject) %>% 
+            complete(Alias, Outcome)
+          ##perhaps this needs to be done in a different manner
+          #mutate(fraction = fraction + (min(fraction)/10))
+        
+        #get a readcount for each sample
+        #total_reads = total_reads()
+        #dataPlot1 = dplyr::left_join(dataPlot1, total_reads, by = c("Subject", "Alias"))
+        #add the total fraction of 1 read for that sample to the outcome
+        #dataPlot1 = dataPlot1 %>% mutate(fraction = ifelse(is.na(fraction),1/counts,fraction)) %>%
+        #  select(-counts)
+          
+        
+        ##get the log2 difference
+        dataPlot1 = dataPlot1 %>% 
+          group_by(Outcome) %>% 
+          mutate(meanControls = mean(fraction[Alias %in% input$controls], na.rm = T)) %>% 
+          mutate(fraction = log2(fraction/meanControls)) %>%
+          ##get rid of that column again
+          select(-meanControls) %>%
+          as.data.frame()
+        
+        ##set a maximum and minimum for the log2
+        minimum = -input$heatmapLimits
+        maximum = input$heatmapLimits
+        dataPlot1 = dataPlot1 %>% mutate(fraction = ifelse(fraction < minimum,
+                                         minimum, fraction))
+        dataPlot1 = dataPlot1 %>% mutate(fraction = ifelse(fraction > maximum,
+                                                           maximum, fraction))
+          
+        
         df = dataPlot1 %>%
           spread(Outcome,fraction)
-        rownames(df) = df[,1]
+        nrSubject = length(unique(dataPlot1$Subject))
+        if(nrSubject == 1){
+          rownames(df) = df[[input$AliasColumn]]
+        } else{
+          rownames(df) = paste(df[["Subject"]],df[[input$AliasColumn]])
+        }
+        #remove two columns
         df = df[,-1]
+        df = df[,-1]
+        
         df = as.matrix(df)
-        df[is.na(df)] <- 0
+        #df[is.na(df)] <- 0
         scale = "none"
         if(input$OutcomePCAScale){
           #is that useful?
           scale = "row"
         }
         plot = heatmap.2(as.matrix(df), trace = "none",
+                  col=rev(RdBu(100)),
                   scale = scale,
                   cexRow = input$OutcomeSize/4,
                   cexCol = input$OutcomeSize/4,
+                  margins=c(12,12),
+                  na.color = "black"
                   #cexRow = 0.5,
                   #cexCol = 0.5,
                   #scale = "row"
@@ -1388,7 +1478,7 @@ server <- function(input, output, session) {
         df[is.na(df)] <- 0
         pca_res <- prcomp(df, scale. = input$OutcomePCAScale)
         
-        dtp <- data.frame('Alias' = rownames(df), pca_res$x[,1:2]) # the first two componets are selected (NB: you can also select 3 for 3D plottings or 3+)
+        dtp <- data.frame('Alias' = rownames(df), pca_res$x[,1:2]) # the first two components are selected (NB: you can also select 3 for 3D plottings or 3+)
         
         if(!is.null(input$genotype) && !is.null(input$dose)){
           dfPart = data %>% select(Alias, Subject,input$genotype, input$dose) %>% distinct(Alias, .keep_all = T)
@@ -1489,6 +1579,8 @@ server <- function(input, output, session) {
         df[is.na(df)] <- 0
         custom.config = umap.defaults
         custom.config$random_state = 123
+        custom.config$min_dist = 0.01
+        
         if(nrow(df)<15){
           custom.config$n_neighbors = 2
         }
@@ -3310,7 +3402,7 @@ server <- function(input, output, session) {
       "violin"
       p <- ggplot(testData,aes(x=Alias,y=sizeDiff, weight=n))+geom_violin(lwd = 0.25)+
         geom_boxplot(width=0.1, lwd = 0.25,outlier.shape = NA)
-    } else{
+    } else if(input$TypePlot == "median size"){
       #median size
       if("Subject" %in% colnames(testData)){
         medians = testData %>% group_by(Subject, Alias) %>% summarise(median = weighted.median(sizeDiff,n))
@@ -3318,6 +3410,11 @@ server <- function(input, output, session) {
         medians = testData %>% group_by(Alias) %>% summarise(median = weighted.median(sizeDiff,n))
       }
       p <- ggplot(medians,aes(x=Alias,y=median))+geom_point(color = "red", size = 5)+
+        NULL
+    } else if(input$TypePlot == "lineplot"){
+      p <- ggplot(testData, aes(x = sizeDiff, y = n, color = Alias)) +
+        geom_line() +
+        geom_point()+
         NULL
     }
     
@@ -3329,9 +3426,20 @@ server <- function(input, output, session) {
     }
     if(useylimit){
       if(column == "delSize" | column == "insSize"){
-        p = p+ scale_y_continuous(limits = c(-1,ymax))
+        ##for line plot the info is on the x-axis
+        if(input$TypePlot == "lineplot"){
+          p = p+ scale_x_continuous(limits = c(-1,ymax))
+          
+        }else {
+          p = p+ scale_y_continuous(limits = c(-1,ymax))
+        }
       } else{
-        p = p+ scale_y_continuous(limits = c(ymin,ymax))
+        if(input$TypePlot == "lineplot"){
+          p = p+ scale_x_continuous(limits = c(ymin,ymax))
+          
+        }else {
+          p = p+ scale_y_continuous(limits = c(ymin,ymax))
+        }
       }
     }
     p
@@ -3418,7 +3526,7 @@ server <- function(input, output, session) {
     
     ColorText = hardcodedTypesDFnonreactive()
     ColorText = ColorText %>% filter(Type %in% names(colourCode))
-    ColorText = rbind(ColorText, c("white","","white"))
+    ColorText = rbind(ColorText, c("white",NA,"white"))
     
     end_time = Sys.time()-start_time
     print(paste("half2: tornadoplot",end_time))
