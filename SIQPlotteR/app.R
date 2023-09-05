@@ -525,10 +525,16 @@ ui <- fluidPage(
           max = 100
         ),
         radioButtons(
+          "OutcomeResolve",
+          "What to do with outcomes?",
+          c("nothing","remove non-informative","merge non-informative"),
+          selected = "nothing",
+          inline = TRUE),
+        radioButtons(
           "typePlotOutcome",
           "Select type of plot :",
-          c("line","heatmap","pca","XY", "umap"),
-          selected = "line",
+          c("line","heatmap","pca","XY", "umap","volcano"),
+          selected = "volcano",
           inline = TRUE),
         checkboxInput(
           "OutcomeLegend",
@@ -994,7 +1000,7 @@ server <- function(input, output, session) {
     req(input$Aliases)
     df = pre_filter_in_data()
     df = df %>% group_by(Subject, Alias) %>%
-      summarise(counts = sum(countEvents))
+      summarise(counts = sum(countEvents), counts_mut = sum(countEvents[Type!="WT"]))
     df
   })
   
@@ -1251,8 +1257,9 @@ server <- function(input, output, session) {
     data = data %>%
       mutate(Outcome = case_when(
         Type == "SNV" ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
-        (Type == "INSERTION" | Type == "DELINS" ) & insSize < 7 ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
+        Type == "INSERTION" & insSize < 7 ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
         Type == "1BP INSERTION" ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
+        ##combine TD, TINS and DELINS
         Type == "TANDEMDUPLICATION" | 
           Type == "TANDEMDUPLICATION_COMPOUND" | 
           Type == "TINS" | 
@@ -1261,6 +1268,41 @@ server <- function(input, output, session) {
       )) 
     print("outcomePlotData")
     data
+  })
+  
+  outcomePlotDataFiltered <- reactive({
+    req(outcomePlotData())
+    data = outcomePlotData()
+    
+    ##first get the top outcomes
+    dataOutcomeControls = data %>% 
+      filter(Alias %in% input$controls) %>%
+      group_by(Alias, Outcome, Subject) %>%
+      summarise(fraction = sum(fraction)) %>% 
+      data.frame()
+    
+    ##here we already need to add missing values I think!
+    
+    dataOutcomeControlsTotal = dataOutcomeControls %>%
+      ungroup() %>%
+      group_by(Subject, Outcome) %>%
+      summarise(fraction = sum(fraction)) %>% 
+      data.frame()
+    
+    ##select the top outcomes
+    keepOutcomes = dataOutcomeControlsTotal %>% group_by(Subject) %>%
+      slice_max(fraction, n = input$numberOfOutcomes, with_ties = TRUE) %>%
+      arrange(desc(fraction))
+    
+    ##now subselect the entire data
+    ##and because some outcomes are not unique you need to calculate them now!
+    dataPlot1 = data %>%
+      filter(Outcome %in% keepOutcomes$Outcome) %>%
+      group_by(Alias, Outcome, Subject) %>%
+      summarise(fraction = sum(fraction)) %>%
+      data.frame()
+
+    dataPlot1
   })
   
   
@@ -1276,9 +1318,6 @@ server <- function(input, output, session) {
       #scale data to fraction
       start_time = Sys.time()
       print("outcomePlot")
-      data <- data %>%
-        group_by(Subject, Alias) %>%
-        mutate(fraction = fraction/sum(fraction))
       if(nrow(data)==0){
         return()
       }
@@ -1288,60 +1327,16 @@ server <- function(input, output, session) {
         end_time = Sys.time()-start_time
         print(paste("half2: outcomePlot",end_time))
         
-        #sometimes we are analysing data where outcomes are found multiple times
-        #dataUnique <- data %>%
-        #  filter(Alias %in% input$controls) %>%
-        #  group_by(Subject, Outcome) %>%
-        #  summarise(fraction = sum(fraction)) %>% 
-        #  data.frame()
-        #needs to be a data.frame for the slice
-        #dataUnique = data.frame(dataUnique)
-        
-        end_time = Sys.time()-start_time
-        #print(paste("half2.2: outcomePlot",end_time))
-        
-        dataUniqueAll <- data %>%
-          group_by(Alias, Outcome, Subject) %>%
-          summarise(fraction = sum(fraction)) %>%
-          data.frame()
-        #needs to be a data.frame for the slice
-        dataUnique = dataUniqueAll %>% 
-          filter(Alias %in% input$controls) %>%
-          ungroup() %>%
-          group_by(Subject, Outcome) %>%
-          summarise(fraction = sum(fraction)) %>% 
-          data.frame()
-          
-        
-        
-        end_time = Sys.time()-start_time
-        print(paste("half3: outcomePlot",end_time))
-        
-        #dataNT1TopOutcomes <- data %>% 
-        #  select(c(countEvents, fraction, Barcode, Gene, Outcome)) %>%  
-        #  filter(Barcode == "RVsg_mmNT-1") %>%
-        #  slice_max(fraction, n = 30, with_ties = TRUE) %>%
-        #  arrange(Barcode, desc(fraction))
-        
-        #Get the top X from the controls
-        dataNT1TopOutcomes <- dataUnique %>% group_by(Subject) %>%
-          slice_max(fraction, n = input$numberOfOutcomes, with_ties = TRUE) %>%
-          arrange(desc(fraction))
-        
-        dataPlot1 <- dataUniqueAll %>%                                                     # begin with linelist
-          # select(c(countEvents, fraction, Barcode, Gene, Outcome)) %>%     # select columns
-          ##LATER
-          #filter(Gene %in% control | Gene %in% highlight) %>%
-          filter(Outcome %in% dataNT1TopOutcomes$Outcome)
+        dataPlot1 = outcomePlotDataFiltered()
         
         # Order top outcomes
         maxSizeString = 50
-        dataNT1TopOutcomes = dataNT1TopOutcomes %>%
-          mutate(Outcome=stringr::str_trunc(Outcome,maxSizeString))
+        #dataNT1TopOutcomes = dataNT1TopOutcomes %>%
+        #  mutate(Outcome=stringr::str_trunc(Outcome,maxSizeString))
         dataPlot1 = dataPlot1 %>%
           mutate(Outcome=stringr::str_trunc(Outcome,maxSizeString))
         
-        ordered <- unique(dataNT1TopOutcomes$Outcome)
+        #ordered <- unique(dataNT1TopOutcomes$Outcome)
         
         end_time = Sys.time()-start_time
         print(paste("outcomePlot",end_time))
@@ -1400,7 +1395,68 @@ server <- function(input, output, session) {
             plot <- plot + theme(legend.position = "none")
           }
           plots[['line']] <-plot
-      }else if(input$typePlotOutcome=="heatmap"){
+      } else if(input$typePlotOutcome=="volcano"){
+        
+        ##complete the missing values first
+        dataPlot1 = dataPlot1 %>% group_by(Subject) %>% 
+          complete(Alias, Outcome)
+        
+        ##add the read counts to the Aliases
+        total_reads = total_reads()
+        ##get the total number of mutagenic reads in
+        dataPlot1 = dplyr::left_join(dataPlot1, total_reads, by = c("Subject", "Alias"))
+        ##overwrite WT with the counts and not the mutagenic counts
+        dataPlot1 = dataPlot1 %>% mutate(counts_mut = ifelse(grepl("WT",Outcome),counts,counts_mut))
+        
+        ##overwrite missing values caused by complete with a count of 1
+        dataPlot1 = dataPlot1 %>% mutate(fraction = ifelse(is.na(fraction),1/counts,fraction))
+        
+        dataPlot1 = dataPlot1 %>% 
+          group_by(Outcome) %>% 
+          mutate(meanControls = mean(fraction[Alias %in% input$controls], na.rm = T)) %>% 
+          mutate(log2fraction = log2(fraction/meanControls))
+        
+        ##ensure the outcomes are ordered by abundance
+        orderOutcome = dataPlot1 |> select(Outcome, meanControls) %>% distinct() %>% arrange(desc(meanControls))
+        dataPlot1$Outcome = factor(dataPlot1$Outcome, levels = orderOutcome$Outcome)
+        
+        ##set limits for the log2
+        dataPlot1 = dataPlot1 %>% mutate(log2fraction = ifelse(log2fraction < (-input$heatmapLimits),-input$heatmapLimits,
+                                                               log2fraction))
+        dataPlot1 = dataPlot1 %>% mutate(log2fraction = ifelse(log2fraction > (input$heatmapLimits),input$heatmapLimits,
+                                                               log2fraction))
+        
+        
+        
+        sdControls = dataPlot1 %>% 
+          filter(Alias %in% input$controls) %>%
+          group_by(Outcome) %>%
+          mutate(log2fraction = log2(fraction/meanControls)) %>%
+          summarise(lower = mean(log2fraction)-input$OutcomePartQuartile*sd(log2fraction),
+                    upper = mean(log2fraction)+input$OutcomePartQuartile*sd(log2fraction))
+        
+        
+        ##get the gene name in
+        dfPart = data %>% select(Alias, Subject,input$genotype, input$dose) %>% distinct(Alias, .keep_all = T)
+        dataPlot1 = dplyr::left_join(dataPlot1,dfPart,by = c("Alias","Subject" ))
+        
+        plot = ggplot(dataPlot1, aes(x = fraction, y = counts_mut, color = !!as.symbol(input$genotype) )) +
+          geom_point(size = input$OutcomeDotSize) +
+          #geom_vline(aes(xintercept = lower), data = sdControls)+
+          #geom_vline(aes(xintercept = upper), data = sdControls)+
+          scale_y_log10()+
+          facet_wrap(Outcome ~ ., scales = "free")+
+          NULL
+          
+        #plot = ggplot(dataPlot1, aes(x = Outcome, y = Alias, fill = log2fraction )) +
+        #  geom_tile()+
+        #  theme(axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10))+
+        #  scale_fill_gradient2(low = "#075AFF",
+        #                       mid = "white",
+        #                       high = "#FF0000") +
+        #  NULL
+        return(plot)
+      } else if(input$typePlotOutcome=="heatmap"){
         
         #dataPlot1 = dataPlot1 %>% group_by(Subject) %>% 
         #  complete(Alias, Outcome, fill = list(fraction = 0))
@@ -2437,8 +2493,9 @@ server <- function(input, output, session) {
     updateSliderInput(session, "minEvents", min = 0, max = max(testDF$n), step = step)
   })
   
+  ##I need this one to store rv$aliases in
   
-  
+  rv <- reactiveValues()
   observe({
     req(pre_filter_in_data())
     req(d_minEvents())
@@ -2483,26 +2540,43 @@ server <- function(input, output, session) {
     } else{
       aliases = plotAliases
     }
-    
-    ##not safe to update the selected aliases as that potentially results in an infinite loop
-    #intersect = intersect(aliases, input$Aliases)
-    #if(length(intersect) > 0 & length(intersect)<100){
-    #  selected = intersect
-    #}
-    #else 
-    if(length(aliases) >100){
-        selected = NULL
-    } 
-    ##if no overlap between selected and these aliases, select them all
-    else{
-      selected = aliases
-    }
-    ##this does not contain the samples that have 0 reads anymore
-    ##which may be an issue for the SampleInfo tab
-    print("updatePickerInput Aliases")
-    updatePickerInput(session, "Aliases", choices = aliases, selected = selected)
-    #updatePickerInput(session, "Aliases", choices = aliases)
+    rv$aliases = aliases
   })
+  
+  ##only trigger a change in the picker if Alias is actually changed
+  ##also only update the selected part if the selected Alias is not there anymore
+  observeEvent(
+    rv$aliases,
+    {
+      req(rv$aliases)
+      aliases = rv$aliases
+      print("##########changeAliases")
+      
+      ##not safe to update the selected aliases as that potentially results in an infinite loop
+      intersect = intersect(aliases, input$Aliases)
+      #print(aliases)
+      #if(!is.null(input$Aliases) && length(intersect) == length(input$Aliases)){
+      #  ##do not update
+      #  return()
+      #}
+      if(length(intersect) > 0 & length(intersect)<100){
+        selected = intersect
+      }
+      #else 
+      else if(length(aliases) >100){
+          selected = NULL
+      } 
+      ##if no overlap between selected and these aliases, select them all
+      else{
+        selected = aliases
+      }
+      ##this does not contain the samples that have 0 reads anymore
+      ##which may be an issue for the SampleInfo tab
+      print("updatePickerInput Aliases")
+      updatePickerInput(session, "Aliases", choices = aliases, selected = selected)
+      #updatePickerInput(session, "Aliases", choices = aliases)
+    }
+  )
   
   observe({
     req(input$Aliases)
@@ -2517,8 +2591,8 @@ server <- function(input, output, session) {
   })
   
   observe({
-    req(filter_in_data())
-    df = filter_in_data()
+    req(in_data())
+    df = in_data()
     updatePickerInput(session, "genotype", choices = colnames(df), selected = "Alias")
     updatePickerInput(session, "dose", choices = colnames(df), selected = "Alias")
   })
