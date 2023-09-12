@@ -2163,14 +2163,16 @@ server <- function(input, output, session) {
     countDFSpread = spread(countDF,"Type","n")
     columns = ncol(countDFSpread)
     
+    ##round the numbers because the table will get too large otherwise
+    if(input$datatableFraction == "relative"){
+      countDFSpread <- countDFSpread %>% mutate(across(where(is.numeric), round, 8))
+    }
+    
     dt = DT::datatable(countDFSpread,rownames = FALSE,extensions = 'Buttons', options = list(
       pageLength = -1,
       dom = 'tB',
       buttons = c('copy', 'excelHtml5')
     ))
-    if(input$datatableFraction == "relative"){
-      dt <- dt %>% formatRound(columns = c(3:columns), digits = 4)
-    }
     dt 
   })
   
