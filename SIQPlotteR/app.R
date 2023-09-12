@@ -174,6 +174,12 @@ ui <- fluidPage(
         ), 
         multiple = TRUE
       ),
+      checkboxGroupInput(
+        inputId = "CollapseTypes", 
+        label = "how to treat Type(s):",
+        choices = c("collapse TDs" = "collapseTD", "split TINS" = "splitTINS" ),
+        inline = T
+      ),
       pickerInput(
         inputId = "Aliases", 
         label = "Select Sample(s):",
@@ -792,6 +798,7 @@ server <- function(input, output, session) {
     hdrColor = "#FF6A6A"
     hdr1mmColor = "#F08D8D"
     tinsColor = "#FF0000"
+    tinsColorRC = "#AA0000"
     tdColor = "#FF7F00"
     tdCColor = "#F4A460"
     ##
@@ -799,7 +806,8 @@ server <- function(input, output, session) {
                     "TINS" = tinsColor, "TANDEMDUPLICATION" = tdColor, 
                     "TANDEMDUPLICATION_COMPOUND" = tdCColor,"SNV" = snvColor, "HDR" = hdrColor,"HDR1MM" = hdr1mmColor, "0bp_homology" = bp0Color,
                     "1bp_homology" = bp1Color,"2bp_homology" = bp2Color,"3bp_homology" = bp3Color,
-                    "4bp_homology" = bp4Color, "5-15bp_homology" = bp5Color, "15bp_homology" = bp6Color, "white" = "white"
+                    "4bp_homology" = bp4Color, "5-15bp_homology" = bp5Color, "15bp_homology" = bp6Color, "white" = "white",
+                    "TINS_FW" = tinsColor,"TINS_RC" = tinsColorRC
     ) 
     
     hardcodedTypes = c("WT" = "wild-type","INSERTION" = "insertion", "INSERTION_1bp" = "1bp insertion",
@@ -808,7 +816,8 @@ server <- function(input, output, session) {
                        "1bp_homology" = "deletion/td 1bp microhomology", "2bp_homology" = "deletion/td 2bp microhomology",
                        "3bp_homology" = "deletion/td 3bp microhomology", "4bp_homology" = "deletion/td 4bp microhomology",
                        "5-15bp_homology" = "deletion/td 5-15bp microhomology", "DELETION" = "deletion", "HDR" = "homology-directed repair"
-                       ,"HDR1MM" = "homology-directed repair mismatch", "15bp_homology" = "deletion >15bp microhomology"
+                       ,"HDR1MM" = "homology-directed repair mismatch", "15bp_homology" = "deletion >15bp microhomology",
+                       "TINS_FW" = "deletion with templated insert (FW)","TINS_RC" = "deletion with templated insert (RC)"
                        )
     
     hardcodedTypesDF = data.frame(names(hardcodedTypes), unname(hardcodedTypes), stringsAsFactors = FALSE)
@@ -905,17 +914,20 @@ server <- function(input, output, session) {
       el = el %>% mutate(countEvents = ifelse(el$Name == "wt_query",0, countEvents))
       el = el %>% mutate(fraction = ifelse(el$Name == "wt_query",0, fraction))
     }
-    ##sometimes people specify the same alias for different subject, which does not work
-    #if(nrow(el)>0 && length(unique(el$Subject))>0){
-    #  test = el %>%
-    #    group_by(Alias) %>%
-    #    summarise(Subjects = n_distinct(Subject))
-    #  if(max(test$Subjects,rm.na = T)>1){
-    #    el$Alias = paste(el$Subject,el$Alias,sep = "_")
-    #  }
-    #}
     #overwrite insertions of 1bp
     el = el %>% mutate(Type = ifelse(Type == "INSERTION" & insSize == 1,"INSERTION_1bp",Type))
+    
+    #collapse TDs?
+    if("collapseTD" %in% input$CollapseTypes){
+      el = el %>% mutate(Type = ifelse(Type == "TANDEMDUPLICATION" | Type == "TANDEMDUPLICATION_COMPOUND","INSERTION",Type))
+    }
+    ##somehow that makes the type dissappear probably move to another location!
+    if("splitTINS" %in% input$CollapseTypes & "isFirstHit" %in% colnames(el)){
+      el = el %>%
+        mutate(rc = ifelse(grepl("rc",isFirstHit),"RC","FW"))
+      el = el %>% mutate(Type = ifelse(Type == "TINS",paste0(Type,"_",rc),Type)) %>%
+        select(-rc)
+    }
     
     print("endOf in_data")
     return(el)
@@ -1033,21 +1045,6 @@ server <- function(input, output, session) {
     if(input$data_input == 3 || input$data_input == 4){
       el = get_db_data()
       
-      ##retrieve the filenames to be read in:
-      #files = el %>% ungroup() %>% filter(!!as.symbol(input$AliasColumn) %in% input$Aliases) %>% select(fileName) %>% distinct()
-      #if(nrow(files) == 0){
-      #  return()
-      #}
-      #files = files$fileName
-      
-      #read_data <- function(z){
-      #  dat <- fread(file = z, sep = "\t", header = T)
-     #   return(dat)
-      #}
-      
-      #datalist <- lapply(files, read_data)
-      
-     # el <- rbindlist(datalist, use.names = TRUE)
       ##alter following columns
       ##change this as this is undesired in the end
       el = el %>% 
