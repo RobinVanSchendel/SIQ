@@ -245,6 +245,11 @@ ui <- fluidPage(
           "Set counts:",
           c("relative","absolute"),
           inline = T),
+        radioButtons(
+          "datatableGrouped",
+          "Set display:",
+          c("per Alias","by Group"),
+          inline = T),
         checkboxInput(
           "data_labels",
           label = "Show data labels",
@@ -2156,8 +2161,22 @@ server <- function(input, output, session) {
     countDF = countDF %>% 
       filter(Type != "Reference")
     
+    names_glue = NULL
+    values_from_columns = c("n")
+    
+    if(input$datatableGrouped == "by Group"){
+      group_by_name = c(input$GroupColumn, "Subject","Type")
+      countDF = countDF %>% group_by_at(group_by_name) %>%
+        summarise(mean = mean(n, na.rm=T), sd = sd(n, na.rm=T), samples = n())
+      ##these are for the spread later
+      values_from_columns = c("mean","sd","samples")
+      names_glue = "{Type}_{.value}"
+    }
+    
     ##spread for viewing
-    countDFSpread = spread(countDF,"Type","n")
+    countDFSpread = countDF %>% pivot_wider(names_from = Type, values_from = values_from_columns, 
+                                            names_glue = names_glue,
+                                            names_vary = "slowest")
     columns = ncol(countDFSpread)
     
     ##round the numbers because the table will get too large otherwise
