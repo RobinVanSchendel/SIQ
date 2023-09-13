@@ -1253,7 +1253,8 @@ server <- function(input, output, session) {
       summarise(total = sum(fraction)) 
     
     ##make complete
-    samples = total_reads() %>% select(Subject, Alias)
+    samples = total_reads() %>% select(Subject, Alias)  %>%
+      filter(Alias %in% input$Aliases)
     df = dplyr::left_join(samples, df, by = c("Subject","Alias"))
     group_by = c("Subject")
     if(is_grouped()){
