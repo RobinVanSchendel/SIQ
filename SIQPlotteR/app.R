@@ -198,7 +198,19 @@ ui <- fluidPage(
         c("Alias"),
         selected = "Alias"
       ),
-      uiOutput("subject_selection"),
+      pickerInput(
+        inputId = "Subject", 
+        label = "Select Target(s):",
+        choices = NULL,
+        options = list(
+          `actions-box` = TRUE, 
+          size = 10,
+          `live-search`=TRUE,
+          `selected-text-format` = "count > 3"
+        ), 
+        multiple = TRUE
+      ),
+      #uiOutput("subject_selection"),
       radioButtons(
         "keepOverlap",
         "Filter reads by distance from expected cut site:",
@@ -2405,31 +2417,22 @@ server <- function(input, output, session) {
     grid.arrange(grobs=plots, ncol=1)
   })
   
-  output$subject_selection <- renderUI({
-    req(input$data_input)
-    choices = sort(unique(in_data()$Subject))
+  observeEvent(
+    rv$subjects,{
+    choices = rv$subjects
     #data_input == 1 = example data
     if(input$data_input == 1){
       selected = choices
     } else{
       selected = choices[1]
     }
-    pickerInput(
-      inputId = "Subject", 
-      label = "Select Target(s):",
-      choices = choices,
-      selected = selected,
-      options = list(
-        `actions-box` = TRUE, 
-        size = 10,
-        `live-search`=TRUE,
-        `selected-text-format` = "count > 3"
-      ), 
-      multiple = TRUE
-    )
+    print("updatePickerInput Subject")
+    updatePickerInput(session, "Subject", choices = choices, selected = selected )
   })
+  
   observe({
     req(input$data_input)
+    print("just an observe")
     if(input$data_input == 3){
       updatePickerInput(session, inputId = "AliasColumn", selected = "Gene")
     }
