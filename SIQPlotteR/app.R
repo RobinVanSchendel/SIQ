@@ -134,10 +134,11 @@ options(shiny.maxRequestSize=4048*1024^2)
 #exampleExcel = "data/20220127_103430_SIQ_complete.xlsx"
 exampleExcel = "data/20220609_220725_SIQ.xlsx"  ## for testing
 #exampleExcel = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\Analysis\\20200928_GenomeScan104269_104596_NMS_part_for_siq_testing.xlsx"
-#exampleExcel = "Z:\\Projects\\2023_HPRT_sites\\SIQ\\Old\\20230829_SIQ_NMS_total_gt1000_p404_mm.xlsx"
+exampleExcel = "Z:\\Projects\\2023_HPRT_sites\\SIQ\\Old\\20230829_SIQ_NMS_total_gt1000_p404_mm.xlsx"
 exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
 
-seleced_input = 2
+seleced_input = 1
+selected_tab = "Outcomes"
 
 
 # Define UI for application that draws a histogram
@@ -621,28 +622,6 @@ ui <- fluidPage(
           "OutcomePCAScale",
           "Scale",
           value = F),
-        pickerInput(
-          inputId = "genotype", 
-          label = "Select genotype column:",
-          choices = NULL,
-          options = list(
-            `actions-box` = TRUE, 
-            size = 10,
-            `live-search`=TRUE
-          ), 
-          multiple = F
-        ),
-        pickerInput(
-          inputId = "dose", 
-          label = "Select dose column:",
-          choices = NULL,
-          options = list(
-            `actions-box` = TRUE, 
-            size = 10,
-            `live-search`=TRUE
-          ), 
-          multiple = F
-        ),
         numericInput(
           inputId = "pca_max_overlap",
           label = "Set max overlap for labels:",
@@ -767,7 +746,7 @@ ui <- fluidPage(
                     title = 'Login',
                     shinyauthr::loginUI("login")
                   ),
-                  selected = "Tornado"
+                  selected = selected_tab
       )
     )
   ),
@@ -1574,7 +1553,12 @@ server <- function(input, output, session) {
                                                                log2fraction))
         
         ##get the gene name in the table
-        dfPart = data %>% select(Alias, Subject,input$genotype, input$dose) %>% distinct(Alias, .keep_all = T)
+        gene_column = get_group_column()
+        if(!is_grouped()){
+          gene_column = "Alias"
+        }
+        
+        dfPart = data %>% select(Alias, Subject,!!as.symbol(gene_column)) %>% distinct(Alias, .keep_all = T)
         dataPlot1 = dplyr::left_join(dataPlot1,dfPart,by = c("Alias","Subject" ))
         
         sdControls = getSD_From_OutcomeDF(dataPlot1)
@@ -1602,8 +1586,11 @@ server <- function(input, output, session) {
           sdControls = dplyr::inner_join(sdControls, comparisonDF, by = c("Subject","Outcome"))
         }
         
-        
-          plot = ggplot(dataPlot1, aes(x = !!as.symbol(x_name), y = counts_mut, color = !!as.symbol(input$genotype) )) +
+        color_column = get_group_column()
+        if(!is_grouped()){
+          color_column = "Alias"
+        }
+          plot = ggplot(dataPlot1, aes(x = !!as.symbol(x_name), y = counts_mut, color = !!as.symbol(color_column) )) +
             geom_point(size = input$OutcomeDotSize) +
             geom_vline(aes(xintercept = lower), data = sdControls)+
             geom_vline(aes(xintercept = upper), data = sdControls)+
@@ -1700,17 +1687,18 @@ server <- function(input, output, session) {
         
         dtp <- data.frame('Alias' = rownames(df), pca_res$x[,1:2]) # the first two components are selected (NB: you can also select 3 for 3D plottings or 3+)
         
-        if(!is.null(input$genotype) && !is.null(input$dose)){
-          dfPart = data %>% select(Alias, Subject,input$genotype, input$dose) %>% distinct(Alias, .keep_all = T)
+        if(is_grouped()){
+          dfPart = data %>% select(Alias, Subject,!!as.symbol(get_group_column())) %>% distinct(Alias, .keep_all = T)
           dtp = merge(dtp,dfPart,by = "Alias")
-          if(input$genotype!=input$dose){
-            dtp$label = paste(dtp[[input$genotype]], dtp[[input$dose]])
-          } else {
-            dtp$label = dtp[[input$genotype]]
-          }
+          dtp$label = dtp[[get_group_column()]]
+          col_column = get_group_column()
+        } else{
+          dtp$label = dtp$Alias
+          col_column = "Alias"
         }
         
-        plot1 = ggplot(data = dtp,aes_string(x = "PC1", y = "PC2", col = input$dose, fill = input$genotype)) + 
+        
+        plot1 = ggplot(data = dtp,aes_string(x = "PC1", y = "PC2", fill = col_column)) + 
           geom_point(shape = 21, size = input$OutcomeDotSize, stroke = input$OutcomeStrokeSize) +
           geom_text_repel(size = input$OutcomeSize,aes(label = label), max.overlaps = input$pca_max_overlap)+
           #geom_label(size = input$OutcomeSize,aes(label = rownames(df)))+
@@ -1807,17 +1795,17 @@ server <- function(input, output, session) {
         }
         test = umap(df, config = custom.config)
         dfTest = data.frame('Alias' = rownames(df),test$layout)
-        if(!is.null(input$genotype) && !is.null(input$dose)){
-          dfPart = data %>% select(Alias, Subject,input$genotype, input$dose) %>% distinct(Alias, .keep_all = T)
+        if(is_grouped()){
+          dfPart = data %>% select(Alias, Subject,!!as.symbol(get_group_column())) %>% distinct(Alias, .keep_all = T)
           dfTest = merge(dfTest,dfPart,by = "Alias")
-          if(input$genotype!=input$dose){
-            dfTest$label = paste(dfTest[[input$genotype]], dfTest[[input$dose]])
-          } else {
-            dfTest$label = dfTest[[input$genotype]]
-          }
+          dfTest$label = dfTest[[get_group_column()]]
+          fill_column = get_group_column()
+        } else{
+          dfTest$label = dfTest$Alias
+          fill_column = "Alias"
         }
         
-        plot = ggplot(dfTest,aes_string(x="X2",y="X1", col = input$dose, fill = input$genotype))+
+        plot = ggplot(dfTest,aes_string(x="X2",y="X1", fill = fill_column))+
           geom_point(shape=21, size = input$OutcomeDotSize, stroke = input$OutcomeStrokeSize) +
           theme_minimal()
           #theme(legend.position = "none")
