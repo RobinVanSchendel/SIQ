@@ -134,11 +134,11 @@ options(shiny.maxRequestSize=4048*1024^2)
 #exampleExcel = "data/20220127_103430_SIQ_complete.xlsx"
 exampleExcel = "data/20220609_220725_SIQ.xlsx"  ## for testing
 #exampleExcel = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\Analysis\\20200928_GenomeScan104269_104596_NMS_part_for_siq_testing.xlsx"
-exampleExcel = "Z:\\Projects\\2023_HPRT_sites\\SIQ\\Old\\20230829_SIQ_NMS_total_gt1000_p404_mm.xlsx"
+#exampleExcel = "Z:\\Projects\\2023_HPRT_sites\\SIQ\\Old\\20230829_SIQ_NMS_total_gt1000_p404_mm.xlsx"
 exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
 
 seleced_input = 1
-selected_tab = "Outcomes"
+selected_tab = "Tornado"
 
 
 # Define UI for application that draws a histogram
@@ -266,11 +266,6 @@ ui <- fluidPage(
           "Set display:",
           c("per Alias","by Group"),
           inline = T),
-        checkboxInput(
-          "data_labels",
-          label = "Show data labels",
-          value = FALSE
-        )
       ),
       ##type plot only ###
       conditionalPanel(
@@ -681,9 +676,9 @@ ui <- fluidPage(
                            DT::dataTableOutput("plot1_data",width = 8)),
                   tabPanel("Homology",
                            h3("Homology plot - Deletions and Tandem duplications only"),
-                           p("the homology that was used for repair. NOTE: only deletions and tandem duplications can be included in this plot."),uiOutput("ui_homplot")),
-                  #tabPanel("HomologyInsert",uiOutput("ui_hominsplot")),
-                  #tabPanel("SizeDiff",uiOutput("ui_sizediffplot")),
+                           p("the homology that was used for repair. NOTE: only deletions and tandem duplications can be included in this plot."),
+                           uiOutput("ui_homplot"),
+                           DT::dataTableOutput("plot_hom_data",width = 8)),
                   tabPanel("Size",
                            h3("Size Plot"),
                            p("a representation of the sizes of all events. Deletion size or Insertion size can be specified in a heatmap or violin plot representation."),
@@ -1357,16 +1352,18 @@ server <- function(input, output, session) {
     }
     #specify outcomes
     ##in the future the rules might change dynamically
+    #keep DELINS separate already
     data = data %>%
       mutate(Outcome = case_when(
+        Type == "DELETION" ~ paste(Type,delRelativeStart,delRelativeEnd,homologyLength,"bp",sep = "|"),
+        Type == "DELINS" ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep = "|"),
         Type == "SNV" ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
         Type == "INSERTION" & insSize < 7 ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
-        Type == "1BP INSERTION" ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
+        Type == "INSERTION_1bp" ~ paste(Type,delRelativeStart,delRelativeEnd,insertion,sep="|"),
         ##combine TD, TINS and DELINS
         Type == "TANDEMDUPLICATION" | 
           Type == "TANDEMDUPLICATION_COMPOUND" | 
-          Type == "TINS" | 
-          Type == "DELINS" ~ paste(Type,sep="|"),
+          Type == "TINS" ~ paste(Type,sep="|"),
         TRUE ~ Outcome
       )) 
     print("outcomePlotData")
@@ -1377,15 +1374,26 @@ server <- function(input, output, session) {
     req(outcomePlotData())
     data = outcomePlotData()
     
+
+    ##do we need to add the grouping column
+    select_var = c("Subject","Alias")
+    group_var = c("Subject","Outcome")
+    group_var_all = c("Subject","Outcome","Alias")
+    if(is_grouped()){
+      select_var = c(select_var,get_group_column())
+      group_var = c(group_var,get_group_column())
+      group_var_all = c(group_var_all,get_group_column())
+    }
+    
     ##we need this dummy because in some cases we lose Aliases because
     ##they do not have outcomes and if we select a single outcome they are gone
     
-    dummyOutcome = data %>% select(Subject, Alias) %>% distinct() %>% mutate(Outcome = "dummy", fraction = 0)
+    dummyOutcome = data %>% select_at(select_var) %>% distinct() %>% mutate(Outcome = "dummy", fraction = 0)
     
     ##first get the top outcomes
     dataOutcomeControls = data %>% 
       filter(Alias %in% input$controls) %>%
-      group_by(Alias, Outcome, Subject) %>%
+      group_by_at(group_var_all) %>%
       summarise(fraction = sum(fraction)) %>% 
       data.frame()
     
@@ -1393,7 +1401,7 @@ server <- function(input, output, session) {
     
     dataOutcomeControlsTotal = dataOutcomeControls %>%
       ungroup() %>%
-      group_by(Subject, Outcome) %>%
+      group_by_at(group_var) %>%
       summarise(fraction = sum(fraction)) %>% 
       data.frame()
     
@@ -1406,15 +1414,22 @@ server <- function(input, output, session) {
     ##and because some outcomes are not unique you need to calculate them now!
     dataPlot1 = data %>%
       filter(Outcome %in% keepOutcomes$Outcome) %>%
-      group_by(Alias, Outcome, Subject) %>%
+      group_by_at(group_var_all) %>%
       summarise(fraction = sum(fraction)) %>%
       data.frame() 
     
     ##the magic happens here: bind the dummy row to get all Aliases per Subject in
     ##then complete the outcomes and remove the dummy
     dataPlot1 = dplyr::bind_rows(dataPlot1,dummyOutcome) %>%
-      complete(Alias, Outcome, Subject, fill = list(fraction = 0)) %>%
+      complete(Subject, Outcome, Alias, fill = list(fraction = 0)) %>%
       filter(Outcome != "dummy")
+    
+    if(is_grouped()){
+      #need to put the group column back in through the dummy
+      groupsDF = dummyOutcome %>% select(!!as.symbol(get_group_column()), Alias)
+      dataPlot1 = dataPlot1 %>% select(-!!as.symbol(get_group_column()))
+      dataPlot1 = dplyr::left_join(dataPlot1, groupsDF)      
+    }
     
     dataPlot1
   })
@@ -1436,6 +1451,43 @@ server <- function(input, output, session) {
                   upper = mean(fraction)+input$OutcomePartQuartile*sd(fraction))
     }
     return(sdControls)
+  }
+  ##place function to filter outcomes
+  redoOutcomes <- function(dataPlot1){
+    start_time = Sys.time()
+    dataPlot1 = dataPlot1 %>% 
+      group_by(Outcome) %>% 
+      mutate(meanControls = mean(fraction[Alias %in% input$controls], na.rm = T)) %>% 
+      mutate(log2fraction = log2(fraction/meanControls))
+    
+    if(input$OutcomeResolve == "remove non-informative"){
+      if(input$GroupColumn == "-"){
+        return(as_ggplot(text_grob("Please select a Grouping column for this to work", size = 15)))
+      }
+      
+      sdControls = getSD_From_OutcomeDF(dataPlot1)
+      
+      if(input$outcome_volcano_type == "mean"){
+        x_name = "fraction"
+      } else if(input$outcome_volcano_type == "log2fraction"){
+        x_name = "log2fraction"
+      }
+      
+      ##which ones are non-informative?
+      comparisonDF = dplyr::left_join(dataPlot1, sdControls, by = c("Subject","Outcome"))
+      comparisonDF = comparisonDF %>% filter(!!as.symbol(x_name) < lower | !!as.symbol(x_name) > upper) %>%
+        group_by_at(c("Subject","Outcome",input$GroupColumn)) %>%
+        count() %>% filter(n>=input$OutcomeMinimumPerGroup) %>%
+        ungroup %>%
+        select(Subject, Outcome) %>% distinct()
+      ##only keep stuff that is in comparisonDF
+      dataPlot1 =  dplyr::inner_join(dataPlot1, comparisonDF, by = c("Subject","Outcome"))
+      sdControls = dplyr::inner_join(sdControls, comparisonDF, by = c("Subject","Outcome"))
+    }
+    end_time = Sys.time()-start_time
+    print(paste("redoOutcomes took",end_time))
+    
+    return(dataPlot1)
   }
   
   
@@ -1462,17 +1514,19 @@ server <- function(input, output, session) {
         
         dataPlot1 = outcomePlotDataFiltered()
         
+        dataPlot1 = redoOutcomes(dataPlot1)
+        
         # Order top outcomes
-        maxSizeString = 50
+        #maxSizeString = 50
         #dataNT1TopOutcomes = dataNT1TopOutcomes %>%
         #  mutate(Outcome=stringr::str_trunc(Outcome,maxSizeString))
-        dataPlot1 = dataPlot1 %>%
-          mutate(Outcome=stringr::str_trunc(Outcome,maxSizeString))
+        #dataPlot1 = dataPlot1 %>%
+          #mutate(Outcome=stringr::str_trunc(Outcome,maxSizeString))
         
         #ordered <- unique(dataNT1TopOutcomes$Outcome)
         
         end_time = Sys.time()-start_time
-        print(paste("outcomePlot",end_time))
+        print(paste("outcomePlot took",end_time))
         
       }
       plots = list()
@@ -1537,11 +1591,6 @@ server <- function(input, output, session) {
         ##overwrite WT with the counts and not the mutagenic counts
         dataPlot1 = dataPlot1 %>% mutate(counts_mut = ifelse(grepl("WT",Outcome),counts,counts_mut))
         
-        dataPlot1 = dataPlot1 %>% 
-          group_by(Outcome) %>% 
-          mutate(meanControls = mean(fraction[Alias %in% input$controls], na.rm = T)) %>% 
-          mutate(log2fraction = log2(fraction/meanControls))
-        
         ##ensure the outcomes are ordered by abundance
         orderOutcome = dataPlot1 |> select(Outcome, meanControls) %>% distinct() %>% arrange(desc(meanControls))
         dataPlot1$Outcome = factor(dataPlot1$Outcome, levels = orderOutcome$Outcome)
@@ -1552,38 +1601,12 @@ server <- function(input, output, session) {
         dataPlot1 = dataPlot1 %>% mutate(log2fraction = ifelse(log2fraction > (input$heatmapLimits),input$heatmapLimits,
                                                                log2fraction))
         
-        ##get the gene name in the table
-        gene_column = get_group_column()
-        if(!is_grouped()){
-          gene_column = "Alias"
-        }
-        
-        dfPart = data %>% select(Alias, Subject,!!as.symbol(gene_column)) %>% distinct(Alias, .keep_all = T)
-        dataPlot1 = dplyr::left_join(dataPlot1,dfPart,by = c("Alias","Subject" ))
-        
         sdControls = getSD_From_OutcomeDF(dataPlot1)
         
         if(input$outcome_volcano_type == "mean"){
           x_name = "fraction"
         } else if(input$outcome_volcano_type == "log2fraction"){
           x_name = "log2fraction"
-        }
-        
-        if(input$OutcomeResolve == "remove non-informative"){
-          if(input$GroupColumn == "-"){
-            return(as_ggplot(text_grob("Please select a Grouping column for this to work", size = 15)))
-          }
-          
-          ##which ones are non-informative?
-          comparisonDF = dplyr::left_join(dataPlot1, sdControls, by = c("Subject","Outcome"))
-          comparisonDF = comparisonDF %>% filter(!!as.symbol(x_name) < lower | !!as.symbol(x_name) > upper) %>%
-            group_by_at(c("Subject","Outcome",input$GroupColumn)) %>%
-            count() %>% filter(n>=input$OutcomeMinimumPerGroup) %>%
-            ungroup %>%
-            select(Subject, Outcome) %>% distinct()
-          ##only keep stuff that is in comparisonDF
-          dataPlot1 =  dplyr::inner_join(dataPlot1, comparisonDF, by = c("Subject","Outcome"))
-          sdControls = dplyr::inner_join(sdControls, comparisonDF, by = c("Subject","Outcome"))
         }
         
         color_column = get_group_column()
@@ -1598,20 +1621,13 @@ server <- function(input, output, session) {
             facet_wrap(Subject ~ Outcome, scales = "free")+
             NULL
           
-        #plot = ggplot(dataPlot1, aes(x = Outcome, y = Alias, fill = log2fraction )) +
-        #  geom_tile()+
-        #  theme(axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10))+
-        #  scale_fill_gradient2(low = "#075AFF",
-        #                       mid = "white",
-        #                       high = "#FF0000") +
-        #  NULL
         return(plot)
       } else if(input$typePlotOutcome=="heatmap"){
         
         #dataPlot1 = dataPlot1 %>% group_by(Subject) %>% 
         #  complete(Alias, Outcome, fill = list(fraction = 0))
-        dataPlot1 = dataPlot1 %>% group_by(Subject) %>% 
-            complete(Alias, Outcome)
+        #dataPlot1 = dataPlot1 %>% group_by(Subject) %>% 
+         #   complete(Alias, Outcome)
           ##perhaps this needs to be done in a different manner
           #mutate(fraction = fraction + (min(fraction)/10))
         
@@ -1624,26 +1640,35 @@ server <- function(input, output, session) {
           
         
         ##get the log2 difference
-        dataPlot1 = dataPlot1 %>% 
-          group_by(Outcome) %>% 
-          mutate(meanControls = mean(fraction[Alias %in% input$controls], na.rm = T)) %>% 
-          mutate(fraction = log2(fraction/meanControls)) %>%
+        #dataPlot1 = dataPlot1 %>% 
+         # group_by(Outcome) %>% 
+        #  mutate(meanControls = mean(fraction[Alias %in% input$controls], na.rm = T)) %>% 
+        #  mutate(fraction = log2(fraction/meanControls)) %>%
           ##get rid of that column again
-          select(-meanControls) %>%
-          as.data.frame()
+        #  select(-meanControls) %>%
+        #  as.data.frame()
         
         ##set a maximum and minimum for the log2
         minimum = -input$heatmapLimits
         maximum = input$heatmapLimits
-        dataPlot1 = dataPlot1 %>% mutate(fraction = ifelse(fraction < minimum,
-                                         minimum, fraction))
-        dataPlot1 = dataPlot1 %>% mutate(fraction = ifelse(fraction > maximum,
-                                                           maximum, fraction))
+        dataPlot1 = dataPlot1 %>% mutate(log2fraction = ifelse(log2fraction < minimum,
+                                         minimum, log2fraction))
+        dataPlot1 = dataPlot1 %>% mutate(log2fraction = ifelse(log2fraction > maximum,
+                                                           maximum, log2fraction))
           
         
-        df = dataPlot1 %>%
-          spread(Outcome,fraction)
         nrSubject = length(unique(dataPlot1$Subject))
+        
+        col_names = c("Alias", "Outcome", "log2fraction" )
+        if(nrSubject >1 ){
+          col_names = c(colnames, "Subject")
+        }
+        
+        df = dataPlot1 %>%
+          select_at(col_names) %>%
+          spread(Outcome,log2fraction) %>%
+          as.data.frame()
+        
         if(nrSubject == 1){
           rownames(df) = df[[input$AliasColumn]]
         } else{
@@ -1677,7 +1702,7 @@ server <- function(input, output, session) {
           dataPlot1 = dataPlot1 %>% mutate(Outcome = paste(Outcome, Subject))
         } 
         
-        df = dataPlot1 %>% select (-Subject) %>%
+        df = dataPlot1 %>% select (Alias, Outcome, fraction) %>%
           spread(Outcome,fraction) %>%
           as.data.frame()
         rownames(df) = df[,1]
@@ -1780,7 +1805,7 @@ server <- function(input, output, session) {
           dataPlot1 = dataPlot1 %>% mutate(Outcome = paste(Outcome, Subject))
         } 
         
-        df = dataPlot1 %>% select (-Subject) %>%
+        df = dataPlot1 %>% select (Alias, Outcome, fraction) %>%
           spread(Outcome,fraction) %>%
           as.data.frame()
         rownames(df) = df[,1]
@@ -1796,7 +1821,7 @@ server <- function(input, output, session) {
         test = umap(df, config = custom.config)
         dfTest = data.frame('Alias' = rownames(df),test$layout)
         if(is_grouped()){
-          dfPart = data %>% select(Alias, Subject,!!as.symbol(get_group_column())) %>% distinct(Alias, .keep_all = T)
+          dfPart = dataPlot1 %>% ungroup %>% select(Alias, Subject,!!as.symbol(get_group_column())) %>% distinct(Alias, .keep_all = T)
           dfTest = merge(dfTest,dfPart,by = "Alias")
           dfTest$label = dfTest[[get_group_column()]]
           fill_column = get_group_column()
@@ -2315,6 +2340,38 @@ server <- function(input, output, session) {
   })
   
   
+  ## dispay table for the homology
+  output$plot_hom_data <- DT::renderDataTable({
+    req(homologyData())
+    ##get and round the data to 8 decimals
+    df = homologyData() %>% 
+      mutate(across(where(is.numeric), round, 8))
+      
+    
+    if(!is_grouped()){
+      dfSpread = df %>% 
+        select(-n) %>%
+        pivot_wider(names_from = Alias, values_from = fraction, values_fill = 0)
+    } else{
+      if("sdpos" %in% colnames(df)){
+        df <- df %>% select(-sdpos)
+      }
+      values_from_columns = c("mean", "sd","samples")
+      names_glue = paste0("{",get_group_column(),"}_{.value}")
+      dfSpread = df %>% pivot_wider(names_from = get_group_column(), values_from = values_from_columns, 
+                         names_glue = names_glue,
+                         names_vary = "slowest")
+    }
+    
+    dt = DT::datatable(dfSpread,rownames = FALSE,extensions = 'Buttons', options = list(
+      pageLength = -1,
+      dom = 'tB',
+      buttons = c('copy', 'excelHtml5')
+    ))
+    dt 
+  })
+  
+  
   ##type data table
   output$plot1_data <- DT::renderDataTable({
     req(filter_in_data())
@@ -2397,21 +2454,85 @@ server <- function(input, output, session) {
     plot
   })
   
+  homologyData <- reactive({
+    req(filter_in_data())
+    
+    df = filter_in_data()
+    group_columns = c("Alias", "Subject")
+    if(is_grouped()){
+      group_columns = c(group_columns,get_group_column())
+    }
+    
+    test = df %>% filter(Type == "DELETION" | Type == "TANDEMDUPLICATION") %>% 
+      group_by_at(group_columns) %>% 
+      dplyr::count(homologyLength = homologyLength, wt = countEvents) %>%   
+      mutate(fraction = n / sum(n))
+    
+    if(is_grouped()){
+      columns = c("Subject","homologyLength",get_group_column())
+      group_now_sd_pos = c("Subject",get_group_column())
+      test = test %>% group_by_at(group_now_sd_pos) %>%
+        ##ensure all values are filled in when absent
+        complete(Alias, homologyLength, fill = list(fraction = 0, n = 0)) %>%
+        group_by_at(columns) %>%
+        summarise(mean = mean(fraction), sd = sd(fraction), samples = n()) %>%
+        ungroup() %>%
+        group_by_at(group_now_sd_pos) %>%
+        arrange(homologyLength) %>%
+        mutate(sdpos = cumsum(mean))
+    }
+    
+    test
+  })
+  
   #homology plot call
   output$homPlot <- renderPlot({
-    req(input$Aliases)
-    #speedup multigroup order is lagging behind Aliases
-    if(length(input$Aliases) != length(input$multiGroupOrder)){
-      return()
-    }
+    req(filter_in_data())
     el = filter_in_data()
-    el$Alias = factor(el$Alias, levels = input$multiGroupOrder)
-    types = intersect(input$Types,c("DELETION","TANDEMDUPLICATION"))
-    plot = homplot(el, types = types)
-    plots=list()
-    plots[["hom"]] <- plot
-    plotsForDownload$homs <- plots
-    plot
+    ##now use this data instead
+    ##also add a datatable
+    dfTest = homologyData()
+    
+    if(!is_grouped()){
+      dfTest$Alias = factor(dfTest$Alias, levels = input$multiGroupOrder)
+      x_axis = "Alias"
+      y_axis = "fraction"
+    } else{
+      x_axis = get_group_column()
+      y_axis = "mean"
+    }
+    
+    dfTest$homologyLength <- factor(dfTest$homologyLength, levels = unique(sort(dfTest$homologyLength)))
+    
+    ##get the colors correct, also if there are missing values in homologyLength
+    getPalette = colorRampPalette(brewer.pal(9, "PuBu"), bias = 1.5)
+    colourCount2 = max(as.numeric(levels(dfTest$homologyLength)),na.rm = T)
+    colValues = getPalette(colourCount2+1)
+    colValues = setNames(colValues,0:colourCount2)
+    
+    p = ggplot(dfTest, aes(x=!!as.symbol(x_axis), y=!!as.symbol(y_axis), fill=homologyLength))
+    p <- p + geom_bar(stat="identity",position = position_stack(reverse = TRUE))
+    
+    if(is_grouped()){
+      ##add error bars
+      p = p + geom_errorbar(aes(ymin=sdpos-sd, ymax=sdpos+sd), width=.2, stat = "identity") 
+    }
+    
+    p<- p +scale_fill_manual(values = colValues)
+    #get the names of the types displayed
+    typesInData = intersect(c("DELETION", "TANDEMDUPLICATION"),unique(el$Type))
+    hdDF = hardcodedTypesDF() %>% filter(Type %in% typesInData)
+    names = paste("Type(s) in plot:",paste(hdDF$Text, collapse=", "))
+    
+    p<- p + theme(plot.title = element_text(size=14, hjust=0.5),panel.border = element_blank(), panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
+                  legend.text = element_text( size = 10), legend.key.size = unit(5, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10), axis.text.y=element_text(size = 8))  +
+      ggtitle(names)
+    if(input$facet_wrap == TRUE){
+      p<- p + facet_grid(~Subject, scales = "free_x", space = "free_x")
+    }
+    
+    return(p)
   })
   
   #homology plot call
@@ -3189,10 +3310,6 @@ server <- function(input, output, session) {
       if(input$facet_wrap == TRUE){
         plot <- plot + facet_grid(~Subject, scales = "free_x", space = "free_x")
       }
-      if(input$data_labels==TRUE){
-        plot <- plot + geom_text(aes(label = n),
-                                 position=position_stack(0.5))  
-      }
     }
     plot = plot +
       scale_fill_manual(values = colorType) + 
@@ -3209,21 +3326,13 @@ server <- function(input, output, session) {
       return()
     }
     
-    if("INSERTION" %in% types){
-      el$homologyLength <- factor(el$homologyLength, levels = c("INSERTION",0:max(el$homologyLength)))
-      el$homologyLength[el$Type=="INSERTION"] <- "INSERTION"
-    }
-    else{
-      el = el[el$Type %in% types,]
-      el$homologyLength <- factor(el$homologyLength, levels = unique(sort(el$homologyLength)))
-    }
+    el = el[el$Type %in% types,]
+    el$homologyLength <- factor(el$homologyLength, levels = unique(sort(el$homologyLength)))
     if(fraction=="total"){
       test = el[el$Type %in% types,] %>% group_by(Alias, Subject) %>% dplyr::count(homologyLength = homologyLength, wt = fraction) %>%   mutate(fraction = n / sum(n))
     }
     else{
       test = el[el$Type %in% types,] %>% group_by(Alias, Subject) %>% dplyr::count(homologyLength = homologyLength, wt = fraction) %>%   mutate(totalFraction = sum(n))
-      #test = test[test$Type %in% types,]
-      #fractions = rowsum(test$n, test$Alias)
     }
     
     colourCount = length(unique(test$homologyLength))
