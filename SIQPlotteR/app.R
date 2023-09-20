@@ -1249,6 +1249,9 @@ server <- function(input, output, session) {
         group_by_at(group_now_sd_pos) %>%
         arrange(desc(insertion)) %>%
         mutate(sdpos = cumsum(mean))
+      
+      #make group a factor
+      df[[get_group_column()]] = factor(df[[get_group_column()]], levels = input$multiGroupReplicateOrder)
     }
     
     df
@@ -2480,6 +2483,10 @@ server <- function(input, output, session) {
         group_by_at(group_now_sd_pos) %>%
         arrange(homologyLength) %>%
         mutate(sdpos = cumsum(mean))
+      
+      ##ensure grouped column is now a factor
+      ##perhaps this slows down too much here?
+      test[[get_group_column()]] = factor(test[[get_group_column()]], levels = input$multiGroupReplicateOrder)
     }
     
     test
@@ -4026,13 +4033,18 @@ server <- function(input, output, session) {
   })
   output$multi_list_group <- renderUI({
     req(input$Aliases)
-    aliases = NULL
+    if(!is_grouped()){
+      return()
+    }
+    groups = NULL
     ##Really make sure this is only done for the tabs that use the GroupColumn
     ##otherwise it might get set, but it breaks other tabs
-    if(input$tabs == "Type" & !is.null(input$GroupColumn) & input$GroupColumn != "-"){
+    allowedTabs = c("Type","Homology","1bp insertion")
+    
+    if(input$tabs %in% allowedTabs){
       req(filter_in_data())
       el = filter_in_data()
-      aliases = sort(unique(el[[input$GroupColumn]]))
+      groups = sort(unique(el[[input$GroupColumn]]))
     } else{
       return()
     }
@@ -4043,7 +4055,7 @@ server <- function(input, output, session) {
         add_rank_list(
           input_id= "multiGroupReplicateOrder",
           text = "Re-order Grouped Samples here",
-          labels = aliases
+          labels = groups
         ),
         group_name = "multiGroupReplicate"
         
