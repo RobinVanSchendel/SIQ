@@ -270,13 +270,14 @@ ui <- fluidPage(
       ##type plot only ###
       conditionalPanel(
         condition = "input.tabs == 'Homology'",
-        checkboxInput(
-          "data_labels_hom",
-          label = "Show data labels",
-          value = FALSE
-        ),
         downloadButton('exportHom',"Export to PDF"),
       ),
+      conditionalPanel(
+        condition = "input.tabs == '1bp insertion'",
+        downloadButton('export1bpInsertion',"Export to PDF"),
+      ),
+      
+      
       ###hom insert plot
       conditionalPanel(
         condition = "input.tabs == 'HomologyInsert'",
@@ -1124,8 +1125,7 @@ server <- function(input, output, session) {
   ##for the plots
   plotsForDownload <- reactiveValues(tornados=NULL, homs=NULL,sizeDiffs=NULL,types=NULL, size=NULL
                                      , snvs=NULL, target=NULL, tornadoTI=NULL, tornadoTIcols=NULL, outcomes=NULL, samples=NULL,
-                                     alleles=NULL)
-  
+                                     alleles=NULL, plot1bpInsertion = NULL)
   applyColor <- function(el){
     start_time <- Sys.time()
     if(!is.data.frame(el)){
@@ -1291,7 +1291,8 @@ server <- function(input, output, session) {
       plot = plot + geom_errorbar(aes(ymin=sdpos-sd, ymax=sdpos+sd), width=.2, stat = "identity") 
       
     }
-    
+    ##save for PDF
+    plotsForDownload$plot1bpInsertion = plot
     plot
   })
   
@@ -2201,13 +2202,20 @@ server <- function(input, output, session) {
     }
   )
   
-  
-  
   output$exportHom = downloadHandler(
     filename = function() {"plotsHom.pdf"},
     content = function(file) {
       if(!is.null(plotsForDownload$homs)){
-        ggsave(file, plotsForDownload$homs[["hom"]],height=input$plotHeight/72, width=input$plotWidth/72, limitsize = FALSE)
+        ggsave(file, plotsForDownload$homs,height=input$plotHeight/72, width=input$plotWidth/72, limitsize = FALSE)
+      }
+    }
+  )
+  
+  output$export1bpInsertion = downloadHandler(
+    filename = function() {"plots1bpInsertion.pdf"},
+    content = function(file) {
+      if(!is.null(plotsForDownload$plot1bpInsertion)){
+        ggsave(file, plotsForDownload$plot1bpInsertion,height=input$plotHeight/72, width=input$plotWidth/72, limitsize = FALSE)
       }
     }
   )
@@ -2538,7 +2546,8 @@ server <- function(input, output, session) {
     if(input$facet_wrap == TRUE){
       p<- p + facet_grid(~Subject, scales = "free_x", space = "free_x")
     }
-    
+    ###save for the PDF export
+    plotsForDownload$homs = p
     return(p)
   })
   
