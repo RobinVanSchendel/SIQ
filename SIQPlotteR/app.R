@@ -137,7 +137,7 @@ exampleExcel = "data/20220609_220725_SIQ.xlsx"  ## for testing
 #exampleExcel = "Z:\\Projects\\2023_HPRT_sites\\SIQ\\Old\\20230829_SIQ_NMS_total_gt1000_p404_405_mm.xlsx"
 exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
 
-seleced_input = 1
+seleced_input = 2
 selected_tab = "Tornado"
 
 
@@ -408,7 +408,7 @@ ui <- fluidPage(
         radioButtons(
           "TypePlot",
           "Select type of plot :",
-          c("heatmap","violin", "lineplot", "median size"),
+          c("heatmap","violin", "lineplot", "median size", "boxplot"),
           selected = "heatmap",
           inline = TRUE),
         radioButtons(
@@ -480,6 +480,8 @@ ui <- fluidPage(
                      inline = T),
         numericInput("alleleTopOutcomes","Set the number of alleles to be shown:", 
                      min =0, max=100, value = 10),
+        numericInput("alleleDecimals","Set the number of decimals in the table:", 
+                     min =3, max=20, value = 4),
         radioButtons("alleleTopOutcomesChoice",
                      "Set top alleles based on:",
                      c("Total","Sample"),
@@ -685,6 +687,11 @@ ui <- fluidPage(
       checkboxInput("facet_wrap",
                     "Separate targets",
                     value=T),
+      radioButtons(
+        "homologyColumn",
+        "homologyLength:",
+        c("homologyLength","homologyLengthMismatch10%"),
+        inline = TRUE),
       uiOutput("type_list"),
       uiOutput("multi_list"),
       uiOutput("multi_list_group"),
@@ -872,7 +879,7 @@ server <- function(input, output, session) {
                        "1bp_homology" = "deletion/td 1bp microhomology", "2bp_homology" = "deletion/td 2bp microhomology",
                        "3bp_homology" = "deletion/td 3bp microhomology", "4bp_homology" = "deletion/td 4bp microhomology",
                        "5-15bp_homology" = "deletion/td 5-15bp microhomology", "DELETION" = "deletion", "HDR" = "homology-directed repair"
-                       ,"HDR1MM" = "homology-directed repair mismatch", "15bp_homology" = "deletion >15bp microhomology",
+                       ,"HDR1MM" = "homology-directed repair mismatch", "15bp_homology" = "deletion/td >15bp microhomology",
                        "TINS_FW" = "deletion with templated insert (FW)","TINS_RC" = "deletion with templated insert (RC)"
                        )
     
@@ -1138,6 +1145,22 @@ server <- function(input, output, session) {
       dummies = in_stat()[in_stat()$Alias %in% remAliases,]
       bind_rows(el,dummies)
     }
+    
+    ##alter homology Column as required
+    if(input$homologyColumn == "homologyLengthMismatch10%"){
+      ##only update the homologies if the mismatch amount is larger
+      if("homologyLengthMismatch10.ref" %in% colnames(el)){
+        el = el %>% mutate(
+          homologyLength = ifelse( homologyLengthMismatch10.ref > homologyLength,homologyLengthMismatch10.ref,homologyLength) 
+        )
+      }
+      else{
+        el = el %>% mutate(
+          homologyLength = ifelse( `homologyLengthMismatch10%ref` > homologyLength,`homologyLengthMismatch10%ref`,homologyLength) 
+        )
+      }
+    }
+    
     print(paste("filter_in_data",Sys.time()))
     return(el)
   })
@@ -1189,6 +1212,9 @@ server <- function(input, output, session) {
       homologyLength<=4 ~ paste0(homologyLength,"bp_homology"),
       homologyLength>=5 & homologyLength<15 ~ "5-15bp_homology",
       homologyLength>=15 ~ "15bp_homology"
+      ##these were there for Jip, but now not anymore
+      #homologyLength>=5 & homologyLength<11 ~ "5-15bp_homology",
+      #homologyLength>=11 ~ "15bp_homology"
     ))
     
     #el$getHomologyColor[el$homologyLength==0] <- "0bp_homology"
@@ -1999,7 +2025,9 @@ server <- function(input, output, session) {
           dataPlot1 = dataPlot1 %>% mutate(Outcome = paste(Outcome, Subject))
         } 
         
-        df = dataPlot1 %>% select (Alias, Outcome, fraction) %>%
+        df = dataPlot1 %>% 
+          ungroup() %>%
+          select (Alias, Outcome, fraction) %>%
           spread(Outcome,fraction) %>%
           as.data.frame()
         rownames(df) = df[,1]
@@ -2564,7 +2592,7 @@ server <- function(input, output, session) {
     el = el %>% group_by_at(vars(-fraction)) %>% summarise(fraction = sum(fraction)) %>% ungroup()
     
     el = el %>%
-      mutate(fraction = round(fraction,4)) %>%
+      mutate(fraction = round(fraction,input$alleleDecimals)) %>%
       spread(key = Alias, value = fraction)
     
     if(input$alleleTopOutcomesChoice == "Total"){
@@ -3731,14 +3759,34 @@ server <- function(input, output, session) {
       mutFractions = mutagenic_fractions()
       el = merge(el, mutFractions, by = c("Subject","Alias")) %>% mutate(fraction = fraction/mutagenicFraction)
     }
-    
+    ##bug in the next part of the code, you need to determine the actual outcomes to be shown asap
     dnaRefStrings = getDNARefStrings(el) %>% mutate(Outcome = "Reference", totalFraction = Inf, fraction = Inf)
-    #bug if Alias is a merge of more samples, we should select more events, so File was added to grouping
-    if("File" %in% colnames(el)){
-      elSub = el %>% ungroup() %>% group_by(Subject, Alias, File) %>% slice_max(fraction, n = input$alleleTopOutcomes)
+    el = el %>% mutate(OutcomeDigital = paste(Subject, delRelativeStart, delRelativeEnd, insertion))
+    if(input$alleleTopOutcomesChoice == "Total"){
+      keepOutcomes = el %>% select(OutcomeDigital, Subject, fraction) %>% group_by(Subject, OutcomeDigital) %>% 
+        summarise(totalFraction = sum(fraction)) %>% slice_max(totalFraction, n = input$alleleTopOutcomes + 1)
     } else{
-      elSub = el %>% ungroup() %>% group_by(Subject, Alias) %>% slice_max(fraction, n = input$alleleTopOutcomes)
+      subject = el %>% select(Alias, Subject) %>% distinct() %>% filter(Alias == input$alleleTopOutcomesSample)
+      #only take one subject here
+      subject = subject$Subject[1]
+      #and filter test2 otherwise it still does not work
+      el = el %>% filter(Subject == subject)
+      
+      keepOutcomes = el %>% filter(Alias == input$alleleTopOutcomesSample & Subject == subject) %>% 
+        mutate(totalFraction = fraction) %>%
+        select(Subject, OutcomeDigital, totalFraction) %>% 
+        slice_max(totalFraction, n = input$alleleTopOutcomes + 1)
     }
+    elSub = el %>% filter(OutcomeDigital %in% keepOutcomes$OutcomeDigital)
+    
+    
+    #dnaRefStrings = getDNARefStrings(el) %>% mutate(Outcome = "Reference", totalFraction = Inf, fraction = Inf)
+    #bug if Alias is a merge of more samples, we should select more events, so File was added to grouping
+    #if("File" %in% colnames(el)){
+    #  elSub = el %>% ungroup() %>% group_by(Subject, Alias, File) %>% slice_max(fraction, n = input$alleleTopOutcomes)
+    #} else{
+    #  elSub = el %>% ungroup() %>% group_by(Subject, Alias) %>% slice_max(fraction, n = input$alleleTopOutcomes)
+    #}
     el = rbind(elSub, dnaRefStrings)
     
     el = el %>% ungroup() %>% mutate(Category = paste(Type,delSize))
@@ -3887,6 +3935,7 @@ server <- function(input, output, session) {
     plots = list()
     
     test2$Alias = factor(test2$Alias, levels = input$multiGroupOrder)
+    #colnames = c("Outcome", "insertion", "Alias", "fraction")
     
     addGroup = F
     if(is_grouped()){
@@ -3923,9 +3972,17 @@ server <- function(input, output, session) {
         ##########
         test2Sub = test2Sub %>% select_at(c("fraction","Text","Subject", "Alias",group_column))
         reads = total_reads() %>% select_at(c("Subject", "Alias",get_group_column()))
+        ##ensure only the Alias/Subject combinations are added that are selected
+        reads = reads %>% filter(Subject %in% input$Subject & Alias %in% input$Aliases )
+        
         test2Sub = dplyr::left_join(reads,test2Sub, by = c("Alias","Subject",get_group_column())) %>% 
-          group_by_at(c("Alias","Subject",get_group_column())) %>% 
-          complete(Outcome, Text, fill = list(fraction = 0))
+          group_by_at("Subject") %>% complete(Alias, !!sym(get_group_column()), nesting(Outcome, Text))
+        
+        
+        ##first ensure that the events are combined per Alias
+        test2Sub = test2Sub %>% ungroup %>% group_by_at(vars(-fraction)) %>%
+          summarise(fraction = sum(fraction))
+        
 
         ##calculate mean to be displayed
         #####still an issue here with the complete function!
@@ -4103,9 +4160,11 @@ server <- function(input, output, session) {
       p <- ggplot(testData, aes(x=Alias,y=sizeDiff, fill=n))+geom_tile()+
         scale_fill_gradientn(colours=c("white", "blue"), limits = c(0,max(testData$n)))
     } else if(input$TypePlot == "violin"){ 
-      "violin"
       p <- ggplot(testData,aes(x=Alias,y=sizeDiff, weight=n))+geom_violin(lwd = 0.25)+
         geom_boxplot(width=0.1, lwd = 0.25,outlier.shape = NA)
+    }  else if(input$TypePlot == "boxplot"){ 
+      p <- ggplot(testData,aes(x=Alias,y=sizeDiff, weight=n))+
+        geom_boxplot(lwd = 0.25,outlier.shape = NA)
     } else if(input$TypePlot == "median size"){
       #median size
       if("Subject" %in% colnames(testData)){
