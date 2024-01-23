@@ -942,7 +942,7 @@ server <- function(input, output, session) {
         #}
       }
     }
-    ## MUSIC screen and subscree
+    ## MUSIC screen and subscreen
     else if(input$data_input == 3 || input$data_input == 4){
       
       dbnameCurrent = get_current_dbname()
@@ -985,16 +985,22 @@ server <- function(input, output, session) {
       el = el %>% mutate(Type = ifelse(Type == "TANDEMDUPLICATION" | Type == "TANDEMDUPLICATION_COMPOUND","INSERTION",Type))
     }
     ##somehow that makes the type dissappear probably move to another location!
-    if("splitTINS" %in% input$CollapseTypes & "isFirstHit" %in% colnames(el)){
-      el = el %>%
-        mutate(rc = ifelse(grepl("rc",isFirstHit),"RC","FW"))
-      el = el %>% mutate(Type = ifelse(Type == "TINS",paste0(Type,"_",rc),Type)) %>%
-        select(-rc)
-    }
-    
+    el = split_tins(el)
+
     print("endOf in_data")
     return(el)
   })
+  
+  split_tins <- function(df){
+    ##somehow that makes the type dissappear probably move to another location!
+    if("splitTINS" %in% input$CollapseTypes & "isFirstHit" %in% colnames(df)){
+      df = df %>%
+        mutate(rc = ifelse(grepl("rc",isFirstHit),"RC","FW")) %>% 
+        mutate(Type = ifelse(Type == "TINS",paste0(Type,"_",rc),Type)) %>%
+        select(-rc)
+    }  
+    return(df)
+  }
   
   get_current_dbname <- function(){
     if(input$data_input == 3){
@@ -1093,6 +1099,9 @@ server <- function(input, output, session) {
     genes = input$Aliases
     print("quering DB...")
     el = geneTable %>% filter(!!as.symbol(input$AliasColumn) %in% genes) %>% collect()
+    
+    ##split tins if needed
+    
     print("quering done...")
     dbDisconnect(conn = con)
     el
@@ -1119,6 +1128,8 @@ server <- function(input, output, session) {
         mutate(Subject = Alias) %>%
         mutate(Alias = !!as.symbol(input$AliasColumn)) %>%
         mutate(Type = SubType)
+      
+      el = split_tins(el)
       
       el = el %>% group_by(Alias) %>% mutate(totalFraction = sum(fraction))
     }
@@ -3095,7 +3106,8 @@ server <- function(input, output, session) {
     req(hardcodedTypesDF())
     ##need to set the types for the screen
     if(input$data_input == 3 || input$data_input == 4){
-      types = c("HDR","DELETION","DELINS","INSERTION","TINS","WT","INSERTION_1bp")
+      ##perhaps change the TINS still, depending on presence of 'split TINS'
+      types = c("HDR","DELETION","DELINS","INSERTION","TINS","WT","INSERTION_1bp", "TINS_FW", "TINS_RC")
       choices = hardcodedTypesDF()[hardcodedTypesDF()$Type %in% types,]
     } else{
       choices = hardcodedTypesDF()[hardcodedTypesDF()$Type %in% unique(in_data()$Type),]
