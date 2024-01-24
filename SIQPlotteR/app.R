@@ -1893,7 +1893,7 @@ server <- function(input, output, session) {
         }
         ##if there is no rank, do not use color as rank
         else{
-          plot <- ggplot(dataPlot1,aes(x = Outcome, y = fraction, group = Alias))
+          plot <- ggplot(dataPlot1,aes(x = Outcome, y = fraction, group = Alias, color = Alias))
         }
           #scale_colour_manual()
           plot <- plot + geom_line(size=1.2, alpha=0.4) +
@@ -4058,7 +4058,7 @@ server <- function(input, output, session) {
   })
   
   output$snvplot <- renderPlot({
-    req(in_data())
+    req(filter_in_data())
     req(input$Aliases)
     
     #speedup multigroup order is lagging behind Aliases
@@ -4066,6 +4066,13 @@ server <- function(input, output, session) {
       return()
     }
     el = filter_in_data()
+    ##ensure the total fraction is set to 1
+    el = el %>% 
+      group_by(Alias) %>% 
+      mutate(fraction = fraction / sum(fraction)) %>%
+      ungroup()
+    
+    
     if(input$snvrange>1){
       el$sizeChange = el$delSize-el$insSize
       el = el %>% filter(Type == "SNV" |
