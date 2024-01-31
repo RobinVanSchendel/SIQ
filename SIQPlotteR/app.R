@@ -4303,12 +4303,9 @@ server <- function(input, output, session) {
     colourCode = setNames(colourCode,hardcodedTypesDF()$Type)
     
     colourCode = colourCode[names(colourCode) %in% newdata$color | names(colourCode) %in% newdata$tdColor]
-    #add white
-    colourCode["white"] = "white"
     
     ColorText = hardcodedTypesDFnonreactive()
     ColorText = ColorText %>% filter(Type %in% names(colourCode))
-    ColorText = rbind(ColorText, c("white",NA,"white"))
     
     end_time = Sys.time()-start_time
     print(paste("half2: tornadoplot",end_time))
@@ -4330,7 +4327,7 @@ server <- function(input, output, session) {
     }
     
     plot = plot + 
-      scale_fill_manual(values = colourCode, labels = ColorText$Text) + #no guid is produced
+      scale_fill_manual(values = colourCode, labels = ColorText$Text, na.value = "white") + #no guid is produced
       
       theme(plot.title = element_text(size=10, hjust=0.5),panel.border = element_blank(), panel.grid.major = element_blank(),
             panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size = 0.25),axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5),
