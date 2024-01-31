@@ -4124,7 +4124,7 @@ server <- function(input, output, session) {
         for(alias in input$multiGroupOrder){
           testPart = test[test$Alias == alias & test$Subject == subject,]
           if(length(input$Subject)>1){
-            name = paste(subject, alias, sep = "-")
+            name = paste(subject, alias, sep = " - ")
           } else{
             name = alias
           }
