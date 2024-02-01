@@ -119,14 +119,15 @@ if(!require(heatmaply)){
 ## really do not add to github!
 user_base <- tibble::tibble(
   user = c("tijsterman"),
-  password = sapply(c("#######"), sodium::password_store),
+  password = sapply(c("######"), sodium::password_store),
   permissions = c("standard"),
   name = c("Tijsterman Music")
 )
 
 ##Music DB name
 dbname = "data/MBCrisprMBAgain_1_1.db"
-dbnameSubScreen = "C:/Temp/MB_reseq/Full/MBCrisprMBSubscreeen_Full_1.db"
+dbnameSubScreen = "data/MBCrisprMBSubscreeen_Full_1.db"
+dbNameSubScreenTUDelft = "data/MBCrisprMBSubscreeen_TUDelft_1.db"
 
 options(shiny.maxRequestSize=4048*1024^2)
 
@@ -810,7 +811,8 @@ server <- function(input, output, session) {
                            list("Load example SIQ paper data" = 1,
                                 "Upload file (TSV, Text, Excel)" = 2,
                                 "MUSIC screen" = 3,
-                                "MUSIC subscreen" = 4
+                                "MUSIC subscreen" = 4,
+                                "MUSIC subscreen TUDelft" = 5
                            ),
                          selected = as.numeric(input$data_input),
                          )
@@ -943,7 +945,8 @@ server <- function(input, output, session) {
       }
     }
     ## MUSIC screen and subscreen
-    else if(input$data_input == 3 || input$data_input == 4){
+    ##all >2 is a DB
+    else if(input$data_input > 2){
       
       dbnameCurrent = get_current_dbname()
       con <- dbConnect(RSQLite::SQLite(), dbname = dbnameCurrent)
@@ -1008,6 +1011,9 @@ server <- function(input, output, session) {
     }
     if(input$data_input == 4){
       return(dbnameSubScreen)
+    }
+    if(input$data_input == 5){
+      return(dbNameSubScreenTUDelft)
     }
     stop("Not an option")
   }
@@ -1112,14 +1118,14 @@ server <- function(input, output, session) {
     req(pre_filter_in_data())
     req(input$Aliases)
     
-    if((input$data_input == 3 || input$data_input == 4) & input$AliasColumn == "Alias"){
+    if((input$data_input > 2) & input$AliasColumn == "Alias"){
       return()
     }
     ##remove aliases not plotted
     el = pre_filter_in_data()
     
     ##so now load in the data
-    if(input$data_input == 3 || input$data_input == 4){
+    if(input$data_input > 2){
       el = get_db_data()
       
       ##alter following columns
@@ -3105,7 +3111,7 @@ server <- function(input, output, session) {
     req(in_data())
     req(hardcodedTypesDF())
     ##need to set the types for the screen
-    if(input$data_input == 3 || input$data_input == 4){
+    if(input$data_input > 2){
       ##perhaps change the TINS still, depending on presence of 'split TINS'
       types = c("HDR","DELETION","DELINS","INSERTION","TINS","WT","INSERTION_1bp", "TINS_FW", "TINS_RC")
       choices = hardcodedTypesDF()[hardcodedTypesDF()$Type %in% types,]
