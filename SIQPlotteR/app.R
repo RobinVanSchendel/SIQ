@@ -141,6 +141,9 @@ exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
 seleced_input = 2
 selected_tab = "Tornado"
 
+###test
+TranslocationColorReal = "Translocation"
+
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -1274,13 +1277,17 @@ server <- function(input, output, session) {
     if(!"insertion" %in% colnames(el)){
       el$insertion = ""
     }
+    ##for Lejon
+    if(!"Translocation" %in% colnames(el)){
+      el$Translocation = FALSE
+    }
     ##end of to be removed###
     if("fraction" %in% colnames(el)) {
       plot.data <- data.frame(size = el$delRelativeEndTD-el$delRelativeStartTD, start.points = el$delRelativeStartTD, 
                               end.points = el$delRelativeEndTD, type=el$TypeHom, typeTD=el$TypeTD, color=el$getHomologyColor, code=el$Alias, 
                               yheight = el$fraction, typeOrig = el$Type, left = el$delRelativeStartTD+(el$delRelativeEndTD-el$delRelativeStartTD)/2, 
                               startTD=el$delRelativeStart, countEvents = el$countEvents, Pool = el$Subject, tdColor = el$TDcolor, insSize = el$insSize,
-                              Subject = el$Subject, Alias = el$Alias, del = el$del, insert = el$insertion, homology = el$homologyLength)
+                              Subject = el$Subject, Alias = el$Alias, del = el$del, insert = el$insertion, homology = el$homologyLength, Translocation = el$Translocation)
       return(plot.data)
     }
     else{
@@ -4302,8 +4309,12 @@ server <- function(input, output, session) {
     print(paste("half: tornadoplot",end_time))
     
     
-    plot = ggplot(newdata)
+
+    ##pick up the Translocation color
+    newdata = newdata %>%
+      mutate(TranslocationColor = ifelse(Translocation, TranslocationColorReal, color))
     
+    plot = ggplot(newdata)
     
     colourCode = hardcodedTypesDF()$Color
     colourCode = setNames(colourCode,hardcodedTypesDF()$Type)
@@ -4312,6 +4323,10 @@ server <- function(input, output, session) {
     
     ColorText = hardcodedTypesDFnonreactive()
     ColorText = ColorText %>% filter(Type %in% names(colourCode))
+    if(TranslocationColorReal %in% newdata$TranslocationColor){
+      ColorText = rbind(ColorText, c(TranslocationColorReal,"translocation","#c994c7"))
+      colourCode[[TranslocationColorReal]] = "#c994c7"
+    }
     
     end_time = Sys.time()-start_time
     print(paste("half2: tornadoplot",end_time))
@@ -4319,7 +4334,7 @@ server <- function(input, output, session) {
     if(Type=="Regular"){
       plot = plot +
         geom_rect(aes(xmin=xmin, xmax=start.points+1, ymin=y.start, ymax=y.end, fill=color), alpha=1) + 
-        geom_rect(aes(xmin=end.points, xmax=xmax, ymin=y.start, ymax=y.end, fill=color), alpha=1)+
+        geom_rect(aes(xmin=end.points, xmax=xmax, ymin=y.start, ymax=y.end, fill=TranslocationColor), alpha=1)+
         geom_rect(aes(xmin=start.points, xmax=end.points, ymin=y.start, ymax=y.end, fill=tdColor), alpha=1)
     }else if (Type == "Inverted"){
       plot = plot +
@@ -4333,7 +4348,7 @@ server <- function(input, output, session) {
     }
     
     plot = plot + 
-      scale_fill_manual(values = colourCode, labels = ColorText$Text, na.value = "white") + #no guid is produced
+      scale_fill_manual(values = colourCode, breaks = names(colourCode), labels = ColorText$Text, na.value = "white") + #no guid is produced
       
       theme(plot.title = element_text(size=10, hjust=0.5),panel.border = element_blank(), panel.grid.major = element_blank(),
             panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size = 0.25),axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5),
