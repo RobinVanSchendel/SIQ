@@ -490,7 +490,24 @@ ui <- fluidPage(
                      "Set top alleles based on:",
                      c("Total","Sample"),
                      inline = T),
-        downloadButton('exportAlleles',"Export to PDF"),
+        downloadButton('exportAlleles',"Export to PDF")
+      ),
+      conditionalPanel(
+        condition = "input.tabs == 'Table'",
+        pickerInput(
+          inputId = "tableColumn", 
+          label = "Show columns:",
+          choices = NULL,
+          options = list(
+            `actions-box` = TRUE, 
+            size = 10,
+            `live-search`=TRUE,
+            `selected-text-format` = "count > 3"
+          ), 
+          multiple = T
+        ),
+        numericInput("alleleDecimalsTable","Set the number of decimals in the table (-1 = all):", 
+                     min=-1, max=20, value = -1)
       ),
       conditionalPanel(
         condition = "input.alleleTopOutcomesChoice == 'Sample'",
@@ -670,24 +687,6 @@ ui <- fluidPage(
         ),
         downloadButton('exportOutcome',"Export to PDF"),
       ),
-      sliderInput("filterMaxFraction", "Set max fraction of event: ",
-                  value = 1,
-                  min = 0,
-                  max = 1,
-                  step = 0.05
-      ),
-      sliderInput("filterMinTotalFraction", "Set min total fraction of Alias: ",
-                  value = 0,
-                  min = 0,
-                  max = 1,
-                  step = 0.05
-      ),
-      sliderInput("filterMinReads", "Set min reads of event to be included: ",
-                  value = 0,
-                  min = 0,
-                  max = 50,
-                  step = 1
-      ),
       checkboxInput("facet_wrap",
                     "Separate targets",
                     value=T),
@@ -777,6 +776,10 @@ ui <- fluidPage(
 									         p("display the contribution of the 1bp insertions"),
 									         uiOutput("ui_1bpinsertion"),
 									         DT::dataTableOutput("plot_1bp_data",width = 8)
+									),
+									tabPanel("Table",
+									         h3("Note: to download all data, please select Show 'All' entries (slow on large sets)", style="color:red"),
+									         DT::dataTableOutput("datatable",width = "100%"),
 									),
                   tabPanel("About",
                            h3("About SIQPlotteR"),
@@ -907,6 +910,45 @@ server <- function(input, output, session) {
       }
     }
     hardcodedTypesDF
+  })
+  output$datatable <- DT::renderDataTable({
+    req(filter_in_data())
+    el = filter_in_data()
+    
+    el = el |>
+      select_at(input$tableColumn)
+    
+    ##added a safety for the colnames to be present
+    if(input$alleleDecimalsTable != -1 & "fraction" %in% colnames(el)){
+      el = el |> mutate(fraction = round(fraction,input$alleleDecimalsTable))
+    }
+    
+    ##change the order a bit
+    if("fraction" %in% colnames(el)){
+      el = el %>% relocate(fraction)
+    }
+    if("Alias" %in% colnames(el)){
+      el = el %>% relocate(Alias)
+    }
+    if("Subject" %in% colnames(el)){
+      el = el %>% relocate(Subject)
+    }
+    
+    dt = DT::datatable(el,rownames = FALSE,extensions = 'Buttons', 
+                       filter = "top",
+                       class = "display nowrap",
+                       options = list(
+                         pageLength = 10,
+                         lengthMenu = list( c(10,25, -1) # declare values
+                                            , c(10,25, "All")), # declare titles
+                         scrollX = TRUE,  
+                         scrollY = TRUE,
+                         autoWidth = TRUE,
+                         dom = 'lftpB',
+                         buttons = 
+                           list("copy", "excel","csv")
+                       ))
+    dt
   })
   
   d_xminmaxRange <- reactive({
@@ -1059,16 +1101,6 @@ server <- function(input, output, session) {
       el = el[el$Type != "SNV" | (el$Type == "SNV" & ((el$delRelativeStartRight<=size & el$delRelativeStartRight>=-size
                                                        &el$delRelativeStartRight<=size) | 
                                                         (el$delRelativeEnd>=-size+1 & el$delRelativeEnd<=size))),]
-    }
-    if(input$filterMaxFraction<1){
-      el = el %>% filter(fraction<input$filterMaxFraction)
-      if(input$filterMinTotalFraction>0){
-        keepAliases = el %>% group_by(Alias) %>% count(wt = fraction) %>% filter(n>=input$filterMinTotalFraction)
-        el = el %>% filter(Alias %in% keepAliases$Alias)
-      }
-    }
-    if(input$filterMinReads>0){
-      el = el %>% filter(countEvents>=input$filterMinReads)
     }
     return(el)
   })
@@ -3136,6 +3168,15 @@ server <- function(input, output, session) {
     el = filter_in_data() %>% select(Alias) %>% distinct()
     updatePickerInput(session, "alleleTopOutcomesSample", choices = el$Alias )
     
+  })
+  
+  observe({
+    req(filter_in_data())
+    
+    keepColumns = c("countEvents","fraction","Alias", "Subject", "leftFlank","del","rightFlank","insertion", "Type",
+                    "delRelativeStart", "delRelativeEnd", "delSize","insSize")
+    cols = colnames(filter_in_data())
+    updatePickerInput(session, "tableColumn", choices = cols, selected = keepColumns)
   })
   
   output$minEvents <- renderUI({
