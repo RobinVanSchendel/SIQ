@@ -924,15 +924,10 @@ server <- function(input, output, session) {
     }
     
     ##change the order a bit
-    if("fraction" %in% colnames(el)){
-      el = el %>% relocate(fraction)
-    }
-    if("Alias" %in% colnames(el)){
-      el = el %>% relocate(Alias)
-    }
-    if("Subject" %in% colnames(el)){
-      el = el %>% relocate(Subject)
-    }
+    ordered = c("Subject","Alias","fraction","countEvents","delSize", "insSize", "Type")
+    ordered = intersect(ordered, input$tableColumn)
+    
+    el = el %>% relocate(all_of(ordered))
     
     dt = DT::datatable(el,rownames = FALSE,extensions = 'Buttons', 
                        filter = "top",
