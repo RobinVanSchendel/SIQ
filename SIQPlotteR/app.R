@@ -1255,6 +1255,8 @@ server <- function(input, output, session) {
       Type=="HDR" ~ "HDR",
       Type=="HDR1MM" ~ "HDR1MM",
       Type=="TINS" ~"TINS",
+      Type=="TINS_FW" ~"TINS_FW",
+      Type=="TINS_RC" ~"TINS_RC",
       Type=="TANDEMDUPLICATION_COMPOUND" ~ "INSERTION",
       homologyLength<=4 ~ paste0(homologyLength,"bp_homology"),
       homologyLength>=5 & homologyLength<15 ~ "5-15bp_homology",
