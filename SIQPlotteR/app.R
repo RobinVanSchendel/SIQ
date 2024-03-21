@@ -141,6 +141,8 @@ exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
 seleced_input = 2
 selected_tab = "Tornado"
 
+debug = FALSE
+
 ###test
 TranslocationColorReal = "Translocation"
 
@@ -2447,7 +2449,10 @@ server <- function(input, output, session) {
     if(length(input$Aliases) != length(input$multiGroupOrder)){
       return()
     }
-    print("subjectPlot")
+    if(debug){
+      print("subjectPlot renderPlot")
+      print(Sys.time())
+    }
     plot.data = tornadoPlotData()
     
     end_time = Sys.time()-start_time
@@ -3116,7 +3121,9 @@ server <- function(input, output, session) {
   
   observe({
     req(input$data_input)
-    print("just an observe")
+    if(debug){
+      print("just an observe AliasColumn")
+    }
     if(input$data_input == 3){
       updatePickerInput(session, inputId = "AliasColumn", selected = "Gene")
     }
@@ -3125,6 +3132,9 @@ server <- function(input, output, session) {
   
   observe({
     req(in_data())
+    if(debug){
+      print(paste("updateSelectInput","GroupColumn"))
+    }
     df = in_data()
     if(is.null(input$AliasColumn)){
       selected = "Alias"
@@ -3148,9 +3158,22 @@ server <- function(input, output, session) {
     
   })
   
+  observeEvent(
+    rv$types,
+    {
+      if(debug){
+        print("updatePickerInput Types observeEvent")
+      }
+      updatePickerInput(session, "Types", choices = rv$types, selected = rv$types) 
+    }
+  )
+  
   observe({
     req(in_data())
     req(hardcodedTypesDF())
+    if(debug){
+      print(paste("updatePickerInput Types observe"))
+    }
     ##need to set the types for the screen
     if(input$data_input > 2){
       ##perhaps change the TINS still, depending on presence of 'split TINS'
@@ -3161,12 +3184,14 @@ server <- function(input, output, session) {
     }
     choices = choices[order(choices$Text), ]
     choicesInv = setNames(choices$Type, choices$Text)
-    print("updatePickerInput Types")
-    updatePickerInput(session, "Types", choices = choicesInv, selected = choicesInv)
+    rv$types = choicesInv
   })
   
   observe({
     req(filter_in_data())
+    if(debug){
+      print("updatePickerInput alleleTopOutcomesSample")
+    }
     el = filter_in_data() %>% select(Alias) %>% distinct()
     updatePickerInput(session, "alleleTopOutcomesSample", choices = el$Alias )
     
@@ -3174,7 +3199,9 @@ server <- function(input, output, session) {
   
   observe({
     req(filter_in_data())
-    
+    if(debug){
+      print("updatePickerInput tableColumn")
+    }
     keepColumns = c("countEvents","fraction","Alias", "Subject", "leftFlank","del","rightFlank","insertion", "Type",
                     "delRelativeStart", "delRelativeEnd", "delSize","insSize")
     cols = colnames(filter_in_data())
@@ -3198,6 +3225,9 @@ server <- function(input, output, session) {
   })
   
   observe({
+    if(debug){
+      print("updateSliderInput minEvents")
+    }
     df = in_data()
     testDF = df %>% group_by(Alias) %>% dplyr::count(wt=countEvents)
     if(max(testDF$n)>20000){
@@ -3216,6 +3246,9 @@ server <- function(input, output, session) {
   ##set the target/subject options
   observe({
     req(in_data())
+    if(debug){
+      print("set the target/subject options")
+    }
     rv$subjects = sort(unique(in_data()$Subject))
   })
   
@@ -3223,6 +3256,9 @@ server <- function(input, output, session) {
   observe({
     req(pre_filter_in_data())
     req(d_minEvents())
+    if(debug){
+      print("set the aliases")
+    }
     totalAliases = in_stat()
     if("Alias" %in% colnames(totalAliases) & "Subject" %in% colnames(totalAliases)){
       aliases = totalAliases$Alias[totalAliases$Subject %in% input$Subject]
@@ -3355,8 +3391,12 @@ server <- function(input, output, session) {
   
   plot_rows <- function() {
     req(filter_in_data())
+    
     if(length(input$Aliases) == 0){
       return(1)
+    }
+    if(debug){
+      print("plot_rows")
     }
     df = filter_in_data() %>%
       group_by(Alias) %>%
@@ -3378,7 +3418,10 @@ server <- function(input, output, session) {
   }
   
   output$ui_plot <- renderUI({
-    req(plot_rows)
+    req(plot_rows())
+    if(debug){
+      print(paste("subjectPlot",plot_rows()))
+    }
     plotOutput("subjectPlot", height = plot_rows()*input$plotHeight, width = input$plotWidth,
                hover = hoverOpts("plot_hover", delay = 10, delayType = "debounce"))
   })
@@ -4371,9 +4414,6 @@ server <- function(input, output, session) {
       colourCode[[TranslocationColorReal]] = "#c994c7"
     }
     
-    end_time = Sys.time()-start_time
-    print(paste("half2: tornadoplot",end_time))
-    
     if(Type=="Regular"){
       plot = plot +
         geom_rect(aes(xmin=xmin, xmax=start.points+1, ymin=y.start, ymax=y.end, fill=color), alpha=1) + 
@@ -4400,9 +4440,6 @@ server <- function(input, output, session) {
       #ggtitle(ggtitleLabel) + 
       scale_x_continuous(limits = c(xmin, xmax))
     
-    end_time = Sys.time()-start_time
-    print(paste("half2.5: tornadoplot",end_time))
-    
     #create an scale_y_continous object to adjust
     scale_y_continuous = scale_y_continuous()
     if(is.numeric(ymax)){
@@ -4420,9 +4457,6 @@ server <- function(input, output, session) {
     }
     plot = plot + scale_y_continuous
     
-    end_time = Sys.time()-start_time
-    print(paste("half2.6: tornadoplot",end_time))
-    
     if(input$YaxisValue == "Fraction"){
       aliases = newdata %>% group_by(Subject, SubjectAlias, Alias) %>% summarise(total = sum(countEvents)) 
       ##single target label
@@ -4436,9 +4470,6 @@ server <- function(input, output, session) {
       aliasesVec = aliases$Text
       names(aliasesVec) = aliases$SubjectAlias
     }
-    
-    end_time = Sys.time()-start_time
-    print(paste("half2.7: tornadoplot",end_time))
     
     ##perform facet_wrap and add custom labeller for 'Fraction'
     if(input$YaxisValue == "Fraction"){
