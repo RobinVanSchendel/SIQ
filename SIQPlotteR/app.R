@@ -872,13 +872,15 @@ server <- function(input, output, session) {
     tinsColorRC = "#AA0000"
     tdColor = "#FF7F00"
     tdCColor = "#F4A460"
+    delins_dual = "grey50"
+    delins_snv = "grey30"
     ##
     colourCode <- c("WT" = wtColor, "DELETION" = delColor, "INSERTION" = insColor, "INSERTION_1bp" = insColor1, "DELINS" = delinsColor,
                     "TINS" = tinsColor, "TANDEMDUPLICATION" = tdColor, 
                     "TANDEMDUPLICATION_COMPOUND" = tdCColor,"SNV" = snvColor, "HDR" = hdrColor,"HDR1MM" = hdr1mmColor, "0bp_homology" = bp0Color,
                     "1bp_homology" = bp1Color,"2bp_homology" = bp2Color,"3bp_homology" = bp3Color,
                     "4bp_homology" = bp4Color, "5-15bp_homology" = bp5Color, "15bp_homology" = bp6Color, "white" = "white",
-                    "TINS_FW" = tinsColor,"TINS_RC" = tinsColorRC
+                    "TINS_FW" = tinsColor,"TINS_RC" = tinsColorRC, "DELINS_DUAL" = delins_dual, "DELINS_SNV" = delins_snv
     ) 
     
     hardcodedTypes = c("WT" = "wild-type","INSERTION" = "insertion", "INSERTION_1bp" = "1bp insertion",
@@ -888,7 +890,8 @@ server <- function(input, output, session) {
                        "3bp_homology" = "deletion/td 3bp microhomology", "4bp_homology" = "deletion/td 4bp microhomology",
                        "5-15bp_homology" = "deletion/td 5-15bp microhomology", "DELETION" = "deletion", "HDR" = "homology-directed repair"
                        ,"HDR1MM" = "homology-directed repair mismatch", "15bp_homology" = "deletion/td >15bp microhomology",
-                       "TINS_FW" = "deletion with templated insert (FW)","TINS_RC" = "deletion with templated insert (RC)"
+                       "TINS_FW" = "deletion with templated insert (FW)","TINS_RC" = "deletion with templated insert (RC)",
+                       "DELINS_DUAL" = "delins (likely two events)", "DELINS_SNV" = "deletion plus snv"
                        )
     
     hardcodedTypesDF = data.frame(names(hardcodedTypes), unname(hardcodedTypes), stringsAsFactors = FALSE)
@@ -1257,6 +1260,8 @@ server <- function(input, output, session) {
       Type=="TINS" ~"TINS",
       Type=="TINS_FW" ~"TINS_FW",
       Type=="TINS_RC" ~"TINS_RC",
+      Type=="DELINS_SNV" ~"DELINS_SNV",
+      Type=="DELINS_DUAL" ~"DELINS_DUAL",
       Type=="TANDEMDUPLICATION_COMPOUND" ~ "INSERTION",
       homologyLength<=4 ~ paste0(homologyLength,"bp_homology"),
       homologyLength>=5 & homologyLength<15 ~ "5-15bp_homology",
