@@ -939,8 +939,8 @@ server <- function(input, output, session) {
                        class = "display nowrap",
                        options = list(
                          pageLength = 10,
-                         lengthMenu = list( c(10,25, -1) # declare values
-                                            , c(10,25, "All")), # declare titles
+                         lengthMenu = list( c(10,25,50,100, 1000 -1) # declare values
+                                            , c(10,25,50,100, 1000, "All")), # declare titles
                          scrollX = TRUE,  
                          scrollY = TRUE,
                          autoWidth = TRUE,
