@@ -119,7 +119,7 @@ if(!require(heatmaply)){
 ## really do not add to github!
 user_base <- tibble::tibble(
   user = c("tijsterman"),
-  password = sapply(c("######"), sodium::password_store),
+  password = sapply(c("1r151aRoMarcel"), sodium::password_store),
   permissions = c("standard"),
   name = c("Tijsterman Music")
 )
@@ -939,8 +939,8 @@ server <- function(input, output, session) {
                        class = "display nowrap",
                        options = list(
                          pageLength = 10,
-                         lengthMenu = list( c(10,25,50,100, 1000, -1) # declare values
-                                            , c(10,25,50,100, 1000, "All")), # declare titles
+                         lengthMenu = list( c(10,25,50,100, 1000, 5000, -1) # declare values
+                                            , c(10,25,50,100, 1000, 5000, "All")), # declare titles
                          scrollX = TRUE,  
                          scrollY = TRUE,
                          autoWidth = TRUE,

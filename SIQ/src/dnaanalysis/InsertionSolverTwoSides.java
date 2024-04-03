@@ -221,6 +221,22 @@ public class InsertionSolverTwoSides {
 			//System.out.println(lengthLCSLeft);
 			//System.out.println(lengthLCSRight);
 			if(!foundtDNA && Math.max(lengthLCSLeft,lengthLCSRCLeft) == Math.max(lengthLCSRight, lengthLCSRCRight)){
+				//BUG: position was then taken from the closest, but that was not necessarily the longest
+				//solution: reset positions of smallest
+				if(lengthLCSLeft > lengthLCSRCLeft) {
+					posLeftRC = Integer.MAX_VALUE;
+				}
+				else if(lengthLCSRCLeft >  lengthLCSLeft) {
+					posLeft = Integer.MAX_VALUE;
+				}
+				//also reset right
+				if(lengthLCSRight > lengthLCSRCRight) {
+					posRightRC = Integer.MAX_VALUE;
+				}
+				else if(lengthLCSRCRight > lengthLCSRight) {
+					posRight = Integer.MAX_VALUE;
+				}
+				
 				//hack one of the two!
 				//left is closer or equal
 				//changed to absolute
