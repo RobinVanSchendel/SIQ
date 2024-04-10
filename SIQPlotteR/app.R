@@ -115,14 +115,7 @@ if(!require(heatmaply)){
   library(heatmaply)
 }
 
-# dataframe that holds usernames, passwords and other user data
-## really do not add to github!
-user_base <- tibble::tibble(
-  user = c("tijsterman"),
-  password = sapply(c("1r151aRoMarcel"), sodium::password_store),
-  permissions = c("standard"),
-  name = c("Tijsterman Music")
-)
+source("user_base.R")
 
 ##Music DB name
 dbname = "data/MBCrisprMBAgain_1_1.db"
