@@ -489,6 +489,13 @@ ui <- fluidPage(
       ),
       conditionalPanel(
         condition = "input.tabs == 'Table'",
+        radioButtons("tableFraction",
+                     "Set fraction of events:",
+                     c("Absolute","Relative"),
+                     inline = TRUE),
+        checkboxInput("tableReference",
+                      "Add Reference to table",
+                      value = F),
         pickerInput(
           inputId = "tableColumn", 
           label = "Show columns:",
@@ -915,6 +922,17 @@ server <- function(input, output, session) {
     
     el = el |>
       select_at(input$tableColumn)
+    
+    ##remove the Reference?
+    if(!input$tableReference){
+      el = el |> filter(Type != "Reference")
+    }
+    
+    ##display the data as absolute or as fraction
+    if(input$tableFraction == "Relative"){
+      el = el |> group_by(Subject, Alias) |>
+        mutate(fraction = fraction/sum(fraction))
+    }
     
     ##added a safety for the colnames to be present
     if(input$alleleDecimalsTable != -1 & "fraction" %in% colnames(el)){
