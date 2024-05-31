@@ -4155,6 +4155,8 @@ server <- function(input, output, session) {
     
     test$mut = test$wt/test$n
     
+    test$Alias = factor(test$Alias, levels = input$multiGroupOrder)
+    
     plot <- ggplot(test, aes(x=Alias,y=mut)) + geom_bar(stat = "identity") +
       theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
             panel.grid.minor = element_blank(), panel.background = element_blank(),  legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
