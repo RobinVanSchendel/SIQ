@@ -116,7 +116,7 @@ public class SequenceController {
 			}
 			File stats = new File(output.getAbsoluteFile()+"_stats.txt");
 			File topStats = new File(output.getAbsoluteFile()+"_top_stats.txt");
-			sft = new SequenceFileThread(seqs, true, subjectObject, output, stats, options.getMaxError(), hmAdditional,topStats, false);
+			sft = new SequenceFileThread(seqs, true, subjectObject, output, stats, options.getMaxError(), hmAdditional,topStats, false, true, false);
 			sft.setMinimalCount(options.getMinNumber());
 			sft.setCollapseStartEnd(includeStartEnd);
 			sft.setMaximumReads(options.getMaxReads());
