@@ -43,28 +43,14 @@ public class SequenceControllerThread implements Runnable{
 	private Vector<NGS> v;
 	private File excelFile;
 	private File tsvFile;
-	private boolean remerge;
 	private NGSTableModel m;
 	
-	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, GUI GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue, boolean remerge) {
+	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, GUI GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue, boolean remerge, boolean delinsFilter, boolean longread) {
 		this.GUI = GUI;
 		this.v = v;
 		this.m = m;
 		readyToRun = true;
 		this.cpus = cpus;
-		this.remerge = remerge;
-		
-		//this can als be a user defined maximum
-		//now it is
-		/*
-		int cores = Runtime.getRuntime().availableProcessors();
-		if(v.size()<=cores) {
-			this.cpus = v.size();
-		}
-		else {
-			this.cpus = cores;
-		}
-		*/
 		
 		//Thread stuff
 		System.out.println("Gonna start "+cpus+" cpus");
@@ -76,7 +62,7 @@ public class SequenceControllerThread implements Runnable{
 			cpusForAssembly = cpus/v.size();
 		}
 		//HACK, remove later
-		String searchAdditional = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104722\\Refs\\p42_mmHPRTex3-PacBio-amplicon_references.txt";
+		String searchAdditional = "blabla.txt";
 		BufferedReader is2;
 		HashMap<String, String> hmAdditional = new HashMap<String, String>();
 		try {
@@ -109,28 +95,13 @@ public class SequenceControllerThread implements Runnable{
 			//should we get the assembled
 			if(n.assembledOK()) {
 				System.out.println("Starting assembled");
-				sft = new SequenceFileThread(n.getAssembledFile(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), hmAdditional, n.getOutputTopStats(), remerge);
+				sft = new SequenceFileThread(n.getAssembledFile(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), hmAdditional, n.getOutputTopStats(), remerge, delinsFilter, longread);
 			}
 			else {
 				this.assembleRequired = true;
 				System.out.println("Starting assembled derived");
-				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), hmAdditional, n.getOutputTopStats(), remerge);
+				sft = new SequenceFileThread(n.getAssembledFileDerived(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), hmAdditional, n.getOutputTopStats(), remerge, delinsFilter, longread);
 			}
-			//leave out for now
-			/*
-			if(n.unAssembledFOK()) {
-				sft.setFileF(n.getUnassembledFileF());
-			}
-			else {
-				sft.setFileF(n.getUnassembledFFileDerived());
-			}
-			if(n.unAssembledROK()) {
-				sft.setFileR(n.getUnassembledFileR());
-			}
-			else {
-				sft.setFileR(n.getUnassembledRFileDerived());
-			}
-			*/
 			System.out.println("Setting minSupport "+minSupport);
 			System.out.println("Setting setMaximumReads "+maxReads);
 			
