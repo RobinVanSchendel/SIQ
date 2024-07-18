@@ -1,11 +1,8 @@
 package main;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,14 +10,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPOutputStream;
 
 import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
 import org.jcvi.jillion.core.util.iter.StreamingIterator;
 import org.jcvi.jillion.trace.fastq.FastqDataStore;
 import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
-import org.jcvi.jillion.trace.fastq.FastqFileReader;
 import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 import org.jcvi.jillion.trace.fastq.FastqWriter;
@@ -32,8 +27,8 @@ public class ExtractReads {
 
 	public static void main(String[] args) {
 		
-		File dir = new File("E:\\temp\\GenomeScan104596\\JV_old_new\\");
-		String dirOutStr = "E:\\temp\\GenomeScan104596\\JV_old_new\\out";
+		File dir = new File("E:\\temp\\GenomeScan104896\\");
+		String dirOutStr = "E:\\temp\\GenomeScan104896\\";
 		File dirOut = new File(dirOutStr);
 		Path path = Paths.get(dirOutStr);
 		try {
@@ -287,13 +282,13 @@ public class ExtractReads {
 		ArrayList<File> al = new ArrayList<File>();
 		if(dir.isDirectory()) {
 			for(File R1: dir.listFiles()) {
-				if(R1.getName().endsWith(".fastq")) {
+				if(R1.getName().endsWith(".fastq")||R1.getName().endsWith(".fastq.gz")) {
 					al.add(R1);
 				}
 			}
 		}
 		else {
-			if(dir.getName().endsWith(".fastq")) {
+			if(dir.getName().endsWith(".fastq")|| dir.getName().endsWith(".fastq.gz")) {
 				al.add(dir);
 			}
 		}

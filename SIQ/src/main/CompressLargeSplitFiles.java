@@ -2,7 +2,6 @@ package main;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +16,8 @@ public class CompressLargeSplitFiles {
 
 	public static void main(String[] args) {
 		ArrayList<File> files = new ArrayList<File>();
-		File tempFile = new File("E:\\Joost_Repair_Seq\\outSlurm\\");
+		//File tempFile = new File("E:\\Joost_Repair_Seq\\outSlurm\\");
+		File tempFile = new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Joost_Repair_Seq_Screen_Liu_Adamson\\dsbs\\fullFiles");
 		if(tempFile.isDirectory()) {
 			for(File file: tempFile.listFiles()) {
 				if(!file.getName().contains("compressed") && !file.getName().contains("stats")) {

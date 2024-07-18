@@ -31,15 +31,17 @@ public class TestSingleSequence {
 		
 		//FILL IN
 		
-		String refFile = "E:\\temp\\PPO_RBrev_HO.fa";
+		String refFile = "Z:\\Marco\\Data\\WRN\\Miseq\\p406-Hprt.fa";
+		//String refFile = "Z:\\Mammalian\\Sequence Analyzer\\reference sequences NGS\\mmHPRT_o1067-o1068_Amplicon.txt"; 
 		//String seqS = "gctgttgctcgtatttcttcaggaactatctacagctcctcactctttccaaatcgcgcaccgcccggaagaattttgctgttgaactacattggcgggtctacaaacaccggaattctgtccaaggtaaaaaacagcaaacactggtaccacatctttattcaaccaagtaaacctaagaactg";
-		String seqS = "CTGAATGGCGAATGAGCTTGAGCTTGGATCAGATTGTCGTTTCCCGCCTTCAGTTTGCGATCGCGTAGTTCAACAGCAAAATTCTTCCGGGCGGTGCGCGATTTGGAAAGAGTGAGGAGCTGTAGATAGTTCCTGAAGAAATACGAGCAACAGC";
-		String left = "AATAAACTATCAGTGTTTGA";
-		String right = "ATGTAGTTCAACAGCAAAAT";
-		String leftPrimer = "CTGAATGGCGAATGAGCTTG";
-		String rightPrimer = "GCTGTTGCTCGTATTTCTTC";
+		String seqS = "AAGTTCTTTGCTGACCTGCTGGATTACATTAAAGCACTGAATAGAAATAGTGATAGATCCATTCCTATGACTGTAGATTTTATCAGACTGAAGAGCTACTGTGTAAGTATAATTAACTTATAATTAAAAAAATAGGGCCATTCTAGTTTTATCTATATTTTTTTTAAACTTGTGCAAACTATGCTACAT"; 
+		String left = "AAATAGTGATAGATCCATTC";
+		String right = "CTATGACTGTAGATTTTATC";
+		String leftPrimer = "AAGTTCTTTGCTGACCTGCTG"; //"CTGAATGGCGAATGAGCTTG";
+		String rightPrimer = "ATGTAGCATAGTTTGCACAAGTT" + 
+				"";//"GCTGTTGCTCGTATTTCTTC";
 		
-		File hdr = null; //new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\PPO_HDR.txt");
+		File hdr = null; //new File("C:\\Temp\\MBSeqData\\MB_hdr.txt"); //new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\PPO_HDR.txt");
 		RichSequence hdrSeq = null;
 		//String left = null;
 		//String right = null;
@@ -94,7 +96,9 @@ public class TestSingleSequence {
 				subjectObject.setLeftPrimer(leftPrimer);
 				subjectObject.setRightPrimer(rightPrimer);
 			}
-			subjectObject.setHDR(hdrSeq);
+			if(hdrSeq != null) {
+				subjectObject.setHDR(hdrSeq);
+			}
 			
 			CompareSequence kmerWith = new CompareSequence(subjectObject,seqS.toUpperCase(),null, null, true, "");
 			
@@ -104,7 +108,7 @@ public class TestSingleSequence {
 			//kmerWith.maskSequenceToHighQualityRemove();
 			
 			kmerWith.determineFlankPositions(false);
-			String outputKMER = kmerWith.toStringOneLine();
+			String outputKMER = kmerWith.toStringOneLine("dum");
 			System.out.println(outputKMER);
 			
 			/*

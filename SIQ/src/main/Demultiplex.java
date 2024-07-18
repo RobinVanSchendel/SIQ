@@ -1,23 +1,18 @@
 package main;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPOutputStream;
 
 import org.jcvi.jillion.core.datastore.DataStoreProviderHint;
 import org.jcvi.jillion.core.util.iter.StreamingIterator;
 import org.jcvi.jillion.trace.fastq.FastqDataStore;
 import org.jcvi.jillion.trace.fastq.FastqFileDataStoreBuilder;
-import org.jcvi.jillion.trace.fastq.FastqFileReader;
 import org.jcvi.jillion.trace.fastq.FastqQualityCodec;
 import org.jcvi.jillion.trace.fastq.FastqRecord;
 import org.jcvi.jillion.trace.fastq.FastqWriter;
@@ -25,11 +20,16 @@ import org.jcvi.jillion.trace.fastq.FastqWriterBuilder;
 
 public class Demultiplex {
 	public static String unmatchedTriplet = "XXX";
-
+	
 	public static void main(String[] args) {
 		
-		// TODO Auto-generated method stub
+		
+		File oligoInfo = new File("Joost_Parts_Original.txt");
+		
+		
 		File dir = new File("E:\\temp\\Ramsden\\\\");
+		
+		
 		ArrayList<PairedEnd> files = getPairedEnd(dir);
 		try {
 			for(PairedEnd pe: files) {
