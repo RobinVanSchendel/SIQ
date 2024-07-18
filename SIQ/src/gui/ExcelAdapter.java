@@ -35,13 +35,17 @@ public ExcelAdapter(JTable myJTable)
    {
       jTable1 = myJTable;
       KeyStroke copy = KeyStroke.getKeyStroke(KeyEvent.VK_C,ActionEvent.CTRL_MASK,false);
+      KeyStroke copyApple = KeyStroke.getKeyStroke(KeyEvent.VK_C,ActionEvent.META_MASK,false);
       // Identifying the copy KeyStroke user can modify this
       // to copy on some other Key combination.
       KeyStroke paste = KeyStroke.getKeyStroke(KeyEvent.VK_V,ActionEvent.CTRL_MASK,false);
+      KeyStroke pasteApple = KeyStroke.getKeyStroke(KeyEvent.VK_V,ActionEvent.META_MASK,false);
       // Identifying the Paste KeyStroke user can modify this
       //to copy on some other Key combination.
 jTable1.registerKeyboardAction(this,"Copy",copy,JComponent.WHEN_FOCUSED);
+jTable1.registerKeyboardAction(this,"Copy",copyApple,JComponent.WHEN_FOCUSED);
 jTable1.registerKeyboardAction(this,"Paste",paste,JComponent.WHEN_FOCUSED);
+jTable1.registerKeyboardAction(this,"Paste",pasteApple,JComponent.WHEN_FOCUSED);
       system = Toolkit.getDefaultToolkit().getSystemClipboard();
    }
    /**
