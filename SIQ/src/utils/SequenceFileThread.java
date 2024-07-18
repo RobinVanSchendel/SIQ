@@ -63,10 +63,10 @@ public class SequenceFileThread extends Thread {
 	private Semaphore semaphore;
 	private int tinsDistValue = -1;
 	private boolean overwriteMerged = false;
+	private boolean delinsFilter = true; //default true
+	private boolean longReads = false; //default false
 	
-	//private boolean takeRC = false;
-	
-	public SequenceFileThread(File f, boolean writeToOutput, Subject subject, File output, File statsOutput, double maxError, HashMap<String, String> additional, File outputTopStats, boolean overwriteMerge){
+	public SequenceFileThread(File f, boolean writeToOutput, Subject subject, File output, File statsOutput, double maxError, HashMap<String, String> additional, File outputTopStats, boolean overwriteMerge, boolean delinsFilter, boolean longread){
 		this.f = f;
 		this.writeToOutput = writeToOutput;
 		this.subject = subject;
@@ -76,6 +76,8 @@ public class SequenceFileThread extends Thread {
 		this.maxError = maxError;
 		this.hmAdditional = additional;
 		this.overwriteMerged = overwriteMerge;
+		this.delinsFilter = delinsFilter;
+		this.longReads = longread;
 	}
 	private void setCheckReverseOverwrite() {
 		checkReverseOverwrite = true;
@@ -294,7 +296,9 @@ public class SequenceFileThread extends Thread {
 				if(!reverseDecisionMade.get()) {
 					checkReverse = true;
 					//check if these are PacBio reads
-					if(id.endsWith("ccs")) {
+					//or use the checkbox from the GUI panel
+					//not ideal solution as reads can also be mixed
+					if(id.endsWith("ccs") || this.longReads) {
 						subject.setPacBio(true);
 						this.setCheckReverseOverwrite();
 						setAllowJump(true);
@@ -308,6 +312,7 @@ public class SequenceFileThread extends Thread {
 					checkReverse = true;
 				}
 				CompareSequence cs = new CompareSequence(subject, seq, quals, f.getParentFile().getName(), checkReverse, id);
+				cs.setDelinsFilter(this.delinsFilter);
 				//set barcode directly
 				if(id.contains(" BC:")) {
 					int startBC = id.indexOf(" BC:")+4;
