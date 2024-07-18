@@ -40,7 +40,7 @@ public class CompareSequence {
 	private ArrayList<Blast> blasts;
 	private boolean entireQueryUsed = false;
 	
-	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR, TINS, HDR1MM, DELINS_SNV};
+	public enum Type {WT, SNV, DELETION, DELINS, INSERTION, UNKNOWN, TANDEMDUPLICATION, TANDEMDUPLICATION_COMPOUND, TANDEMDUPLICATION_MULTI, HDR, TINS, HDR1MM, DELINS_SNV, DELINS_DUAL};
 	public String dir;
 	private Vector<Sequence> additionalSearchSequence;
 	private boolean possibleDouble = false;
@@ -62,6 +62,10 @@ public class CompareSequence {
 	private boolean isSplit = false;
 	private int tinsDistValue = -1;
 	private String barcode;
+	//this variable contains information about the uncertainty of positioning the event
+	private int movedPosition = 0;
+	private boolean delinsFilter = true; //defaults to true
+	private boolean isDELINS_Dual = false;
 	
 	
 	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName) {
@@ -332,6 +336,8 @@ public class CompareSequence {
 			leftFlank.addCharEnd(del.charAt(0));
 			del = del.substring(1)+rightFlank.charAt(0);
 			rightFlank = rightFlank.substring(1);
+			//needed here
+			movedPosition++;
 		}
 		//bug, insert is not placed as far as possible to the left
 		if(rightFlank != null) {
@@ -339,6 +345,7 @@ public class CompareSequence {
 				leftFlank.addCharEnd(insert.charAt(0));
 				insert = insert.substring(1)+rightFlank.charAt(0);
 				rightFlank = rightFlank.substring(1);
+				movedPosition++;
 			}
 		}
 		
@@ -347,6 +354,7 @@ public class CompareSequence {
 		//TODO: I became unsure if this is really a good idea.
 		//2020422 don't do this
 		//now that we also allow HDR events which might me caused by two SNV close by we need to make sure that does are still in
+		//now there is a separate option for this one
 		int maxLengthMatch = 10;
 		if(del!= null && insert != null && del.length()>maxLengthMatch && insert.length()>maxLengthMatch) {
 			String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
@@ -357,7 +365,12 @@ public class CompareSequence {
 				//unless we have this thing multiple times
 				//which might not always be useful
 				if(this.subjectObject.isStringUnique(insertDelCommon)) {
-					this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused a DELINS which is probably incorrect.");
+					if(this.delinsFilter) {
+						this.setRemarks("Probably there is a mismatch/gap somewhere in the flank, which caused a DELINS which is probably incorrect.");
+					}
+					else {
+						this.isDELINS_Dual = true;
+					}
 				}
 			}
 		}
@@ -511,6 +524,7 @@ public class CompareSequence {
 		ret.append((this.getDelEnd()-subjectObject.getStartOfRightFlank())).append(s);
 		ret.append((this.getDelStart()-subjectObject.getEndOfLeftFlank())).append(s);
 		ret.append(getRightFlankRelativePos()).append(s);
+		ret.append(getMovedPosition()).append(s);
 		ret.append(getColorHomology()).append(s);
 		ret.append(homology).append(s);
 		ret.append(homologyLength).append(s);
@@ -545,6 +559,7 @@ public class CompareSequence {
 			int isEndPosRel = isEndPos-subjectObject.getEndOfLeftFlank();
 			ret.append(is.getLargestMatch()).append(s);
 			ret.append(is.getLargestMatchString()).append(s);
+			ret.append(is.getSecondLargestMatch()).append(s);
 			ret.append(is.getSubS()).append(s);
 			ret.append(is.getSubS2()).append(s);
 			ret.append(is.getType()).append(s);
@@ -559,6 +574,19 @@ public class CompareSequence {
 			ret.append(isEndPosRel);
 		}
 		return ret.toString();
+	}
+	/**function that returns the freedom in the position
+	 * e.g. microhomology and/or insertion at multiple possible positions
+	 * the need for this information is that when filtering is applied
+	 * events that are placed away from the break site can now be included
+	 * @return
+	 */
+	private int getMovedPosition() {
+		//for insertions there are
+		if(this.movedPosition>0) {
+			return this.movedPosition+1;
+		}
+		return 0;
 	}
 	private String getSNVMutation() {
 		if(this.getType()==Type.SNV) {
@@ -836,10 +864,13 @@ public class CompareSequence {
 			else if(mismatches == 1) {
 				return Type.HDR1MM;
 			}
-			//disabled for now
-			//else if(isDELINS_SNV()) {
-			//	return Type.DELINS_SNV;
-			//}
+			//now enabled
+			else if(isDELINS_SNV()) {
+				return Type.DELINS_SNV;
+			}
+			else if(isDELINS_Dual()) {
+				return Type.DELINS_DUAL;
+			}
 			else if(this.isFlankInsert) {
 				return Type.TINS;
 			}
@@ -848,6 +879,9 @@ public class CompareSequence {
 			}
 		}
 		return Type.UNKNOWN;
+	}
+	private boolean isDELINS_Dual() {
+		return this.isDELINS_Dual ;
 	}
 	/**Could a deletion + insertion also be explained by a SNV at the first or last position
 	 * of the deletion?
@@ -1015,11 +1049,11 @@ public class CompareSequence {
 	public static String getOneLineHeader() {
 		//return "Name\tSubject\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\thomology\thomologyLength\tdelSize\tinsSize\tLongestRevCompInsert\tRanges\tMasked\tRemarks";
 		String s = "\t";
-		String ret = "Barcode\tGene\tName\tSplit\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%"
+		String ret = "Barcode\tGene\tName\tSplit\tDir\tFile\tAlias\tgetIDPart\tpossibleDouble\tSubject\tgetSubjectComments\tRaw\tleftFlank\tdel\trightFlank\tinsertion\tdelStart\tdelEnd\tdelRelativeStart\tdelRelativeEnd\tdelRelativeStartRight\tdelRelativeEndRight\tdelRelativeStartTD\tdelRelativeEndTD\tmovedPosition\tgetHomologyColor\thomology\thomologyLength\thomologyMismatch10%\thomologyLengthMismatch10%"
 				+ "\thomologyMismatch10%ref\thomologyLengthMismatch10%ref"
 				+ "\tdelSize\tinsSize\tMod3\tSNVMutation\tType\tSecondaryType\tisFlankInsert\tRanges\tMasked\t"
 				+ "Remarks\tReversed\tClassName"+s+"InZone"+s+"leftFlankLength"+s+"rightFlankLength"+s+"matchStart"+s+"matchEnd"+s+"jumpedLeft"+s+"jumpedRight"+s+"entireQueryUsed";
-		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s
+		ret+= s+"isGetLargestMatch"+s+"isGetLargestMatchString"+s+"getSecondLargestMatch"+s
 					+"isGetSubS"+s+"isGetSubS2"+s+"isGetType"+s+"isGetLengthS"+s+"isPosS"+s+"isFirstHit"+s+"getFirstPos"+s+"isStartPos"+s+"isEndPos"+s+"isStartPosRel"+s+"isEndPosRel";
 		return ret;
 	}
@@ -1074,7 +1108,6 @@ public class CompareSequence {
 				last = quals.getLength()-1;
 			}
 			last = j;
-			//System.out.println((j+1)+" "+this.query.seqString().charAt((int)j)+" "+quals.get(j).getErrorProbability());
 		}
 		if(first >= 0 && (last - first) >= minimalRangeSize){
 			//System.out.println("range is "+first+"-"+last +"("+(last-first+1)+")");
@@ -1149,8 +1182,6 @@ public class CompareSequence {
 						if(left!=null) {
 							right = subjectObject.getKmerl().getMatchRight(sub, left.getSubjectEnd(), minimumSizeWithLeftRight, true, -1);
 						}
-						//System.out.println(left);
-						//System.out.println(right);
 						if(left!=null && right!=null) {
 							int tempLength = left.getString().length()+right.getString().length();
 							if(tempLength>largestRangeLength) {
@@ -1582,9 +1613,11 @@ public class CompareSequence {
 	//very dangerous, only use if you are 100% sure
 	public void resetRemarks() {
 		remarks = new StringBuffer();
-		
 	}
 	public String getBarcode() {
 		return this.barcode;
+	}
+	public void setDelinsFilter(boolean delinsFilter) {
+		this.delinsFilter = delinsFilter;
 	}
 }
