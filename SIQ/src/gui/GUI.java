@@ -145,6 +145,7 @@ public class GUI implements ActionListener, MouseListener {
 	private JButton stop;
 	private SequenceControllerThread sct;
 	private JButton dirChooserPanel;
+	private JCheckBox longReadSeq;
 	
 	
 	@SuppressWarnings("serial")
@@ -420,10 +421,11 @@ public class GUI implements ActionListener, MouseListener {
 			double maxErrorDouble = ((Double)baseError.getValue()).doubleValue();
 			int cores = ((Integer)cpus.getValue()).intValue();
 			int tinsDistValue = ((Integer)tinsDist.getValue()).intValue();
+			boolean longRead = longReadSeq.isSelected();
 			
 			boolean isOK = SequenceControllerThread.isOK(v);
 			if(isOK) {
-				JPanel panel = new JPanel(new GridLayout(4,2));
+				JPanel panel = new JPanel(new GridLayout(5,2));
 				
 				String dirString = System.getProperty("user.dir");
 				if(pm.getProperty("lastDir") != null) {
@@ -442,6 +444,8 @@ public class GUI implements ActionListener, MouseListener {
 				JTextField excelName = new JTextField(strDate+"_SIQ.xlsx");
 				JCheckBox remerge = new JCheckBox();
 				remerge.setSelected(false);
+				JCheckBox delinsFilter = new JCheckBox();
+				delinsFilter.setSelected(true);
 				panel.add(new JLabel("Select output directory"));
 				panel.add(dirChooserPanel);
 				panel.add(new JLabel("Set output prefix:"));
@@ -450,6 +454,8 @@ public class GUI implements ActionListener, MouseListener {
 				panel.add(excelName);
 				panel.add(new JLabel("Remerge files:"));
 				panel.add(remerge);
+				panel.add(new JLabel("Filter DELINS caused by multiple events:"));
+				panel.add(delinsFilter);
 				int result = JOptionPane.showConfirmDialog(guiFrame, panel);
 				if(result == JOptionPane.OK_OPTION) {
 					File outputDir = new File(dirChooserPanel.getText()+File.separator+name.getText());
@@ -462,7 +468,7 @@ public class GUI implements ActionListener, MouseListener {
 					for(NGS ngs: v) {
 						ngs.setOutputDir(outputDir);
 					}
-					sct.setNGSfromGUI(v, ngsModel, this, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"), cores, tinsDistValue, remerge.isSelected());
+					sct.setNGSfromGUI(v, ngsModel, this, maxReadsInt,minSupportInt,maxErrorDouble, pm.getProperty("flash"), cores, tinsDistValue, remerge.isSelected(), delinsFilter.isSelected(), longRead);
 					
 					//check if requirements are met
 					if(sct.isAssemblyRequired()) {
@@ -1627,6 +1633,13 @@ public class GUI implements ActionListener, MouseListener {
         tinsDist.setPreferredSize(new Dimension(80, 16));
         placeComp(tinsDist,guiFrame,8,2,1,1);
         
+        //long reads
+        JLabel longRead = new JLabel("Enable long-read analysis (PacBio/ONT):");
+		longRead.setToolTipText("Less strict mapping is applied and reads will be mapped in both forward and reverse orientation");
+		placeComp(longRead,guiFrame,7,3,1,1);
+		longReadSeq = new JCheckBox();
+		longReadSeq.setPreferredSize(new Dimension(80, 16));
+		placeComp(longReadSeq,guiFrame,8,3,1,1);
         
         //maxReadsL.setBounds(510, 22, 120, 25);
         //guiFrame.add(maxReadsL,c);
@@ -1865,6 +1878,33 @@ public class GUI implements ActionListener, MouseListener {
 			}
 		}
 		v.sort(new AlphanumComparator());
+		//check for assembled files as well
+		boolean hasAssembled = false;
+		String assembledString = "assembled";
+		for(File f: v) {
+			if(f.getName().contains(assembledString)) {
+				hasAssembled = true;
+			}
+		}
+		//provide the possibility to exclude those
+		if(hasAssembled) {
+			int result = JOptionPane.showConfirmDialog(this.guiFrame,"The directory contains assembled files. Do you want to exclude assembled files?","Assembled file(s) found",JOptionPane.YES_NO_CANCEL_OPTION);
+			if(result == JOptionPane.YES_OPTION) {
+				Vector<File> w = new Vector<File>();
+				for(File f: v) {
+					if(!f.getName().contains(assembledString)) {
+						w.add(f);
+					}
+				}
+				//overwrite the Vector
+				v = w;
+			}
+			else if(result == JOptionPane.CANCEL_OPTION) {
+				return;
+			}
+		}
+		
+		
 		Vector<NGSPair> pairs = NGSPair.obtainPairs(v);
 		if(pairs.size()>0) {
 			for(NGSPair ngsPair: pairs) {
