@@ -1,13 +1,8 @@
 package main;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Scanner;
-
-import org.jcvi.jillion.core.qual.QualitySequenceBuilder;
-import org.jcvi.jillion.core.residue.nt.NucleotideSequenceBuilder;
-import org.jcvi.jillion.trace.fastq.FastqRecord;
 
 public class TriplePrimerCombinations {
 	private ArrayList<TriplePrimer> al = new ArrayList<TriplePrimer>();
@@ -25,6 +20,7 @@ public class TriplePrimerCombinations {
 				TriplePrimer tp = new TriplePrimer(name, R1Barcode, R1Primer, R2Barcode, R2Primer);
 				al.add(tp);
 			}
+			s.close();
 		}
 		catch(Exception e) {
 			// TODO Auto-generated catch block
