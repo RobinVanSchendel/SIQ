@@ -151,7 +151,7 @@ public class TestSingleFile {
 					//cs.setAndDetermineCorrectRange(0.05);
 					//cs.maskSequenceToHighQualityRemove();
 					cs.determineFlankPositions(false);
-					String outputKMER = cs.toStringOneLine();
+					String outputKMER = cs.toStringOneLine("dummy");
 					System.out.println(outputKMER);
 				}
 			}

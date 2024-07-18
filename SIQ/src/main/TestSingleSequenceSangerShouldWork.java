@@ -103,7 +103,7 @@ public class TestSingleSequenceSangerShouldWork {
 			//kmerWith.setAndDetermineCorrectRange(0.05);
 			//kmerWith.maskSequenceToHighQualityRemove();
 			kmerWith.determineFlankPositions(false);
-			String outputKMER = kmerWith.toStringOneLine();
+			String outputKMER = kmerWith.toStringOneLine("dummy");
 			System.out.println(outputKMER);
 			
 			/*
