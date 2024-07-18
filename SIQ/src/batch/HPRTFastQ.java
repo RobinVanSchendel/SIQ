@@ -57,8 +57,7 @@ public class HPRTFastQ {
 				e.printStackTrace();
 			}
 			PropertiesManager pm = new PropertiesManager();
-			GUI g = new GUI(SV_Analyzer.VERSION, pm);
-			g.setMaxError(options.getMaxError());
+			new GUI(SV_Analyzer.VERSION, pm);
 		}
 		else {
 			System.out.println(options.printParameters());

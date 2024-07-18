@@ -30,7 +30,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//extra parameters
 		String analyseDirName = null; //"XF1494";
 		//analyseDirName = "XF1488"; //"XF1494";
-		//analyseDirName = "XF1289";
+		analyseDirName = "XF1706";
 		boolean printNonCorrect = false; //false
 		boolean printXY = true;
 		boolean checkLeftRight = true;
@@ -76,7 +76,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		//do something
 		HashMap<String, ArrayList<CompareSequence>> hm = new HashMap<String,ArrayList<CompareSequence>>();
 		for(CompareSequence cs: al){
-			String str = cs.getSubject()+"|"+cs.getUniqueClass();
+			String str = cs.getSubject()+"|"+cs.getUniqueClass(null);
 			if(hm.containsKey(str)){
 				hm.get(str).add(cs);
 			}
@@ -135,7 +135,7 @@ public class PrimaseInitiationAnalysisOrderedDir {
 		}
 		System.out.println(CompareSequence.getOneLineHeader());
 		for(CompareSequence cs: al){
-			System.out.println(cs.toStringOneLine());
+			System.out.println(cs.toStringOneLine("dummy"));
 		}
 		if(printXY){
 			sq.setSequences(al);
