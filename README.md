@@ -34,9 +34,8 @@ NOTE: Most operating systems such as MacOS and Windows distrust any file coming 
 when SIQ is started you should see the following screen:
 
 <p align="center"  width="100%">
-  <img width="40%" src="https://user-images.githubusercontent.com/46730491/178683885-6af77b2c-864d-4264-b5c6-22d6dd75929d.jpg">
- </p>
-
+  <img width="60%" src="https://github.com/user-attachments/assets/1a0f4954-72f2-4ab7-8d47-8a44fbaf04ad"> 
+</p>
 SIQ can be used to analyze the following type of data:
 
 * Sanger sequences (.ab1 files) (<b>Note: only Sanger sequences containing a single mutation can be analyzed</b>) 
