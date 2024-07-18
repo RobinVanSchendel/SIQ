@@ -41,6 +41,7 @@ SIQ can be used to analyze the following type of data:
 * Sanger sequences (.ab1 files) (<b>Note: only Sanger sequences containing a single mutation can be analyzed</b>) 
 * Illumina single and paired-end sequence data (.fastq or .fastq.gz files)
 * PacBio data (.fastq or .fastq.gz files)
+* ONT data (.fastq or .fastq.gz files) Note: be sure to check the option 'Enable long-read analysis (PacBio/ONT)'
 
 When setting up your targeted sequencing experiments you generally use two primers to amplify your locus of interest. Additionally, you (optionally) have expected target sites for your experiments. This is for example the case if you use CRISPR\Cas9, Cas13, I-SceI or any other enzyme to target the DNA. We have also used SIQ to analyze different sites, such as transposon sites, sites of G-quadruplex sequences. SIQ uses these locations to 1) try to identify sequence alterations preferably at this location. 2) to ensure your PCR primers amplified from the expected location (see [Filters](#filters) below).
   
