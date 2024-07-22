@@ -1021,7 +1021,7 @@ server <- function(input, output, session) {
     
     
     if("Remarks" %in% colnames(el)){
-      el = el %>% filter(is.na(Remarks))
+      el = el %>% filter(is.na(Remarks) | Remarks == "NA")
     }
     el = el[el$Type!="",]
     el$Alias <- as.character(el$Alias)
@@ -3919,15 +3919,19 @@ server <- function(input, output, session) {
     ###only keep the important ones
     test2 = merge(el,hardcodedTypesDF(),by = "Type", all.x=T)
     
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "DELETION",paste(Text, delSize,"bp, hom:", paste0(homologyLength,"bp"), homology, ", pos:",delRelativeStart),Outcome))
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "DELETION" & homologyLength == 0,paste(Text, delSize, "bp, pos:",delRelativeStart),Outcome))
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "WT",paste(Text),Outcome))
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "INSERTION_1bp",paste(Text, insertion),Outcome))
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "INSERTION",paste(Text, insSize),Outcome))
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "SNV",paste(Text, del,">", insertion,"pos:",delRelativeStart),Outcome))
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "TINS" | Type == "DELINS",paste(Text, "del:" ,delSize,", ins:", insSize, ", pos:",delRelativeStart),Outcome))
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "DELINS" & insSize < 6,paste(Text, "del:" ,delSize,", ins:", insSize, " ,ins:",insertion, ", pos:",delRelativeStart),Outcome))
-    test2 = test2 %>% mutate(Outcome = ifelse(Type == "TANDEMDUPLICATION" | Type == "TANDEMDUPLICATION_COMPOUND",paste(Text, insSize, "bp, pos:",delRelativeStart),Outcome))
+    ##changed into case_when and added missing type
+    test2 = test2 %>% mutate(Outcome = case_when(
+      Type == "DELETION" & homologyLength == 0 ~ paste(Text, delSize, "bp, pos:",delRelativeStart),
+      Type == "DELETION" ~ paste(Text, delSize,"bp, hom:", paste0(homologyLength,"bp"), homology, ", pos:",delRelativeStart),
+      Type == "WT" | Type == "HDR" ~ paste(Text),
+      Type == "INSERTION_1bp" ~ paste(Text, insertion),
+      Type == "SNV" ~ paste(Text, del,">", insertion,"pos:",delRelativeStart),
+      Type == "DELINS" & insSize < 6 ~ paste(Text, "del:" ,delSize,", ins:", insSize, " ,ins:",insertion, ", pos:",delRelativeStart),
+      Type == "TINS" | Type == "DELINS" ~ paste(Text, "del:" ,delSize,", ins:", insSize, ", pos:",delRelativeStart),
+      Type == "TANDEMDUPLICATION" | Type == "TANDEMDUPLICATION_COMPOUND" ~ paste(Text, insSize, "bp, pos:",delRelativeStart),
+      Type == "HDR1MM" ~ paste(Text, insSize, "bp"),
+      TRUE ~ paste(Text,"pos:",delRelativeStart),
+    ))
     
     #this needs to be adapted based on user input
     if(input$alleleTopOutcomesChoice == "Total"){
