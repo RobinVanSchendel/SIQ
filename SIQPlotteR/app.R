@@ -2064,9 +2064,9 @@ server <- function(input, output, session) {
           as.data.frame()
         
         if(nrSubject == 1){
-          rownames(df) = df[[input$AliasColumn]]
+          rownames(df) = df[["Alias"]]
         } else{
-          rownames(df) = paste(df[["Subject"]],df[[input$AliasColumn]])
+          rownames(df) = paste(df[["Subject"]],df[["Alias"]])
         }
         #remove two columns
         df = df[,-1]
