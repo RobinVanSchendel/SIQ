@@ -3930,6 +3930,7 @@ server <- function(input, output, session) {
       Type == "TINS" | Type == "DELINS" ~ paste(Text, "del:" ,delSize,", ins:", insSize, ", pos:",delRelativeStart),
       Type == "TANDEMDUPLICATION" | Type == "TANDEMDUPLICATION_COMPOUND" ~ paste(Text, insSize, "bp, pos:",delRelativeStart),
       Type == "HDR1MM" ~ paste(Text, insSize, "bp"),
+      Type == "Reference" ~ Type,
       TRUE ~ paste(Text,"pos:",delRelativeStart),
     ))
     
