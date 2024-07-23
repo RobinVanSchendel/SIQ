@@ -4416,6 +4416,8 @@ server <- function(input, output, session) {
     print(paste("half: tornadoplot",end_time))
     
     ##pick up the Translocation color
+    ##first count if translocation is used
+    nrRowsWithTranslocation = newdata %>% filter(Translocation) %>% nrow()
     newdata = newdata %>%
       mutate(TranslocationColor = ifelse(Translocation, TranslocationColorReal, color))
     
@@ -4434,10 +4436,21 @@ server <- function(input, output, session) {
     }
     
     if(Type=="Regular"){
-      plot = plot +
-        geom_rect(aes(xmin=xmin, xmax=start.points+1, ymin=y.start, ymax=y.end, fill=color), alpha=1) + 
-        geom_rect(aes(xmin=end.points, xmax=xmax, ymin=y.start, ymax=y.end, fill=TranslocationColor), alpha=1)+
-        geom_rect(data = newdata %>% filter(typeOrig != "WT"), aes(xmin=start.points, xmax=end.points, ymin=y.start, ymax=y.end, fill=tdColor), alpha=1)
+      ##new style, fewer objects
+      if(nrRowsWithTranslocation == 0){
+        plot = plot +
+          geom_rect(aes(xmin=xmin, xmax=xmax, ymin=y.start, ymax=y.end, fill=color), alpha=1) + 
+          ##WT data should only show a block
+          geom_rect(data = newdata %>% filter(typeOrig != "WT"), aes(xmin=start.points, xmax=end.points, ymin=y.start, ymax=y.end, fill=tdColor), alpha=1)
+      }
+      ##old style
+      else{
+        plot = plot +
+          geom_rect(aes(xmin=xmin, xmax=start.points+1, ymin=y.start, ymax=y.end, fill=color), alpha=1) + 
+          geom_rect(aes(xmin=end.points, xmax=xmax, ymin=y.start, ymax=y.end, fill=TranslocationColor), alpha=1)+
+          ##WT data should only show a block
+          geom_rect(data = newdata %>% filter(typeOrig != "WT"), aes(xmin=start.points, xmax=end.points, ymin=y.start, ymax=y.end, fill=tdColor), alpha=1)
+      }
     }else if (Type == "Inverted"){
       plot = plot +
         geom_rect(aes(xmin=start.points, xmax=end.points+1, ymin=y.start, ymax=y.end, fill = color), alpha=1)
