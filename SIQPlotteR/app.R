@@ -4435,7 +4435,7 @@ server <- function(input, output, session) {
       plot = plot +
         geom_rect(aes(xmin=xmin, xmax=start.points+1, ymin=y.start, ymax=y.end, fill=color), alpha=1) + 
         geom_rect(aes(xmin=end.points, xmax=xmax, ymin=y.start, ymax=y.end, fill=TranslocationColor), alpha=1)+
-        geom_rect(aes(xmin=start.points, xmax=end.points, ymin=y.start, ymax=y.end, fill=tdColor), alpha=1)
+        geom_rect(data = newdata %>% filter(typeOrig != "WT"), aes(xmin=start.points, xmax=end.points, ymin=y.start, ymax=y.end, fill=tdColor), alpha=1)
     }else if (Type == "Inverted"){
       plot = plot +
         geom_rect(aes(xmin=start.points, xmax=end.points+1, ymin=y.start, ymax=y.end, fill = color), alpha=1)
