@@ -2597,7 +2597,7 @@ server <- function(input, output, session) {
   )
   
   output$export = downloadHandler(
-    filename = function() {"plotsTornado.pdf"},
+    filename = function() { paste0(format(Sys.time(), "%Y%m%d_%H%M%S_"), "plotsTornado.pdf")},
     content = function(file) {
       if(!is.null(plotsForDownload$tornados)){
         parts = plotsForDownload$tornados$data %>% select(Alias, Subject) %>% distinct() %>% nrow
@@ -4376,9 +4376,13 @@ server <- function(input, output, session) {
   ##tornado plot function
   tornadoplot <- function(newdata, sortType = "Start position", name = "", xmin=-Inf, xmax=Inf, Type = "Regular", ymax= 1)
   {
+    if(!is.null(newdata)){
+      newdata = newdata %>% filter(typeOrig != "Reference")
+    }
     if(is.null(newdata) || nrow(newdata) == 0){
       return()
     }
+    
     start_time = Sys.time()
     print("tornadoplot")
     
@@ -4411,8 +4415,6 @@ server <- function(input, output, session) {
     end_time = Sys.time()-start_time
     print(paste("half: tornadoplot",end_time))
     
-    
-
     ##pick up the Translocation color
     newdata = newdata %>%
       mutate(TranslocationColor = ifelse(Translocation, TranslocationColorReal, color))
