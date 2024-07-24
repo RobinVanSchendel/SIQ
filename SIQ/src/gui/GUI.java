@@ -1628,7 +1628,7 @@ public class GUI implements ActionListener, MouseListener {
         		+ "and -100 until 100 relative to the rightFlank<br>"
         		+ "Note that a smaller search space may increase the number of called TINS, but could also lead to TINS not being found away from the junctions</html>");
         placeComp(tins,guiFrame,7,2,1,1);
-        SpinnerModel model5 = new SpinnerNumberModel(100, 10, 1000, 1);
+        SpinnerModel model5 = new SpinnerNumberModel(100, 10, 10000, 1);
         tinsDist = new JSpinner(model5);
         tinsDist.setPreferredSize(new Dimension(80, 16));
         placeComp(tinsDist,guiFrame,8,2,1,1);
