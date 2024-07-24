@@ -26,7 +26,7 @@ public class Subject {
 	private CompareSequence hdrCS;
 	private KMERLocation kmerl;
 	//for testing it is now true
-	private boolean isPacBio = false;
+	private boolean isLongRead = false;
 	private String leftPrimerMatchPacBio;
 	private String rightPrimerMatchPacBio;
 	
@@ -523,11 +523,11 @@ public class Subject {
 		}
 		return true;
 	}
-	public boolean isPacBio() {
-		return isPacBio ;
+	public boolean isLongRead() {
+		return isLongRead ;
 	}
-	public void setPacBio(boolean pacbio) {
-		this.isPacBio = pacbio;
+	public void setLongRead(boolean longread) {
+		this.isLongRead = longread;
 	}
 	public String printPrimers() {
 		String ret = "";

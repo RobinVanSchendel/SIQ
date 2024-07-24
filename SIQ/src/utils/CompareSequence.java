@@ -356,7 +356,7 @@ public class CompareSequence {
 		//now that we also allow HDR events which might me caused by two SNV close by we need to make sure that does are still in
 		//now there is a separate option for this one
 		int maxLengthMatch = 10;
-		if(subjectObject.isPacBio()) {
+		if(subjectObject.isLongRead()) {
 			maxLengthMatch = maxLengthMatch + (int)Math.floor(del.length()/1000);
 		}
 		if(del!= null && insert != null && del.length()>maxLengthMatch && insert.length()>maxLengthMatch) {
@@ -1179,7 +1179,7 @@ public class CompareSequence {
 					//System.out.println(r);
 					String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
 					//maybe also do this for non-PacBio?
-					if(subjectObject.isPacBio()) {
+					if(subjectObject.isLongRead()) {
 						Left left  = subjectObject.getKmerl().getMatchLeft(sub, subjectObject.getStartOfRightFlank(), true, subjectObject.getEndOfLeftFlank(), -1);
 						LCS right = null;
 						if(left!=null) {

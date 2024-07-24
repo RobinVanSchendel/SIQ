@@ -159,7 +159,7 @@ public class SequenceFileThread extends Thread {
 		
 		//for PacBio data
 		//would be better to know that this is PacBio data
-		if(subject.isPacBio()) {
+		if(subject.isLongRead()) {
 		//if(!subject.hasPrimers()) {
 			this.setCheckReverseOverwrite();
 			//this might cause issues
@@ -299,7 +299,7 @@ public class SequenceFileThread extends Thread {
 					//or use the checkbox from the GUI panel
 					//not ideal solution as reads can also be mixed
 					if(id.endsWith("ccs") || this.longReads) {
-						subject.setPacBio(true);
+						subject.setLongRead(true);
 						this.setCheckReverseOverwrite();
 						setAllowJump(true);
 					}
@@ -326,7 +326,7 @@ public class SequenceFileThread extends Thread {
 				}
 				cs.setAndDetermineCorrectRange(maxError);
 				//if there are primers specified it makes sense to call this
-				if(!subject.isPacBio() && subject.hasPrimers()) {
+				if(!subject.isLongRead() && subject.hasPrimers()) {
 					cs.maskSequenceToHighQualityRemoveSingleRange();
 				}
 				//PacBio data for instance should keep the best sequence
@@ -367,7 +367,7 @@ public class SequenceFileThread extends Thread {
 						cs.setCurrentAlias(alias, f.getName());
 						cs.determineFlankPositions(true);
 						//processFlank.set(System.nanoTime()-tempProcessFlank.get()+processFlank.get());
-						if(subject.isPacBio() && subject.hasPrimers()) {
+						if(subject.isLongRead() && subject.hasPrimers()) {
 							leftCorrect = cs.getRaw().indexOf(subject.getLeftPrimerMatchPacBio()) >= 0; 
 							rightCorrect = cs.getRaw().indexOf(subject.getRightPrimerMatchPacBio()) >= 0;
 						}
@@ -502,7 +502,7 @@ public class SequenceFileThread extends Thread {
 				counter.getAndIncrement();
 				//has GUI
 				//are slooooow, so update more often
-				if(subject.isPacBio() && this.tableModel!=null) {
+				if(subject.isLongRead() && this.tableModel!=null) {
 					long end = System.nanoTime();
 					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
 					if(duration>1000) {
@@ -537,6 +537,15 @@ public class SequenceFileThread extends Thread {
 				}
 				if(maxReads>0 && counter.get()>= this.maxReads) {
 					System.out.println(counter.get()+" >= "+this.maxReads);
+					//update the table model
+					if(this.tableModel!= null) {
+						float perc = counter.get()/(float)totalReads.get();
+						this.tableModel.setStatus(ngs, perc);
+						this.tableModel.setTotal(ngs, counter.get());
+						this.tableModel.setCorrect(ngs, correct.get());
+						this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
+						this.tableModel.setTextStatus(ngs,"Writing");
+					}
 					throw new BreakException();
 				}
 				//forced stop
