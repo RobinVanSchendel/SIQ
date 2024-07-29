@@ -2407,11 +2407,9 @@ server <- function(input, output, session) {
     
     sortType = input$Sort
     
-    rownames(newdata) <- 1:nrow(newdata)
     newdata$y.start <- 0
     newdata$y.end <- 0
     yoffset = 0
-    #newdata$closestto0 = pmin(abs(newdata$start.points),abs(newdata$end.points))
     #get the right column
     newdata$closestto0[abs(newdata$start.points)<=abs(newdata$end.points)] = newdata$start.points[abs(newdata$start.points)<=abs(newdata$end.points)]
     newdata$closestto0[abs(newdata$start.points)>abs(newdata$end.points)] = newdata$end.points[abs(newdata$start.points)>abs(newdata$end.points)]
@@ -2435,9 +2433,6 @@ server <- function(input, output, session) {
       newdata$Text = factor(newdata$Text, levels = rev(input$multiType$order))
       newdata <- newdata[order(newdata$Text,-newdata$size), ] 
     }
-    #newdata$y.end = cumsum(newdata$yheight)
-    #Subject = el$Subject, Alias = el$Alias
-    #newdata$y.start = newdata$y.end - newdata$yheight
     
     newdata = newdata %>% group_by(Alias, Subject) %>% mutate(y.end = cumsum(yheight), y.start = y.end-yheight)
     
@@ -3419,8 +3414,12 @@ server <- function(input, output, session) {
     if(debug){
       print("plot_rows")
     }
+    aliasColumn = "Alias"
+    if(is_grouped()){
+      aliasColumn = get_group_column()
+    }
     df = filter_in_data() %>%
-      group_by(Alias) %>%
+      group_by_at(aliasColumn) %>%
       summarise(Subjects = n_distinct(Subject))
     nrows = sum(df$Subjects)
     return(ceiling((nrows)/input$nrCols))
