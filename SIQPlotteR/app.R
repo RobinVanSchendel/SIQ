@@ -2363,6 +2363,11 @@ server <- function(input, output, session) {
     print("start: tornadoPlotData")
     start_time = Sys.time()
     
+    ##respect the grouping if selected
+    if(is_grouped){
+      el = el %>% mutate(Alias = !!as.name(input$GroupColumn))
+    }
+    
     # FIX this 100 limit
     maxTornadoes = 100
     subjectAliasList = el %>% select(Subject,Alias) %>% distinct() %>% ungroup()
@@ -2488,9 +2493,14 @@ server <- function(input, output, session) {
     print(paste("half2: subjectPlot",end_time))
     
         
-    newdata <- plot.data #%>% 
+    newdata <- plot.data
     if(nrow(newdata)>0){
-      newdata$Alias = factor(newdata$Alias, levels = input$multiGroupOrder)
+      ##ensure the factor is from the grouping column if that is set
+      if(is_grouped()){
+        newdata$Alias = factor(newdata$Alias, levels = input$multiGroupReplicateOrder)
+      } else{
+        newdata$Alias = factor(newdata$Alias, levels = input$multiGroupOrder)
+      }
         plot = tornadoplot(newdata, ymax = ymaxInput, xmin = d_xminmaxRange()[1],
                              xmax = d_xminmaxRange()[2],
                              Type = input$Type)
@@ -4410,7 +4420,12 @@ server <- function(input, output, session) {
     }
     ##take the ordering from the sample list
     else{
-      newdata$SubjectAlias = factor(newdata$SubjectAlias, levels = input$multiGroupOrder)
+      ##yes but take the correct list, depending on activated grouping
+      if(is_grouped()){
+        newdata$SubjectAlias = factor(newdata$SubjectAlias, levels = input$multiGroupReplicateOrder)
+      } else{
+        newdata$SubjectAlias = factor(newdata$SubjectAlias, levels = input$multiGroupOrder)
+      }
     }
     
     end_time = Sys.time()-start_time
@@ -4546,7 +4561,8 @@ server <- function(input, output, session) {
     groups = NULL
     ##Really make sure this is only done for the tabs that use the GroupColumn
     ##otherwise it might get set, but it breaks other tabs
-    allowedTabs = c("Type","Homology","1bp insertion")
+    ##added tornado plot now as well
+    allowedTabs = c("Type","Homology","1bp insertion","Tornado")
     
     if(input$tabs %in% allowedTabs){
       req(filter_in_data())
