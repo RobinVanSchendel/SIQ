@@ -2364,7 +2364,7 @@ server <- function(input, output, session) {
     start_time = Sys.time()
     
     ##respect the grouping if selected
-    if(is_grouped){
+    if(is_grouped()){
       el = el %>% mutate(Alias = !!as.name(input$GroupColumn))
     }
     
