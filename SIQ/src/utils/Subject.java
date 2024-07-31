@@ -115,6 +115,7 @@ public class Subject {
 				String leftPrimerRC = Utils.reverseComplement(leftPrimer);
 				//really cannot find it
 				if(subject.indexOf(leftPrimerRC)<0) {
+					System.err.println("Cannot find leftPrimer "+leftPrimer);
 					if(this.exitOnError) {
 						System.exit(0);
 					}
@@ -159,6 +160,7 @@ public class Subject {
 				//try normal orientation
 				String rightPrimerTemp = tempRightPrimer.toUpperCase();
 				if(subject.indexOf(rightPrimerTemp)<0) {
+					System.err.println("Cannot find rightPrimer "+rightPrimer);
 					this.rightPrimerSet = false;
 					if(this.exitOnError) {
 						System.exit(0);
