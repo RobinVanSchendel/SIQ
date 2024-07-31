@@ -108,6 +108,8 @@ public class SequenceFileThread extends Thread {
 			this.tableModel.setCorrect(ngs, 0);
 			this.tableModel.setPercentage(ngs, 0);
 		}
+		//do this here again!
+		subject.swapPrimersIfNeeded();
 		
 		
 		//Check if you need to assemble anything
@@ -283,6 +285,8 @@ public class SequenceFileThread extends Thread {
 				}
 				tableModel.setTextStatus(ngs,"Analyzing reads");
 			}
+			System.out.println(Thread.currentThread().getName()+"realLeft:"+subject.getLeftPrimer());
+			System.out.println(Thread.currentThread().getName()+"realRight:"+subject.getRightPrimer());
 			AtomicBoolean reverseDecisionMade = new AtomicBoolean(false);
 			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
