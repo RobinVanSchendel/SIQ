@@ -115,7 +115,6 @@ public class Subject {
 				String leftPrimerRC = Utils.reverseComplement(leftPrimer);
 				//really cannot find it
 				if(subject.indexOf(leftPrimerRC)<0) {
-					System.err.println("Cannot find leftPrimer "+leftPrimer);
 					if(this.exitOnError) {
 						System.exit(0);
 					}
@@ -125,21 +124,21 @@ public class Subject {
 				}
 				else {
 					this.leftPrimer = leftPrimerRC;
+					
 				}
 			}
 			this.startOfLeftPrimer = subject.indexOf(leftPrimer);
 			this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
+			
+			int longReadStart = startOfLeftPrimer;
+			int longReadEnd = endOfLeftPrimer+this.minPassedPrimer;
+			if(longReadEnd > subject.length()) {
+				longReadStart = startOfLeftPrimer - this.minPassedPrimer;
+				longReadEnd = endOfLeftPrimer;
+			}
 			//another safety
-			if(endOfLeftPrimer+this.minPassedPrimer<=subject.length()) {
-				this.leftPrimerMatchPacBio = subject.substring(startOfLeftPrimer,endOfLeftPrimer+this.minPassedPrimer);
-				this.leftPrimerSet = true;
-			}
-			else {
-				this.startOfLeftPrimer = -1;
-				this.endOfLeftPrimer = -1;
-				this.leftPrimerSet = false;
-				leftPrimer = null;
-			}
+			this.leftPrimerMatchPacBio = subject.substring(longReadStart, longReadEnd);
+			this.leftPrimerSet = true;
 		}
 		else {
 			this.startOfLeftPrimer = -1;
@@ -160,7 +159,6 @@ public class Subject {
 				//try normal orientation
 				String rightPrimerTemp = tempRightPrimer.toUpperCase();
 				if(subject.indexOf(rightPrimerTemp)<0) {
-					System.err.println("Cannot find rightPrimer "+rightPrimer);
 					this.rightPrimerSet = false;
 					if(this.exitOnError) {
 						System.exit(0);
@@ -175,16 +173,14 @@ public class Subject {
 			}
 			this.startOfRightPrimer = subject.indexOf(rightPrimer);
 			this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
-			if(startOfRightPrimer-this.minPassedPrimer >= 0 && endOfRightPrimer <= subject.length()) {
-				this.rightPrimerMatchPacBio = subject.substring(startOfRightPrimer-this.minPassedPrimer,endOfRightPrimer);
-				this.rightPrimerSet = true;
+			int longReadStart = startOfRightPrimer-this.minPassedPrimer;
+			int longReadSend = endOfRightPrimer;
+			if(longReadStart<0) {
+				longReadStart = 0;
+				longReadSend = longReadSend + this.minPassedPrimer;
 			}
-			else {
-				startOfRightPrimer = -1;
-				endOfRightPrimer = -1;
-				rightPrimerSet = false;	
-				rightPrimer = null;
-			}
+			this.rightPrimerMatchPacBio = subject.substring(longReadSend,longReadSend);
+			this.rightPrimerSet = true;
 		}
 		else {
 			startOfRightPrimer = -1;
