@@ -129,6 +129,16 @@ public class Subject {
 				}
 			}
 			this.startOfLeftPrimer = subject.indexOf(leftPrimer);
+			int lastPos = subject.lastIndexOf(leftPrimer);
+			//check if the primer occurs in the subject or if it occur multiple times
+			if(startOfLeftPrimer == -1 || startOfLeftPrimer != lastPos) {
+				this.startOfLeftPrimer = -1;
+				this.endOfLeftPrimer = -1;
+				this.leftPrimerSet = false;
+				leftPrimer = null;
+				return;
+			}
+			
 			this.endOfLeftPrimer = startOfLeftPrimer+leftPrimer.length();
 			
 			int longReadStart = startOfLeftPrimer;
@@ -174,6 +184,16 @@ public class Subject {
 				//System.exit(0);
 			}
 			this.startOfRightPrimer = subject.indexOf(rightPrimer);
+			int lastPos = subject.lastIndexOf(rightPrimer);
+			//check if the primer occurs in the subject or if it occur multiple times
+			if(startOfRightPrimer == -1 || startOfRightPrimer != lastPos) {
+				startOfRightPrimer = -1;
+				endOfRightPrimer = -1;
+				rightPrimerSet = false;	
+				rightPrimer = null;
+				return;
+			}
+			
 			this.endOfRightPrimer = startOfRightPrimer+rightPrimer.length();
 			int longReadStart = startOfRightPrimer-this.minPassedPrimer;
 			int longReadSend = endOfRightPrimer;
