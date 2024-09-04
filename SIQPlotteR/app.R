@@ -437,8 +437,9 @@ ui <- fluidPage(
                     value = 1,
                     step = 1
         ),
-        downloadButton('exportSNVs',"Export to PDF"),
+        checkboxInput("snvrangesplit","Split SNVs ≥2 bp", value = F)
       ),
+      downloadButton('exportSNVs',"Export to PDF"),
       conditionalPanel(
         condition = "input.tabs == 'Target'",
         downloadButton('exportTarget',"Export to PDF"),
@@ -3520,7 +3521,7 @@ server <- function(input, output, session) {
       plotOutput("snvplot", height = input$plotHeight, width = input$plotWidth)
     }
     else{
-      plotOutput("snvplot", height = plot_rows_no_col()*input$plotHeight, width = input$plotWidth)
+      plotOutput("snvplot", height = (plot_rows_no_col()-1)*input$plotHeight, width = input$plotWidth)
     }
   })
   output$ui_SizeFreq <- renderUI({
@@ -4203,6 +4204,18 @@ server <- function(input, output, session) {
       el$sizeChange = el$delSize-el$insSize
       el = el %>% filter(Type == "SNV" |
                            (Type == "DELINS" & sizeChange ==0 & delSize<=input$snvrange))
+      
+      if(input$snvrangesplit){
+        ##ok now change the data a bit to ensure >1 DELINS are spread onto the graph
+        el = el %>% mutate(rowNr = row_number()) %>%
+          slice(rep(1:n(), times = delSize)) %>% 
+          group_by(rowNr) %>% 
+          mutate(duplicateNr = row_number()) %>%
+          mutate(del = substring(del,duplicateNr,duplicateNr)) %>%
+          mutate(insertion = substring(insertion, duplicateNr, duplicateNr)) %>%
+          mutate(delRelativeStart = delRelativeStart + duplicateNr)
+      }
+      
       insOption = unique(el$insertion)
       insOptionSorted = insOption[order(nchar(insOption),insOption)]
       el$insertion = factor(el$insertion,levels = insOptionSorted)
@@ -4246,7 +4259,8 @@ server <- function(input, output, session) {
         countMax = test %>% group_by(Subject, Alias,delRelativeStart) %>% count (wt = snv)
         yAllMax = max(countMax$n)
       }
-      for(subject in input$Subject){
+      subjects = intersect(input$Subject, unique(test$Subject))
+      for(subject in subjects){
         for(alias in input$multiGroupOrder){
           testPart = test[test$Alias == alias & test$Subject == subject,]
           if(length(input$Subject)>1){
