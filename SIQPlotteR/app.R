@@ -437,7 +437,7 @@ ui <- fluidPage(
                     value = 1,
                     step = 1
         ),
-        checkboxInput("snvrangesplit","Split SNVs ≥2 bp", value = F)
+        checkboxInput("snvrangesplit","Split SNVs ≥2bp", value = F)
       ),
       downloadButton('exportSNVs',"Export to PDF"),
       conditionalPanel(
