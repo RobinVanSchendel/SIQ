@@ -165,6 +165,13 @@ ui <- fluidPage(
                   "Select Excel or tab-separated File:",
                   accept=c(".xlsx",".txt")),
       ),
+      radioButtons(
+        "keepOverlap",
+        "Filter reads by distance from expected cut site:",
+        c("disabled","≤10bp", "≤2bp"),
+        selected = "disabled",
+        inline = T),
+      
       pickerInput(
         inputId = "Types", 
         label = "Select Mutation Type(s):",
@@ -176,30 +183,6 @@ ui <- fluidPage(
           `selected-text-format` = "count > 3"
         ), 
         multiple = TRUE
-      ),
-      dropdown(
-        label = "Outcomes",
-        icon = icon("barcode"),
-        tags$h3("How to combine outcomes"),
-        checkboxGroupInput(
-          inputId = "outcomeDEL",
-          label = "DEL",
-          choices = c("by size" = "size","by homology" = "homology" ,"all combined" = "allcombined"),
-          inline = T,
-        ),
-        checkboxGroupInput(
-          inputId = "outcomeDELINS",
-          label = "DELINS",
-          choices = c( "by size" = "size","all combined" = "allcombined"),
-          inline = T,
-        ),
-      ),
-      
-      checkboxGroupInput(
-        inputId = "CollapseTypes", 
-        label = "how to treat Type(s):",
-        choices = c("collapse TDs" = "collapseTD", "split TINS" = "splitTINS" ),
-        inline = T
       ),
       pickerInput(
         inputId = "Aliases", 
@@ -213,12 +196,6 @@ ui <- fluidPage(
         ), 
         multiple = TRUE
       ),
-      selectInput(
-        "AliasColumn",
-        "Select Sample Column (default: Alias):", 
-        c("Alias"),
-        selected = "Alias"
-      ),
       pickerInput(
         inputId = "Subject", 
         label = "Select Target(s):",
@@ -231,19 +208,11 @@ ui <- fluidPage(
         ), 
         multiple = TRUE
       ),
-      #uiOutput("subject_selection"),
-      radioButtons(
-        "keepOverlap",
-        "Filter reads by distance from expected cut site:",
-        c("disabled","≤10bp", "≤2bp"),
-        selected = "disabled",
-        inline = T),
-      uiOutput("minEvents"),
-      radioButtons(
-        "minReadsOn",
-        "Filter number of reads on:",
-        c("all reads","mutagenic reads", "selected types"),
-        inline = T
+      selectInput(
+        "GroupColumn",
+        "Select Grouping/Replicate Column:", 
+        c("-"),
+        selected = "-"
       ),
       sliderInput("plotHeight", "Plot height (# pixels): ",
                   value = 600,
@@ -257,11 +226,10 @@ ui <- fluidPage(
                   max = 5000,
                   step = 50
       ),
-      selectInput(
-        "GroupColumn",
-        "Select Grouping/Replicate Column:", 
-        c("-"),
-        selected = "-"
+      conditionalPanel(
+        condition = "input.tabs == 'Efficiency'",
+        checkboxInput(inputId = "mutFreqBoxPlot", label = "Show boxplot",value = T),
+        checkboxInput(inputId = "mutFreqViolinPlot", label = "Show violin", value = T)
       ),
       ##type plot only ###
       conditionalPanel(
@@ -437,9 +405,10 @@ ui <- fluidPage(
                     value = 1,
                     step = 1
         ),
-        checkboxInput("snvrangesplit","Split SNVs ≥2bp", value = F)
+        checkboxInput("snvrangesplit","Split SNVs ≥2bp", value = F),
+        downloadButton('exportSNVs',"Export to PDF"),
       ),
-      downloadButton('exportSNVs',"Export to PDF"),
+      
       conditionalPanel(
         condition = "input.tabs == 'Target'",
         downloadButton('exportTarget',"Export to PDF"),
@@ -538,7 +507,6 @@ ui <- fluidPage(
                      c("disabled","-2bp"),
                      inline = T)
       ),
-      
       conditionalPanel(
         condition = "input.tabs == 'Alleles'",
         sliderInput("alleleOutcomeTable","Set the size around the flanks:", 
@@ -546,6 +514,23 @@ ui <- fluidPage(
       ),
       conditionalPanel(
         condition = "input.tabs == 'Outcomes'",
+        dropdown(
+          label = "Outcomes",
+          icon = icon("barcode"),
+          tags$h3("How to combine outcomes"),
+          checkboxGroupInput(
+            inputId = "outcomeDEL",
+            label = "DEL",
+            choices = c("by size" = "size","by homology" = "homology" ,"all combined" = "allcombined"),
+            inline = T,
+          ),
+          checkboxGroupInput(
+            inputId = "outcomeDELINS",
+            label = "DELINS",
+            choices = c( "by size" = "size","all combined" = "allcombined"),
+            inline = T,
+          ),
+        ),
         pickerInput(
           inputId = "controls", 
           label = "Select Control Sample(s):",
@@ -690,9 +675,29 @@ ui <- fluidPage(
         ),
         downloadButton('exportOutcome',"Export to PDF"),
       ),
+      h3("Advanced Settings"),
+      selectInput(
+        "AliasColumn",
+        "Select Sample Column:", 
+        c("Alias"),
+        selected = "Alias"
+      ),
+      checkboxGroupInput(
+        inputId = "CollapseTypes", 
+        label = "how to treat Type(s):",
+        choices = c("collapse TDs" = "collapseTD", "split TINS" = "splitTINS" ),
+        inline = T
+      ),
       checkboxInput("facet_wrap",
                     "Separate targets",
                     value=T),
+      uiOutput("minEvents"),
+      radioButtons(
+        "minReadsOn",
+        "Filter number of reads on:",
+        c("all reads","mutagenic reads", "selected types"),
+        inline = T
+      ),
       radioButtons(
         "homologyColumn",
         "homologyLength:",
@@ -3241,21 +3246,6 @@ server <- function(input, output, session) {
     )
   })
   
-  observe({
-    if(debug){
-      print("updateSliderInput minEvents")
-    }
-    df = in_data()
-    testDF = df %>% group_by(Alias) %>% dplyr::count(wt=countEvents)
-    if(max(testDF$n)>20000){
-      step = 1000
-    }
-    else{
-      step = 100
-    }
-    updateSliderInput(session, "minEvents", min = 0, max = max(testDF$n), step = step)
-  })
-  
   ##I need this one to store rv$aliases in
   
   rv <- reactiveValues()
@@ -4154,33 +4144,68 @@ server <- function(input, output, session) {
     #plot2
   })
   
-  
-  output$mutFreq <- renderPlot({
+  ##get the mutation frequency data
+  mutFreqData <- reactive({
     req(filter_in_data())
     req(input$Aliases)
     #speedup multigroup order is lagging behind Aliases
     if(length(input$Aliases) != length(input$multiGroupOrder)){
       return()
     }
-    el = filter_in_data()
+    df = filter_in_data()
     #Get the totals
-    testDF = el %>% group_by(Subject, Alias) %>% dplyr::count(wt=countEvents)
-    test = el[el$Type != "WT",] %>% group_by(Subject, Alias) %>% count (wt = countEvents, name = "wt")
-    test = merge(testDF, test, by=c("Subject","Alias"))
-    
-    test$mut = test$wt/test$n
-    
-    test$Alias = factor(test$Alias, levels = input$multiGroupOrder)
-    
-    plot <- ggplot(test, aes(x=Alias,y=mut)) + geom_bar(stat = "identity") +
-      theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(), panel.background = element_blank(),  legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
-      xlab("Sample") + ylab("Fraction")
-    
-    if(input$facet_wrap == TRUE && "Subject" %in% colnames(test)){
+    if(is_grouped()){
+      groups = c("Subject","Alias", get_group_column())
+      dfFraction = df %>% group_by_at(groups) %>% dplyr::count(wt=countEvents)
+      dfMutFraction = df[df$Type != "WT",] %>% group_by_at(groups) %>% count (wt = countEvents, name = "wt")
+      df = merge(dfFraction, dfMutFraction, by=groups)
+      df$mut = df$wt/df$n
+      ##set factor
+      df[[get_group_column()]] = factor(df[[get_group_column()]], levels = input$multiGroupReplicateOrder)
+      return(df)
+    } else{
+      dfFraction = df %>% group_by(Subject, Alias) %>% dplyr::count(wt=countEvents)
+      dfMutFraction = df[df$Type != "WT",] %>% group_by(Subject, Alias) %>% count (wt = countEvents, name = "wt")
+      df = merge(dfFraction, dfMutFraction, by=c("Subject","Alias"))
+      df$mut = df$wt/df$n
+      ##set factor
+      df$Alias = factor(df$Alias, levels = input$multiGroupOrder)
+      return(df)
+    }
+  })
+  
+  output$mutFreq <- renderPlot({
+    req(mutFreqData())
+    dfMutFreq = mutFreqData()
+    #Get the totals
+    if(is_grouped()){
+      plot <- ggplot(dfMutFreq, aes(x=!!as.symbol(get_group_column()), y = mut, fill = !!as.symbol(get_group_column())))
+      
+      if(input$mutFreqViolinPlot){
+        plot <- plot + geom_violin(trim = FALSE, alpha = 0.5) # Violin plot with transparency
+      }
+      
+      if(input$mutFreqBoxPlot){
+        plot <- plot + geom_boxplot(width = 0.1, color = "black", fill = "white", alpha = 0.7)   # Distinct boxplot
+      }
+      plot <- plot +
+        geom_jitter(width = 0.2, size = 1.5, alpha = 0.6) +
+        scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) +
+        theme(legend.position = "none") +  # Remove legend
+        labs(y = "Mutagenic fraction") +
+        NULL
+      
+    }else {
+      
+      plot <- ggplot(dfMutFreq, aes(x=Alias,y=mut)) + geom_bar(stat = "identity") +
+        theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(), panel.background = element_blank(),  legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
+        xlab("Sample") + ylab("Fraction")
+    }
+    if(input$facet_wrap == TRUE && "Subject" %in% colnames(dfMutFreq)){
       plot <- plot + facet_grid(~Subject, scales = "free_x", space = "free_x")
     }
-    plot  
+    plot
     
   })
   
@@ -4575,7 +4600,7 @@ server <- function(input, output, session) {
     ##Really make sure this is only done for the tabs that use the GroupColumn
     ##otherwise it might get set, but it breaks other tabs
     ##added tornado plot now as well
-    allowedTabs = c("Type","Homology","1bp insertion","Tornado")
+    allowedTabs = c("Type","Homology","1bp insertion","Tornado","Efficiency")
     
     if(input$tabs %in% allowedTabs){
       req(filter_in_data())
