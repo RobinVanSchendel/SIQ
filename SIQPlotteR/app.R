@@ -2539,6 +2539,9 @@ server <- function(input, output, session) {
     content = function(file) {
       if(!is.null(plotsForDownload$target)){
         plots = length(input$multiGroupOrder)
+        if(is_grouped()){
+          plots = length(input$multiGroupReplicateOrder)
+        }
         ggsave(file, arrangeGrob(grobs=plotsForDownload$target, ncol=1, nrow = plots),height=(plots*input$plotHeight)/72, width=input$plotWidth/72,limitsize = FALSE, device = "pdf")  
       }
     }
