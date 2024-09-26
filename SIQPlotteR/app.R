@@ -14,6 +14,7 @@
 #
 
 library(shiny)
+library(IRanges)
 if(!require(lobstr)){
   install.packages("lobstr", repos = "https://mirror.lyrahosting.com/CRAN/")
   library(lobstr)
@@ -114,6 +115,8 @@ if(!require(heatmaply)){
   install.packages("heatmaply", repos = "https://mirror.lyrahosting.com/CRAN/")
   library(heatmaply)
 }
+
+
 
 source("user_base.R")
 
@@ -229,7 +232,8 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.tabs == 'Efficiency'",
         checkboxInput(inputId = "mutFreqBoxPlot", label = "Show boxplot",value = T),
-        checkboxInput(inputId = "mutFreqViolinPlot", label = "Show violin", value = T)
+        checkboxInput(inputId = "mutFreqViolinPlot", label = "Show violin", value = T),
+        checkboxInput(inputId = "mutFreqTableSummary", label = "Show data summary", value = T)
       ),
       ##type plot only ###
       conditionalPanel(
@@ -276,22 +280,10 @@ ui <- fluidPage(
           selected = "total",
           inline = TRUE),
       ),
-      ##sizeDiff plot only ###
-      conditionalPanel(
-        condition = "input.tabs == 'Target'",
-        #radioButtons(
-        #  "SizeFreqType",
-        #  "Select Column to plot :",
-        #  c("delSize","insSize"),
-        #  selected = "delSize",
-        #  inline = TRUE),
-        radioButtons(
-          "overlap",
-          "Type of plot",
-          c("separate", "overlapping"),
-          selected = "separate",
-          inline = TRUE),
-      ),
+      ##Target plot only ###
+      #conditionalPanel(
+      #  condition = "input.tabs == 'Target'",
+      #),
       ##sizeDiff plot only ###
       conditionalPanel(
         condition = "input.tabs == 'SizeDiff'",
@@ -725,7 +717,9 @@ ui <- fluidPage(
                            ),
                   tabPanel("Efficiency",h3("Targeting efficiency"),
                            p("For each sample the fraction of non wild-type reads are shown."),
-                           uiOutput("ui_info")),
+                           uiOutput("ui_info"),
+                           DT::dataTableOutput("mutFreqTable",width = 8)
+                           ),
                   tabPanel("Type",
                            h3("Mutation types"),
                            p("for each sample the mutation types are shown in this interactive plot. Both relative and absolute fractions can be shown."),
@@ -2544,13 +2538,8 @@ server <- function(input, output, session) {
     filename = function() {"plotsTarget.pdf"},
     content = function(file) {
       if(!is.null(plotsForDownload$target)){
-        if(input$overlap =="separate"){
-          plots = length(input$multiGroupOrder)
-          ggsave(file, arrangeGrob(grobs=plotsForDownload$target, ncol=1, nrow = plots),height=(plots*input$plotHeight)/72, width=input$plotWidth/72,limitsize = FALSE, device = "pdf")  
-        } else{
-          plots = 1
-          ggsave(file, plotsForDownload$target,height=input$plotHeight/72, width=input$plotWidth/72,limitsize = FALSE, device = "pdf")  
-        }
+        plots = length(input$multiGroupOrder)
+        ggsave(file, arrangeGrob(grobs=plotsForDownload$target, ncol=1, nrow = plots),height=(plots*input$plotHeight)/72, width=input$plotWidth/72,limitsize = FALSE, device = "pdf")  
       }
     }
   )
@@ -3515,16 +3504,80 @@ server <- function(input, output, session) {
     }
   })
   output$ui_SizeFreq <- renderUI({
-    if(input$overlap =="separate"){
-      plots = length(input$multiGroupOrder)
-    } else{
-      plots = 1
+    req(filter_in_data())
+    plots = length(input$multiGroupOrder)
+    if(is_grouped()){
+      ##overwrite with number of groups
+      plots = length(input$multiGroupReplicateOrder)
     }
     plotOutput("SizeFreq", height = plots*input$plotHeight, width = input$plotWidth)
   })
   
+  sizeFreqData <- reactive({
+    req(filter_in_data())
+    start = Sys.time()
+    el = filter_in_data() %>% 
+      mutate(range = delRelativeEnd-1-delRelativeStart) %>%
+      filter(range>=0)
+    
+    ##calculate shift size
+    coverageTotal = NULL
+    shiftSize = min(el$delRelativeStart)
+    if(shiftSize < 1){
+      shiftSize = -shiftSize+1
+    }
+    
+    ##let's make the df ready
+    if(is_grouped()){
+      for(subject in unique(el$Subject)){
+        elSub = el %>% filter(Subject == subject)
+        for(groupName in unique(elSub[[get_group_column()]])){
+          elGroup = elSub %>% filter(!!as.symbol(get_group_column()) == groupName)
+          ##how many samples in this group?
+          nrAlias = length(unique(elGroup$Alias))
+          ir = IRanges(start = elGroup$delRelativeStart+shiftSize, end = elGroup$delRelativeEnd-1+shiftSize)
+          ##divide the fraction by the number of Aliases to get to max 1
+          coverage_ir <- coverage(ir, weight = elGroup$fraction/nrAlias)
+          coverage_df <- as.data.frame(coverage_ir)
+          coverage_df$pos <- as.numeric(rownames(coverage_df))
+          coverage_df$total_fraction <- coverage_df$value
+          ##this may be a problem at some point!!
+          coverage_df$Alias = groupName
+          coverage_df$Subject = subject
+          coverageTotal = dplyr::bind_rows(coverageTotal, coverage_df)
+        }
+      }
+      
+    } else{
+      for(subject in unique(el$Subject)){
+        elSub = el %>% filter(Subject == subject)
+        for(alias in unique(elSub$Alias)){
+          elAlias = elSub %>% filter(Alias == alias)
+          ##coverage only works on >0 locations, so shift the delRelativeStart by shiftSize
+          ##use the elAlias df here
+          ir = IRanges(start = elAlias$delRelativeStart+shiftSize, end = elAlias$delRelativeEnd-1+shiftSize)
+          coverage_ir <- coverage(ir, weight = elAlias$fraction)
+          coverage_df <- as.data.frame(coverage_ir)
+          coverage_df$pos <- as.numeric(rownames(coverage_df))
+          coverage_df$total_fraction <- coverage_df$value
+          coverage_df$Alias = alias
+          coverage_df$Subject = subject
+          coverageTotal = dplyr::bind_rows(coverageTotal, coverage_df)
+        }
+      }
+    }
+    ##ensure the shiftSize is removed now
+    coverageTotal$pos = coverageTotal$pos - shiftSize
+    pos = coverageTotal
+    end = Sys.time()
+    totalTime = end - start
+    print(paste("Took",totalTime))
+    pos
+  })
+  
   output$SizeFreq <- renderPlot({
     req(filter_in_data())
+    
     el = filter_in_data()
     el = el %>% 
       mutate(range = delRelativeEnd-1-delRelativeStart) %>%
@@ -3535,61 +3588,23 @@ server <- function(input, output, session) {
     dfs = list()
     xmin = min(el$delRelativeStart)
     xmax = max(el$delRelativeEnd)
-    for(subject in input$Subject){
-      for(alias in input$multiGroupOrder){
-        tempDF = subset(el, Alias == alias & Subject == subject)
-        if(length(input$Subject) > 1){
-          name = paste(subject, alias)
-        } else{
-          name = paste(alias)
-        }
-        
-        #-1 to exlude last position
-        if(nrow(tempDF)==0){
-          p = text_grob(paste(name,"\nNO DATA"), size = 10)
-        }else{
-          testDF = do.call("rbind", mapply(function(x, y, z, a, b) cbind.data.frame(x:y, z, a, b),
-                                           tempDF$delRelativeStart, 
-                                           tempDF$delRelativeEnd-1,
-                                           tempDF$fraction, alias, subject, SIMPLIFY = FALSE)) %>%
-            as.data.frame(stringsAsFactors = FALSE)                 %>%
-            setNames(c("Locus", "Value","Alias","Subject"))   
-          testDFSum = testDF %>%
-            group_by(Locus)                 %>%
-            summarise(sum = sum(Value)) 
-          
-          
-          p = ggplot(testDFSum,aes(x = Locus, y = sum)) + 
-            geom_bar(stat = "identity") + labs(x = "Locus")+ggtitle(name) + xlim(c(xmin,xmax))+
-            theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
-                  panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
-                  legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10)) +
-            xlab("location")+ylab("fraction of total")
-        }
-        if(input$overlap == "separate"){
-          plots[[name]] = p
-        }else{   
-          dfs[[name]] = testDF
-        }
-      }
-    }
-    if(input$overlap =="separate"){
-      plotsForDownload$target = plots
-      grid.arrange(grobs = plots, ncol=1)
-    }else{
-      testDFtotal = do.call("rbind",dfs)
-      testDFtotal = testDFtotal %>% group_by(Subject, Alias,Locus) %>% summarise(sum = sum(Value))
-      p = ggplot(testDFtotal,aes(x = Locus, y = sum, fill=Alias)) + 
-        geom_bar(stat = "identity", position="identity", alpha=0.4) +
-        xlim(c(xmin,xmax))+
-        xlab("location")+ylab("fraction of total")+
-        theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
-              legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10)) +
-        facet_grid(~Subject)
-      plotsForDownload$target = p
-      p
-    }
+    
+    ##let's get the data
+    pos = sizeFreqData()
+    
+    p = ggplot(pos,aes(x = pos, y = total_fraction)) + 
+      geom_bar(stat = "identity") + labs(x = "Locus")+ xlim(c(xmin,xmax))+
+      theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
+            legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10)) +
+      xlab("location")+ylab("fraction of total") +
+      facet_wrap(Subject ~ Alias, ncol = 1,scales = "free") +
+      NULL
+    
+    plots[["test"]] = p
+    
+    plotsForDownload$target = plots
+    grid.arrange(grobs = plots, ncol=1)
   })
   
   
@@ -4174,6 +4189,31 @@ server <- function(input, output, session) {
     }
   })
   
+  output$mutFreqTable <- DT::renderDataTable({
+    req(mutFreqData())
+    dfMutFreq = mutFreqData() %>% 
+      dplyr::rename(total_reads = n, mut_reads = wt, mut_fraction = mut)
+    
+    if(input$mutFreqTableSummary & is_grouped()){
+      groups = c("Subject", get_group_column())
+      ##overwrite with summary info
+      dfMutFreq = dfMutFreq %>% group_by_at(groups) %>%
+        summarise(Samples = n(),
+                  Mean = mean(mut_fraction),
+                  Median = median(mut_fraction),
+                  Min = min(mut_fraction),
+                  Max = max(mut_fraction)
+        )
+      
+    }
+    dt = DT::datatable(dfMutFreq,rownames = FALSE,extensions = 'Buttons', options = list(
+      pageLength = -1,
+      dom = 'tB',
+      buttons = list("copy", "excel","csv")
+    ))
+    dt 
+  })
+  
   output$mutFreq <- renderPlot({
     req(mutFreqData())
     dfMutFreq = mutFreqData()
@@ -4600,7 +4640,7 @@ server <- function(input, output, session) {
     ##Really make sure this is only done for the tabs that use the GroupColumn
     ##otherwise it might get set, but it breaks other tabs
     ##added tornado plot now as well
-    allowedTabs = c("Type","Homology","1bp insertion","Tornado","Efficiency")
+    allowedTabs = c("Type","Homology","1bp insertion","Tornado","Efficiency","Target")
     
     if(input$tabs %in% allowedTabs){
       req(filter_in_data())
