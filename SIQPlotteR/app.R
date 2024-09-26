@@ -3593,12 +3593,12 @@ server <- function(input, output, session) {
     pos = sizeFreqData()
     
     p = ggplot(pos,aes(x = pos, y = total_fraction)) + 
-      geom_bar(stat = "identity") + labs(x = "Locus")+ xlim(c(xmin,xmax))+
+      geom_bar(stat = "identity") + 
       theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
             panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
-            legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10)) +
-      xlab("location")+ylab("fraction of total") +
+            legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), legend.title = element_text(size = 10)) +
       facet_wrap(Subject ~ Alias, ncol = 1,scales = "free") +
+      xlab("location")+ylab("fraction of total") +
       NULL
     
     plots[["test"]] = p
