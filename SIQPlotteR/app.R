@@ -358,6 +358,8 @@ ui <- fluidPage(
         condition = "input.tabs == 'Size'",
         checkboxInput("ymaxRangeDiffLimitaxis","Set manual y-axis", value = F),
         uiOutput("ymaxRangeDiff"),
+        checkboxInput("group_first","Perform grouping first?", value = F),
+        checkboxInput("split_alias","Separate samples", value = F),
         radioButtons(
           "Column",
           "Select Column to plot :",
@@ -2966,6 +2968,8 @@ server <- function(input, output, session) {
     plotsForDownload$sizeDiffs <- plot
     plot
   })
+  
+  ##deprecated
   output$sizePlot <- renderPlot({
     req(input$Column)
     req(input$fractionSize)
@@ -2976,6 +2980,79 @@ server <- function(input, output, session) {
     plotsForDownload$size = plot 
     plot
   })
+  
+  
+  output$sizePlot2 <- renderPlot({
+    req(filter_in_data())
+    el = filter_in_data()
+    
+    ##make x-axis label
+    xlab = "Deletion size"
+    ##adjust data if needed
+    if(input$Column == "both"){
+      el = el %>% mutate(delSize = delSize-insSize)
+      if(min(el$delSize) < 0){
+        xlab = "Deletion size ( < 0 is insertion)"
+      }
+    } 
+    
+    ##first adjust the fractions to 1
+    el = el %>% group_by(Subject, Alias) %>% mutate(fraction = fraction/sum(fraction)) %>% ungroup()
+    
+    
+    
+    ##preprocess the data first
+    color_by = "Alias"
+    if(is_grouped()){
+      color_by = get_group_column()
+      ##adjust the fraction per group
+      select_by = c("Subject",color_by,"Alias")
+      group_by = c("Subject",color_by)
+      ##get the total number of Aliases per group
+      elTotal = el %>% select_at(select_by) %>% distinct() %>% 
+        group_by_at(group_by) %>% summarise(total = n())
+      
+      ##get that into the DF and divide the fractions
+      el = dplyr::left_join(el, elTotal, by = group_by) %>%
+        mutate(fraction = fraction/total)
+    }
+
+    ##should we also group the data beforehand?
+    if(input$group_first){
+      el = el %>% group_by_at(c("Subject",color_by,"delSize")) %>%
+        summarise(fraction = sum(fraction))
+    }
+    
+    ##just start here
+    p4 <- ggplot(el, aes(x = delSize, color = !!as.symbol(color_by), fill = !!as.symbol(color_by), weight = fraction)) +
+      geom_density(alpha = 0.5) +
+      labs(x = xlab, y = "Density") +
+      theme_minimal() +
+      NULL
+    
+    ##separate targets?
+    split_alias = input$split_alias
+    ##overwrite the split in Alias if this is a grouped view
+    if(is_grouped()){
+      split_alias = F
+    }
+    if(input$split_alias & input$facet_wrap){
+      p4 <- p4 + facet_wrap(Subject~Alias, ncol = 1, scales = "free")
+    }
+    else if(input$split_alias){
+      p4 <- p4 + facet_wrap(~Alias, ncol = 1, scales = "free")
+    }
+    else if(input$facet_wrap){
+      p4 <- p4 + facet_wrap(~Subject, ncol = 1, scales = "free")
+    }
+    
+    ##also make it available for download
+    plotsForDownload$size = p4 
+    p4
+  })
+  
+  
+  
   output$corPlot <- renderPlot({
     req(filter_in_data())
     req(input$Aliases)
@@ -3470,7 +3547,7 @@ server <- function(input, output, session) {
   })
   
   output$ui_sizeplot <- renderUI({
-    plotOutput("sizePlot", height = input$plotHeight, width = input$plotWidth)
+    plotOutput("sizePlot2", height = input$plotHeight, width = input$plotWidth)
   })
   output$ui_corplot <- renderUI({
     plotOutput("corPlot", height = input$plotHeight, width = input$plotWidth)
@@ -3519,9 +3596,12 @@ server <- function(input, output, session) {
   sizeFreqData <- reactive({
     req(filter_in_data())
     start = Sys.time()
-    el = filter_in_data() %>% 
-      mutate(range = delRelativeEnd-1-delRelativeStart) %>%
-      filter(range>=0)
+    el = filter_in_data() #%>% 
+      #mutate(range = delRelativeEnd-1-delRelativeStart) %>%
+      #filter(range>=0)
+    ##recalculate fraction based on the data
+    el = el |> group_by(Subject, Alias) |>
+      mutate(fraction = fraction/sum(fraction))
     
     ##calculate shift size
     coverageTotal = NULL
@@ -4643,7 +4723,7 @@ server <- function(input, output, session) {
     ##Really make sure this is only done for the tabs that use the GroupColumn
     ##otherwise it might get set, but it breaks other tabs
     ##added tornado plot now as well
-    allowedTabs = c("Type","Homology","1bp insertion","Tornado","Efficiency","Target")
+    allowedTabs = c("Type","Homology","1bp insertion","Tornado","Efficiency","Target", "Size")
     
     if(input$tabs %in% allowedTabs){
       req(filter_in_data())
