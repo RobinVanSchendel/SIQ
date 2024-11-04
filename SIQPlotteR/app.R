@@ -3037,13 +3037,13 @@ server <- function(input, output, session) {
       split_alias = F
     }
     if(input$split_alias & input$facet_wrap){
-      p4 <- p4 + facet_wrap(Subject~Alias, ncol = 1, scales = "free")
+      p4 <- p4 + facet_wrap(Subject~Alias, ncol = 1, scales = "free_y")
     }
     else if(input$split_alias){
-      p4 <- p4 + facet_wrap(~Alias, ncol = 1, scales = "free")
+      p4 <- p4 + facet_wrap(~Alias, ncol = 1, scales = "free_y")
     }
     else if(input$facet_wrap){
-      p4 <- p4 + facet_wrap(~Subject, ncol = 1, scales = "free")
+      p4 <- p4 + facet_wrap(~Subject, ncol = 1, scales = "free_y")
     }
     
     ##also make it available for download
