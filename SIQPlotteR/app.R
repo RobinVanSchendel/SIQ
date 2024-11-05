@@ -405,6 +405,7 @@ ui <- fluidPage(
       
       conditionalPanel(
         condition = "input.tabs == 'Target'",
+        checkboxInput("split_alias_target","Separate samples", value = F),
         downloadButton('exportTarget',"Export to PDF"),
       ),
       conditionalPanel(
@@ -3677,14 +3678,23 @@ server <- function(input, output, session) {
     ##let's get the data
     pos = sizeFreqData()
     
-    p = ggplot(pos,aes(x = pos, y = total_fraction)) + 
-      geom_bar(stat = "identity") + 
+    p = ggplot(pos,aes(x = pos, y = total_fraction, color = Alias, fill = Alias)) + 
+      geom_bar(stat = "identity", position="identity", alpha = .6) + 
       theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
             panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
             legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), legend.title = element_text(size = 10)) +
-      facet_wrap(Subject ~ Alias, ncol = 1,scales = "free") +
       xlab("location")+ylab("fraction of total") +
       NULL
+    
+    if(input$facet_wrap & input$split_alias_target){
+      p = p + facet_wrap(Subject ~ Alias, ncol = 1,scales = "free_y")
+    }
+    else if(input$facet_wrap){
+      p = p + facet_wrap(Subject ~ ., ncol = 1,scales = "free_y")
+    }
+    else if(input$split_alias_target){
+      p = p + facet_wrap(Alias ~., ncol = 1,scales = "free_y")
+    }
     
     plots[["test"]] = p
     
