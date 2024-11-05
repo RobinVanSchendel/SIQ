@@ -3994,7 +3994,7 @@ server <- function(input, output, session) {
     } else if(input$alleleFractionBasedOn == "mutagenic"){
       ##Get the mutagenic fraction per Alias/Subject through this call
       mutFractions = mutagenic_fractions()
-      el = merge(el, mutFractions, by = c("Subject","Alias")) %>% mutate(fraction = fraction/mutagenicFraction)
+      el = merge(el, mutFractions, by = c("Subject","Alias")) %>% mutate(fraction = fraction/mutagenicFraction) 
     }
     ##bug in the next part of the code, you need to determine the actual outcomes to be shown asap
     dnaRefStrings = getDNARefStrings(el) %>% mutate(Outcome = "Reference", totalFraction = Inf, fraction = Inf)
@@ -4016,15 +4016,7 @@ server <- function(input, output, session) {
     }
     elSub = el %>% filter(OutcomeDigital %in% keepOutcomes$OutcomeDigital)
     
-    
-    #dnaRefStrings = getDNARefStrings(el) %>% mutate(Outcome = "Reference", totalFraction = Inf, fraction = Inf)
-    #bug if Alias is a merge of more samples, we should select more events, so File was added to grouping
-    #if("File" %in% colnames(el)){
-    #  elSub = el %>% ungroup() %>% group_by(Subject, Alias, File) %>% slice_max(fraction, n = input$alleleTopOutcomes)
-    #} else{
-    #  elSub = el %>% ungroup() %>% group_by(Subject, Alias) %>% slice_max(fraction, n = input$alleleTopOutcomes)
-    #}
-    el = rbind(elSub, dnaRefStrings)
+    el = dplyr::bind_rows(elSub, dnaRefStrings)
     
     el = el %>% ungroup() %>% mutate(Category = paste(Type,delSize))
     
