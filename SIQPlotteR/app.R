@@ -692,11 +692,12 @@ ui <- fluidPage(
         c("all reads","mutagenic reads", "selected types"),
         inline = T
       ),
-      radioButtons(
-        "homologyColumn",
-        "homologyLength:",
-        c("homologyLength","homologyLengthMismatch10%"),
-        inline = TRUE),
+      ##disabled
+      #radioButtons(
+      #  "homologyColumn",
+      #  "homologyLength:",
+      #  c("homologyLength","homologyLengthMismatch10%"),
+      #  inline = TRUE),
       uiOutput("type_list"),
       uiOutput("multi_list"),
       uiOutput("multi_list_group"),
@@ -1212,19 +1213,20 @@ server <- function(input, output, session) {
     }
     
     ##alter homology Column as required
-    if(input$homologyColumn == "homologyLengthMismatch10%"){
-      ##only update the homologies if the mismatch amount is larger
-      if("homologyLengthMismatch10.ref" %in% colnames(el)){
-        el = el %>% mutate(
-          homologyLength = ifelse( homologyLengthMismatch10.ref > homologyLength,homologyLengthMismatch10.ref,homologyLength) 
-        )
-      }
-      else{
-        el = el %>% mutate(
-          homologyLength = ifelse( `homologyLengthMismatch10%ref` > homologyLength,`homologyLengthMismatch10%ref`,homologyLength) 
-        )
-      }
-    }
+    ##disabled for now
+    #if(input$homologyColumn == "homologyLengthMismatch10%"){
+    #  ##only update the homologies if the mismatch amount is larger
+    #  if("homologyLengthMismatch10.ref" %in% colnames(el)){
+    #    el = el %>% mutate(
+    #      homologyLength = ifelse( homologyLengthMismatch10.ref > homologyLength,homologyLengthMismatch10.ref,homologyLength) 
+    #    )
+    #  }
+    #  else{
+    #    el = el %>% mutate(
+    #      homologyLength = ifelse( `homologyLengthMismatch10%ref` > homologyLength,`homologyLengthMismatch10%ref`,homologyLength) 
+    #    )
+    #  }
+    #}
     
     print(paste("filter_in_data",Sys.time()))
     return(el)
