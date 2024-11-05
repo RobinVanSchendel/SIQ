@@ -356,8 +356,8 @@ ui <- fluidPage(
       ),
       conditionalPanel(
         condition = "input.tabs == 'Size'",
-        checkboxInput("ymaxRangeDiffLimitaxis","Set manual y-axis", value = F),
-        uiOutput("ymaxRangeDiff"),
+        #checkboxInput("ymaxRangeDiffLimitaxis","Set manual y-axis", value = F),
+        #uiOutput("ymaxRangeDiff"),
         checkboxInput("group_first","Perform grouping first?", value = F),
         checkboxInput("split_alias","Separate samples", value = F),
         radioButtons(
@@ -3774,26 +3774,26 @@ server <- function(input, output, session) {
   #  )
  #   
  # })
-  output$ymaxRangeDiff <- renderUI({
-    el = filter_in_data()
-    if(nrow(el)==0){
-      return()
-    }
-    if(is.null(input$Subject)){
-      maxValue = max(el$insSize)
-      minValue = -max(el$delSize)
-    }
-    else{
-      maxValue= max(el$insSize[el$Subject %in% input$Subject])
-      minValue = -max(el$delSize[el$Subject %in% input$Subject])
-    }
-    sliderInput("ymaxsize",
-                "y-axis maximum",
-                min = minValue,
-                max = maxValue,
-                value = c(minValue,maxValue)
-    )
-  })
+ # output$ymaxRangeDiff <- renderUI({
+#    el = filter_in_data()
+#    if(nrow(el)==0){
+#      return()
+#    }
+#    if(is.null(input$Subject)){
+#      maxValue = max(el$insSize)
+#      minValue = -max(el$delSize)
+#    }
+#    else{
+#      maxValue= max(el$insSize[el$Subject %in% input$Subject])
+#      minValue = -max(el$delSize[el$Subject %in% input$Subject])
+#    }
+#    sliderInput("ymaxsize",
+#                "y-axis maximum",
+#                min = minValue,
+#                max = maxValue,
+#                value = c(minValue,maxValue)
+#    )
+#  })
   
   filterAliases <- function(df, minEvents, aliases){
     if(minEvents==0){
