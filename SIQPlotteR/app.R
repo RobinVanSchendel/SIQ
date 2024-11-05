@@ -362,9 +362,9 @@ ui <- fluidPage(
         checkboxInput("split_alias","Separate samples", value = F),
         radioButtons(
           "Column",
-          "Select Column to plot :",
-          c("both","delSize","insSize"),
-          selected = "both",
+          "Select what to plot :",
+          c("deletion+inserts","deletions","inserts"),
+          selected = "deletion+inserts",
           inline = TRUE),
         radioButtons(
           "TypePlot",
@@ -2992,12 +2992,17 @@ server <- function(input, output, session) {
     ##make x-axis label
     xlab = "Deletion size"
     ##adjust data if needed
-    if(input$Column == "both"){
-      el = el %>% mutate(delSize = delSize-insSize)
+    if(input$Column == "deletion+inserts"){
+      el = el %>% mutate(delSize = insSize-delSize)
       if(min(el$delSize) < 0){
-        xlab = "Deletion size ( < 0 is insertion)"
+        xlab = "insert size - deletion size ( < 0 is deletion )"
       }
-    } 
+    }
+    ##overwrite delSize
+    else if(input$Column == "inserts"){
+      el = el %>% mutate(delSize = insSize)
+      xlab = "Insert size"
+    }
     
     ##first adjust the fractions to 1
     el = el %>% group_by(Subject, Alias) %>% mutate(fraction = fraction/sum(fraction)) %>% ungroup()
