@@ -24,19 +24,14 @@ public class NGSPair {
 				File R2 = new File(R1.getAbsolutePath().replace(R1.getName(), R2name));
 				//search for R2
 				boolean added = false;
-				for(File tempFile: v) {
-					if(done.contains(tempFile)) {
-						continue;
-					}
-					if(tempFile.getAbsolutePath().equals(R2.getAbsolutePath())) {
-						NGSPair ngspair = new NGSPair(R1, tempFile);
-						pairs.add(ngspair);
-						done.add(R1);
-						done.add(tempFile);
-						added = true;
-						break;
-					}
+				if(R2.exists()) {
+					NGSPair ngspair = new NGSPair(R1, R2);
+					pairs.add(ngspair);
+					done.add(R1);
+					done.add(R2);
+					added = true;
 				}
+				
 				//changed behaviour, add single files as well
 				if(!added) {
 					System.out.println("adding "+R1.getAbsolutePath());
@@ -51,8 +46,8 @@ public class NGSPair {
 				pairs.add(ngspair);
 				done.add(f);
 			}
-			System.out.println(f.getName());
-			System.out.println(f.getName().endsWith(".fq"));
+			//System.out.println(f.getName());
+			//System.out.println(f.getName().endsWith(".fq"));
 		}
 		return pairs;
 	}
