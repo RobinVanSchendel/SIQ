@@ -521,7 +521,18 @@ ui <- fluidPage(
         radioButtons("HeatmapEndsFilter",
                      "Set max distance to Cas9 target site(s):",
                      c("disabled","-2bp"),
-                     inline = T)
+                     inline = T),
+        radioButtons("HeatmapEnds_set_xaxis",
+                      "How to set heat map xaxis",
+                     choices = c("Automatic","Manual"),
+                     inline = T
+                     ),
+        sliderInput("HeatmapEnds_Xaxis",
+                    "Set limits for x-axis (only if Manual selected):",
+                    min = -500,
+                    max = 500,
+                    value = c(-100,100),
+                    step = 5)
       ),
       conditionalPanel(
         condition = "input.tabs == 'Alleles'",
@@ -866,7 +877,8 @@ ui <- fluidPage(
                            ),
                   tabPanel("HeatmapEnds",
                            h3("HeatmapEnds"),
-                           p("Not sure yet what will be put here"),
+                           p("Plot of the end locations for each event"),
+                           verbatimTextOutput(outputId='heatmapend_warning'),
                            uiOutput("ui_heatmapend")
                   ),
 									tabPanel("1bp insertion",
@@ -1561,18 +1573,34 @@ server <- function(input, output, session) {
       geom_tile() +
       #scale_fill_viridis_c()
       scale_fill_gradientn(colours = c("white", "black", "red")) +
-      theme_classic() +
       theme_object()+
       NULL
     plot2 = ggplot(counts2, aes(x=delRelativeEndTD, y = Alias , fill = fraction)) + 
       geom_tile() +
       scale_fill_gradientn(colours = c("white", "black", "red")) +
-      theme_classic() +
       theme_object()+
       NULL
     if(length(unique(data$Subject))>1){
       plot1 = plot1 + facet_wrap(Subject ~., ncol = 1, scales = "free")
       plot2 = plot2 + facet_wrap(Subject ~., ncol = 1, scales = "free")
+    }
+    ##option to manually plot the x-axis
+    if(input$HeatmapEnds_set_xaxis == "Manual"){
+      plot1 = plot1 + scale_x_continuous(limits = c(input$HeatmapEnds_Xaxis[1],input$HeatmapEnds_Xaxis[2]))
+      plot2 = plot2 + scale_x_continuous(limits = c(input$HeatmapEnds_Xaxis[1],input$HeatmapEnds_Xaxis[2]))
+      ##check if nothing is missing. Display a warning message if some data is missing
+      nrows1 = counts1 %>% filter(delRelativeStartTD < input$HeatmapEnds_Xaxis[1] | delRelativeStartTD > input$HeatmapEnds_Xaxis[2]) %>% nrow()
+      nrows2 = counts2 %>% filter(delRelativeEndTD < input$HeatmapEnds_Xaxis[1] | delRelativeEndTD > input$HeatmapEnds_Xaxis[2]) %>% nrow()
+      total_rows = nrows1 + nrows2
+      ##if >0 there is data not being plotted
+      if(total_rows > 0 ){
+        messages$heatmapend_warning <- paste("Some data is not displayed now, number of rows (",total_rows,")")
+      } else{
+        messages$heatmapend_warning <- NULL
+      }
+    } else{
+      #clear warning message if not needed
+      messages$heatmapend_warning <- NULL
     }
     grid.arrange(plot1, plot2, ncol=2)
   })
@@ -3444,6 +3472,8 @@ server <- function(input, output, session) {
   
   rv <- reactiveValues()
   
+  messages <- reactiveValues()
+  
   ##set the target/subject options
   observe({
     req(in_data())
@@ -5094,6 +5124,10 @@ server <- function(input, output, session) {
     )
     return(df)
   }
+  
+  output$heatmapend_warning <- renderPrint({
+    cat(messages$heatmapend_warning)
+  })
   
   theme_object <- reactive({
     themeObj = theme()
