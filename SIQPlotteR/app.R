@@ -135,7 +135,7 @@ exampleExcel = "data/20220609_220725_SIQ.xlsx"  ## for testing
 exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
 
 seleced_input = 2
-selected_tab = "Tornado"
+selected_tab = "Welcome"
 
 debug = FALSE
 
@@ -228,6 +228,27 @@ ui <- fluidPage(
                   min = 100,
                   max = 5000,
                   step = 50
+      ),
+      dropdownButton(
+        label = "Theme settings",
+        tooltip = T,
+        circle = F,
+        icon = icon("gears"),
+        checkboxInput(inputId = "theme_text_vertical",
+                      label = "X-axis text vertical",
+                      value = T),
+        checkboxInput(inputId = "theme_background",
+                      label = "theme background blank",
+                      value = T),
+        checkboxInput(inputId = "theme_grid",
+                      label = "add gridlines",
+                      value = F),
+        numericInput(inputId = "theme_font",
+                     label = "font size",
+                     value = 13),
+        numericInput(inputId = "theme_line_thickness",
+                     label = "line thickness",
+                     value = 0.25)
       ),
       conditionalPanel(
         condition = "input.tabs == 'Efficiency'",
@@ -708,6 +729,77 @@ ui <- fluidPage(
     # Show a plot of the generated distribution
     mainPanel(
       tabsetPanel(id="tabs", type = "tabs",
+                  tabPanel("Welcome",
+                           h3("Welcome to SIQPlotteR!"),
+                           p("We are pleased to introduce you to SIQPlotteR, a powerful tool for visualizing mutation profiles from targeted sequencing data. This application is designed to assist researchers in analyzing and interpreting targeted sequencing data with ease and precision."),
+                           hr(),
+                           HTML('<center><img src="flanks.jpg" width="400px"></center>'),
+                           hr(),
+                           p("If you want to explore SIQPlotteR and its powerful visualisations right away, simply click on 'Load example SIQ paper data' to get started"),
+                           
+                           p("Below we describe the details that are required to generated targeted sequencing data"),
+                           #img(src="SIQ_title.png",width=200),
+                           tags$ol(
+                             HTML("<h3><li>Select the genes or genomic regions of interest</li></h3>
+                             <p>We generally select a region of DNA surrounding a CRISPR target site. However SIQ can be used to analyze any target site: TALENs, I-SceI, G4 sites, base editors, nickases </p>
+                             <h3><li>Design your primers</li></h3>
+                             <p>Our work horse at the moment is Illumina sequencing and more specifically 2x150bp PE reads. In most situations you want to design your primer set such that SIQ can merge both 150bp reads.
+                             So ideally your PCR fragment is < 290bp to overlow for some overlap. If you also expect insertions and you would like SIQ to call them you want to go for primer sets located between 200-250bp.
+                             For Illumina Sequencing we add flaps to our primers with the following sequences:</p>
+                             <p>Forward: <code>GATGTGTATAAGAGACAG[your_fwd_primer]</code></p>
+                             <p>Reverse: <code>CGTGTGCTCTTCCGATCT[your_rv_primer]</code></p>
+
+                             <p><em>Remember: the primers themselves are also sequenced so ensure you take that into account in your primer design. The flaps are NOT sequenced.</em></p>
+                             <p>For ONT and PacBio sequencing we generally use PCR products of about 3kb, but there is no real limit.
+        <h3><li>Prepare the DNA library by PCRing the DNA and adding adapters.</li></h3>
+        <p>To add adapters and barcodes to your PCR product you need to order P5 and P7 primers with barcodes on them. The following primers are examples of P5 and P7 primers that we use regularly in the lab:
+        <table>
+          <tr>
+            <th>Name</th>
+            <th>Sequence (barcode is in lowercase (8bp))</th>
+          </tr>
+          <tr>
+            <td>P5_1</td>
+            <td><code>AATGATACGGCGACCACCGAGATCTACACaagcgttgTCGTCGGCAGCGTCAGATGTGTATAAGAGACA*G</code></td>
+          </tr>
+          <tr>
+            <td>P5_2</td>
+            <td><code>AATGATACGGCGACCACCGAGATCTACACagtataacTCGTCGGCAGCGTCAGATGTGTATAAGAGACA*G</code></td>
+          </tr>
+          <tr>
+            <td>P7_1</td>
+            <td><code>CAAGCAGAAGACGGCATACGAGATattaactgGTGACTGGAGTTCAGACGTGTGCTCTTCCGATC*T</code></td>
+          </tr>
+          <tr>
+            <td>P7_2</td>
+            <td><code>CAAGCAGAAGACGGCATACGAGATattacgctGTGACTGGAGTTCAGACGTGTGCTCTTCCGATC*T</code></td>
+          </tr>
+        </table>
+        </p>
+        <p><em>When you order this primers, ensure to also order the (*) as that keeps them more stable.</em></p>
+        
+        <p>We then perform the following PCRs</p>
+        <p>PCR1: 20ul reactions. 19ul PCR mix with the primers with flaps (from step #2) + 1ul DNA template (50-150ng/ul). For the polymerase we use either Phusion (ThermoFisher) or NebNext Ultra II Q5 (NEB)</p>
+        <p>PCR1 is purified with Ampure XF beads at a ratio of 1.2x. So we add 24ul Ampure XP beads to the PCR and perform cleanup.</p>
+        <p>PCR2: 20ul reactions. 5-10ng of purified first round PCR is used (measured with qubit). 5 cycli with the P5 and P7 primers.
+        <p>PCR2 is purified with Ampure XF beads at a ratio of 0.8x to lose the primers and clean up the PCR fragments. Check concentration on the qubit
+        <p>We then makes pools of the same PCR products bases on the concentrations.</p>
+        <p>A final check is performed on a DNA chip to ensure you have indeed PCR fragments of the expected size (don't forget to include the size of the P5 and P7 primers up till the barcode!)
+        <h3><li>Perform sequencing using platforms such as Illumina, PacBio, or Oxford Nanopore Technologies</li></h3>
+        <p>This is typically done by your sequencing provider. Please do ensure that you discussed the P5 and P7 barcodes that you have added in the previous step (Illumina only) are compatible with the barcodes used by your
+        sequencing provider.</p>
+        <h3><li>Analyze your sequencing data using SIQ (Sequence Interrogation and Qualification)</li></h3>
+        <p>To analyse your data, please take a look <a href=\"https://github.com/RobinVanSchendel/SIQ\">here</a></p>
+        <h3><li>Visualize the mutation profiles with SIQPlotteR</li></h3>
+        <p>Begin by uploading your output Excel file from SIQ into 'Select Excel or tab-separated File'</p>
+        <p>A good point to start is in the tab 'Sample Info'. This provides information on the number of reads and the number of reads that could be used by SIQ to output events.</p>
+        <p>Once you convinced yourself that the data looks solid you can try different type of plots. Remember that there is not a single visualisation that will be appropriate for everyone.
+        A typical visualisation that people use is the Tornado visualisation. That plot tries to capture everything in a single plot, but can also be a little bit overwhelming.</p>
+        
+                                  ")
+                             
+                           )
+                           ),
                   tabPanel("Tornado",
                            h3("Tornado Plot"),
                            p("A newly designed interactive plot to show all different mutation types and weights in one.
@@ -1429,6 +1521,7 @@ server <- function(input, output, session) {
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
       geom_bar(stat = "identity") +
       facet_wrap(Subject ~ ., scales = "free")+
+      theme_object()+
       NULL
     ##for grouped add SD
     if(is_grouped()){
@@ -1469,11 +1562,13 @@ server <- function(input, output, session) {
       #scale_fill_viridis_c()
       scale_fill_gradientn(colours = c("white", "black", "red")) +
       theme_classic() +
+      theme_object()+
       NULL
     plot2 = ggplot(counts2, aes(x=delRelativeEndTD, y = Alias , fill = fraction)) + 
       geom_tile() +
       scale_fill_gradientn(colours = c("white", "black", "red")) +
       theme_classic() +
+      theme_object()+
       NULL
     if(length(unique(data$Subject))>1){
       plot1 = plot1 + facet_wrap(Subject ~., ncol = 1, scales = "free")
@@ -1933,6 +2028,7 @@ server <- function(input, output, session) {
             scale_y_log10() +
             theme_grey()+
             theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+            theme_object()+
             coord_flip()+
             facet_wrap(Subject ~ ., ncol = input$OutcomeNrCols, scales = "free")+
             NULL
@@ -1975,7 +2071,7 @@ server <- function(input, output, session) {
           if(!input$OutcomeLegend){
             plot <- plot + theme(legend.position = "none")
           }
-          plots[['line']] <- plot
+          plots[['line']] <- plot + theme_object()
           
       } else if(input$typePlotOutcome=="volcano"){
         
@@ -2018,6 +2114,7 @@ server <- function(input, output, session) {
             geom_vline(aes(xintercept = upper), data = sdControls)+
             scale_y_log10()+
             facet_wrap(Subject ~ Outcome, scales = "free", ncol = input$OutcomeNrCols)+
+            theme_object()+
             NULL
           
         return(plot)
@@ -2129,7 +2226,9 @@ server <- function(input, output, session) {
           geom_text_repel(size = input$OutcomeSize,aes(label = label), max.overlaps = input$pca_max_overlap)+
           #geom_label(size = input$OutcomeSize,aes(label = rownames(df)))+
           theme_minimal()+
-          theme(legend.position = "none")
+          theme(legend.position = "none") +
+          theme_object()+
+          NULL
         plots[['pca']] = plot1
         fviz = fviz_pca_var(pca_res, col.var = "cos2",
                             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
@@ -2197,7 +2296,7 @@ server <- function(input, output, session) {
            if(!input$OutcomeLegend){
              plot <- plot + theme(legend.position = "none")
            }
-          plots[[controlY]] <- plot
+          plots[[controlY]] <- plot + theme_object()
         }
         end_time = Sys.time()
         print(paste("outcomeXY ",end_time-start_time, "seconds"))
@@ -2214,7 +2313,9 @@ server <- function(input, output, session) {
         plot = ggplot(dfTest,aes(x=X2,y=X1, fill = label))+
           geom_point(shape=21, size = input$OutcomeDotSize, stroke = input$OutcomeStrokeSize,
                      alpha = input$OutcomeAlpha) +
-          theme_minimal()
+          theme_minimal() +
+          theme_object()+
+          NULL
         if(input$OutcomeSize>0){
           plot <- plot + geom_text_repel(size = input$OutcomeSize,aes(label = displayLabel), max.overlaps = Inf)
         }
@@ -2279,7 +2380,12 @@ server <- function(input, output, session) {
       ##added plot based on secondary Type
       el = el %>% mutate(SecondaryTypeHit = paste(SecondaryType,junction,sep = "_"))
       elCount = el %>% filter(Type == "DELINS" | Type == "TINS") %>% group_by(Alias) %>% count(SecondaryTypeHit,wt=fraction)
-      plotBars = ggplot(elCount, aes(x = Alias, y=n, fill = SecondaryTypeHit)) + geom_bar(stat = "identity") + scale_fill_viridis_d() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+      plotBars = ggplot(elCount, aes(x = Alias, y=n, fill = SecondaryTypeHit)) + geom_bar(stat = "identity") + 
+        scale_fill_viridis_d() + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+        theme_object() +
+        NULL
+      
       plots[['bars']] = plotBars
       
       #drop delins
@@ -2333,7 +2439,9 @@ server <- function(input, output, session) {
     
     plot <- ggplot(df) + 
       geom_rect(aes(xmin=position,xmax=position+length,ymin=y_start,ymax=y_end, fill=junctionType))+
-      ggtitle(title)
+      ggtitle(title) +
+      theme_object()+
+      NULL
     
     if(ymax!=-1){
       plot <- plot + ylim(c(0,ymax))
@@ -2934,10 +3042,10 @@ server <- function(input, output, session) {
     hdDF = hardcodedTypesDF() %>% filter(Type %in% typesInData)
     names = paste("Type(s) in plot:",paste(hdDF$Text, collapse=", "))
     
-    p<- p + theme(plot.title = element_text(size=14, hjust=0.5),panel.border = element_blank(), panel.grid.major = element_blank(),
-                  panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
-                  legend.text = element_text( size = 10), legend.key.size = unit(5, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10), axis.text.y=element_text(size = 8))  +
-      ggtitle(names)
+    p<- p + 
+      ggtitle(names) +
+      theme_object()+
+      NULL
     if(input$facet_wrap == TRUE){
       p<- p + facet_grid(~Subject, scales = "free_x", space = "free_x")
     }
@@ -3036,6 +3144,7 @@ server <- function(input, output, session) {
       geom_density(alpha = 0.5) +
       labs(x = xlab, y = "Density") +
       theme_minimal() +
+      theme_object()+
       NULL
     
     ##separate targets?
@@ -3093,7 +3202,9 @@ server <- function(input, output, session) {
         theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
               panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
               legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title.x=element_blank(), legend.title = element_text(size = 10))+
-        ylab("CountEvents")
+        ylab("CountEvents") +
+        theme_object() +
+        NULL
       
       if(input$facet_wrap == TRUE){
         plot <- plot + facet_grid(~Subject, scales = "free_x", space = "free_x")
@@ -3130,7 +3241,9 @@ server <- function(input, output, session) {
         scale_fill_manual(values = colors) +
         theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
               panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
-              legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title.x=element_blank(), legend.title = element_text(size = 10))
+              legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title.x=element_blank(), legend.title = element_text(size = 10)) +
+        theme_object() +
+        NULL
       if(input$facet_wrap == TRUE){
         plotTest <- plotTest + facet_grid(~Subject, scales = "free_x", space = "free_x")
       }
@@ -3175,7 +3288,8 @@ server <- function(input, output, session) {
           fraction = fraction + facet_grid(~Subject, scales = "free_x", space = "free_x")
         }
       }
-      plots[["fraction"]] <- fraction
+      ##not sure if this is the right place for the theme object
+      plots[["fraction"]] <- fraction + theme_object()
       
       dfPart = df[df$Type %in% keepNames ,] ##works
       dfPart$Type = factor(dfPart$Type,levels=keepNames)
@@ -3188,6 +3302,7 @@ server <- function(input, output, session) {
                 panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
                 legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title.x=element_blank(), legend.title = element_text(size = 10))+
           ylab("Number of reads")+
+          theme_object() +
           facet_grid(~Subject, scales = "free_x", space = "free_x")
         plots[["total"]] <- total
       } else {
@@ -3197,7 +3312,9 @@ server <- function(input, output, session) {
           theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
                 panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
                 legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title.x=element_blank(), legend.title = element_text(size = 10))+
-          ylab("Number of reads")
+          ylab("Number of reads") +
+          theme_object() +
+          NULL
         plots[["total"]] <- total
       }
     }
@@ -3689,6 +3806,7 @@ server <- function(input, output, session) {
             panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
             legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), legend.title = element_text(size = 10)) +
       xlab("location")+ylab("fraction of total") +
+      theme_object() +
       NULL
     
     if(input$facet_wrap & input$split_alias_target){
@@ -3879,9 +3997,8 @@ server <- function(input, output, session) {
     }
     plot = plot +
       scale_fill_manual(values = colorType) + 
-      theme(plot.title = element_text(size=10),panel.border = element_blank(), panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
-            legend.text = element_text( size = 10), legend.key.size = unit(8, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10))
+      theme_object() +
+      NULL
       
     
     return(plot)
@@ -3933,10 +4050,10 @@ server <- function(input, output, session) {
     names = paste(hdDF$Text, collapse=", ")
     names = paste("Type(s) in plot:",names)
     
-    p<- p + theme(plot.title = element_text(size=14, hjust=0.5),panel.border = element_blank(), panel.grid.major = element_blank(),
-                  panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size =0.25),axis.text.x = element_text(angle = 90, hjust = 1 ,vjust = 0.5, size = 10),
-                  legend.text = element_text( size = 10), legend.key.size = unit(5, "mm"), axis.title=element_blank(), legend.title = element_text(size = 10), axis.text.y=element_text(size = 8))  +
-      ggtitle(names)
+    p<- p + 
+      ggtitle(names) +
+      theme_object() +
+      NULL
     if(flipped){
       #p = p + coord_flip()
     }
@@ -3977,6 +4094,7 @@ server <- function(input, output, session) {
     else if(colors == 5){
       p<- p + scale_fill_gradientn(colours=c("blue4","lightblue","white", "lightcoral", "red4"), values = scales::rescale(c(min(testData$n),0-.Machine$double.eps,0,0+.Machine$double.eps,max(testData$n)))) 
     }
+    p <- p + theme_object()
     return(p)
   }
   
@@ -3986,7 +4104,11 @@ server <- function(input, output, session) {
     if(length(input$Aliases) != length(input$multiGroupOrder)){
       return()
     }
+    
     el = filter_in_data()
+    validate(
+      need(el$insertion != "", "Column 'Insertion' is not present, plot cannot be displayed")
+    )
 
         ##recalculate fraction as this is not done within filter_in_data
     if(input$alleleFractionBasedOn == "relative"){
@@ -4187,6 +4309,7 @@ server <- function(input, output, session) {
           scale_y_discrete(limits = rev) +
           facet_wrap(Alias ~ ., nrow = 1) +
           ggtitle(subject) +
+          theme_object() +
           #theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
           #      panel.grid.minor = element_blank(), panel.background = element_blank(),  legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
           NULL
@@ -4237,6 +4360,7 @@ server <- function(input, output, session) {
           facet_wrap(as.formula(paste(input$GroupColumn,"~",".")), nrow = 1) +
           
           ggtitle(subject) +
+          theme_object() +
           #theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
           #      panel.grid.minor = element_blank(), panel.background = element_blank(),  legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
           NULL
@@ -4325,6 +4449,7 @@ server <- function(input, output, session) {
         scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) +
         theme(legend.position = "none") +  # Remove legend
         labs(y = "Mutagenic fraction") +
+        theme_object() +
         NULL
       
     }else {
@@ -4332,7 +4457,9 @@ server <- function(input, output, session) {
       plot <- ggplot(dfMutFreq, aes(x=Alias,y=mut)) + geom_bar(stat = "identity") +
         theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
               panel.grid.minor = element_blank(), panel.background = element_blank(),  legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
-        xlab("Sample") + ylab("Fraction")
+        xlab("Sample") + ylab("Fraction") +
+        theme_object() +
+        NULL
     }
     if(input$facet_wrap == TRUE && "Subject" %in% colnames(dfMutFreq)){
       plot <- plot + facet_grid(~Subject, scales = "free_x", space = "free_x")
@@ -4396,7 +4523,9 @@ server <- function(input, output, session) {
       plot = ggplot(test, aes(x=delRelativeStart,y=snv, group=Subject, color=Sample)) + geom_point() +
         theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
               panel.grid.minor = element_blank(), panel.background = element_blank(), legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
-        xlab("Location")+ylab("Frequency")
+        xlab("Location")+ylab("Frequency") +
+        theme_object() +
+        NULL
       #facet_grid(~Subject, scales = "free_x", space = "free_x") 
       plotsForDownload$snvs = plot
       plot
@@ -4431,7 +4560,9 @@ server <- function(input, output, session) {
             ggtitle(name)+
             scale_fill_viridis_d()+
             scale_x_continuous(limits = c(minX,maxX)) +
-            xlab("Location")+ylab("Frequency")
+            xlab("Location")+ylab("Frequency") +
+            theme_object() +
+            NULL
           if(yAllMax!=-1){
             plot = plot + scale_y_continuous(limits = c(0,yAllMax))
           }
@@ -4499,7 +4630,9 @@ server <- function(input, output, session) {
     
     p = p + 
       theme(axis.text.x = element_text(angle = 90, size = 10), axis.text.y = element_text(size=10), panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(), panel.background = element_blank(), axis.title=element_blank(), legend.title = element_text(size = 8),legend.text = element_text( size = 6)) 
+            panel.grid.minor = element_blank(), panel.background = element_blank(), axis.title=element_blank(), legend.title = element_text(size = 8),legend.text = element_text( size = 6)) +
+      theme_object() +
+      NULL
     if(input$facet_wrap == TRUE  && "Subject" %in% colnames(testData)){
       p = p + facet_grid(~Subject, scales = "free_x", space = "free_x")
     }
@@ -4548,7 +4681,9 @@ server <- function(input, output, session) {
       #scale_fill_gradientn(colours=c("blue","lightblue","grey", "lightcoral", "red"), values = scales::rescale(c(min(testData$n),0-.Machine$double.eps,0,0+.Machine$double.eps,max(testData$n)))) +
       #scale_fill_gradientn(colours=c("blue4","lightblue","white", "lightcoral", "red4"), values = scales::rescale(c(min(testData$n),0-.Machine$double.eps,0,0+.Machine$double.eps,max(testData$n)))) +
       #scale_fill_gradientn(colours=c("white", "blue"))+
-      ggtitle("homLength vs 1bp Insertions") 
+      theme_object() +
+      ggtitle("homLength vs 1bp Insertions") +
+      NULL
     #scale_y_continuous(limits = c(xmin,xmax))
     return(p)
   }
@@ -4650,13 +4785,11 @@ server <- function(input, output, session) {
     
     plot = plot + 
       scale_fill_manual(values = colourCode, breaks = names(colourCode), labels = ColorText$Text, na.value = "white") + #no guid is produced
-      
-      theme(plot.title = element_text(size=10, hjust=0.5),panel.border = element_blank(), panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black", size = 0.25),axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5),
-      ) + 
       labs(x="Location", y="Fraction") + 
       #ggtitle(ggtitleLabel) + 
-      scale_x_continuous(limits = c(xmin, xmax))
+      scale_x_continuous(limits = c(xmin, xmax)) +
+      theme_object() +
+      NULL
     
     #create an scale_y_continous object to adjust
     scale_y_continuous = scale_y_continuous()
@@ -4700,7 +4833,8 @@ server <- function(input, output, session) {
     print(paste("half3: tornadoplot",end_time))
     
     ##add theme
-    plot = plot + theme(strip.background = element_blank())
+    plot = plot + theme(strip.background = element_blank()) +
+      theme_object()
     
     return(plot)
   }
@@ -4961,7 +5095,26 @@ server <- function(input, output, session) {
     return(df)
   }
   
-  
+  theme_object <- reactive({
+    themeObj = theme()
+    themeObj$text = element_text(size = input$theme_font)
+    
+    if(input$theme_background){
+      themeObj$panel.background = element_blank()
+    }
+    if(input$theme_grid == FALSE){
+      themeObj$panel.grid.major = element_blank()
+      themeObj$panel.grid.minor = element_blank()
+    }
+    
+    themeObj$axis.line = element_line(colour = 'black', linewidth = input$theme_line_thickness)
+    themeObj$axis.ticks = element_line(colour = 'black', linewidth = input$theme_line_thickness)
+    
+    if(input$theme_text_vertical){
+      themeObj$axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5)
+    }
+    themeObj
+  })
   
 }
 
