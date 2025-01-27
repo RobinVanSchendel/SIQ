@@ -688,12 +688,16 @@ ui <- fluidPage(
         ),
         checkboxInput(
           "OutcomeUmapLabels",
-          "umap show only 1 label per group",
+          "UMAP show only 1 label per group",
           value = F),
         checkboxInput(
           "OutcomePCAScale",
           "Scale",
           value = F),
+        checkboxInput(
+          "OutcomeXYoutliers",
+          "Only display outlier labels in XY plot",
+          value = T),
         numericInput(
           inputId = "pca_max_overlap",
           label = "Set max overlap for labels:",
@@ -2306,8 +2310,15 @@ server <- function(input, output, session) {
         minValue = dfForOutliers$avg- input$OutcomePartQuartile*dfForOutliers$sd
         maxValue = dfForOutliers$avg+ input$OutcomePartQuartile*dfForOutliers$sd
         print(paste(minValue,maxValue))
-        dataSpread = dataSpread %>%
-          mutate(rank = ifelse(!!as.name(input$controlsX)<minValue | !!as.name(input$controlsX)>maxValue,Alias,NA))
+        ##only show outliers
+        if(input$OutcomeXYoutliers){
+          dataSpread = dataSpread %>%
+            mutate(rank = ifelse(!!as.name(input$controlsX)<minValue | !!as.name(input$controlsX)>maxValue,Alias,NA))
+        } else {
+          ##show all labels
+          dataSpread = dataSpread %>%
+            mutate(rank = Alias)
+        }
        
         print(paste("mutate outliers",Sys.time()-start_time))
         
