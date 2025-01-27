@@ -883,7 +883,8 @@ ui <- fluidPage(
                            h3("HeatmapEnds"),
                            p("Plot of the end locations for each event"),
                            verbatimTextOutput(outputId='heatmapend_warning'),
-                           uiOutput("ui_heatmapend")
+                           uiOutput("ui_heatmapend"),
+                           DT::dataTableOutput("heatmap_end_data",width = 8)
                   ),
 									tabPanel("1bp insertion",
 									         h3("1bp insertion"),
@@ -1551,7 +1552,28 @@ server <- function(input, output, session) {
     plot
   })
   
-  output$outcomeHeatmapEnd <- renderPlot({
+  output$heatmap_end_data <- DT::renderDataTable({
+    req(heatmapEndData_data())
+    
+    data = heatmapEndData_data()
+    
+    ##combined the data.frames
+    totalData = dplyr::bind_rows(data[[1]], data[[2]])
+    
+    ##ensure a different order
+    totalData = totalData %>% relocate(delRelativeEndTD, .after = delRelativeStartTD)
+    
+    
+    dt = DT::datatable(totalData,rownames = FALSE,extensions = 'Buttons', options = list(
+      pageLength = -1,
+      #columnDefs = list(list( targets = target, width = '600px')),
+      #scrollX = TRUE,
+      dom = 'tB',
+      buttons = c('copy', 'excelHtml5')
+    ))
+  })
+  
+  heatmapEndData_data <- reactive({
     req(filter_in_data())
     req(input$Aliases)
     data = filter_in_data()
@@ -1560,7 +1582,6 @@ server <- function(input, output, session) {
     if(input$HeatmapEndsFilter == "-2bp"){
       data = data %>% filter(delRelativeEndTD >= -2) 
     }
-    
     
     ####TAKE THE RIGHT column. These ones are not correct!!!
     counts1 = data %>% group_by(Alias, Subject, delRelativeStartTD) %>% summarise(fraction = sum(fraction))
@@ -1573,6 +1594,20 @@ server <- function(input, output, session) {
     counts1$Alias = factor(counts1$Alias, levels = rev(input$multiGroupOrder))
     counts2$Alias = factor(counts2$Alias, levels = rev(input$multiGroupOrder))
     
+    retList = list()
+    retList[[1]] = data.frame(counts1)
+    retList[[2]] = data.frame(counts2)
+    
+    return(retList)
+  })
+  
+  output$outcomeHeatmapEnd <- renderPlot({
+    req(heatmapEndData_data())
+    
+    data = heatmapEndData_data()
+    counts1 = data[[1]]
+    counts2 = data[[2]]
+    
     plot1 = ggplot(counts1, aes(x=delRelativeStartTD, y = Alias , fill = fraction)) + 
       geom_tile() +
       #scale_fill_viridis_c()
@@ -1584,7 +1619,7 @@ server <- function(input, output, session) {
       scale_fill_gradientn(colours = c("white", "black", "red")) +
       theme_object()+
       NULL
-    if(length(unique(data$Subject))>1){
+    if(length(unique(counts1$Subject))>1){
       plot1 = plot1 + facet_wrap(Subject ~., ncol = 1, scales = "free")
       plot2 = plot2 + facet_wrap(Subject ~., ncol = 1, scales = "free")
     }
