@@ -377,7 +377,7 @@ ui <- fluidPage(
       ),
       conditionalPanel(
         condition = "input.tabs == 'Size'",
-        #checkboxInput("ymaxRangeDiffLimitaxis","Set manual y-axis", value = F),
+        checkboxInput("ymaxRangeDiffLimitaxis","Set manual y-axis", value = F),
         #uiOutput("ymaxRangeDiff"),
         checkboxInput("group_first","Perform grouping first?", value = F),
         checkboxInput("split_alias","Separate samples", value = F),
@@ -390,8 +390,8 @@ ui <- fluidPage(
         radioButtons(
           "TypePlot",
           "Select type of plot :",
-          c("heatmap","violin", "lineplot", "median size", "boxplot"),
-          selected = "heatmap",
+          c("kernel_density", "heatmap","violin", "lineplot", "median size", "boxplot"),
+          selected = "kernel_density",
           inline = TRUE),
         radioButtons(
           "fractionSize",
@@ -3158,6 +3158,9 @@ server <- function(input, output, session) {
   output$sizePlot <- renderPlot({
     req(input$Column)
     req(input$fractionSize)
+    if(input$TypePlot == "kernel_density"){
+      return(sizePlot2())
+    }
     
     el = filter_in_data()
     el$Alias = factor(el$Alias, levels = input$multiGroupOrder)
@@ -3167,7 +3170,7 @@ server <- function(input, output, session) {
   })
   
   
-  output$sizePlot2 <- renderPlot({
+  sizePlot2 <- reactive({
     req(filter_in_data())
     el = filter_in_data()
     
@@ -3748,7 +3751,7 @@ server <- function(input, output, session) {
   })
   
   output$ui_sizeplot <- renderUI({
-    plotOutput("sizePlot2", height = input$plotHeight, width = input$plotWidth)
+    plotOutput("sizePlot", height = input$plotHeight, width = input$plotWidth)
   })
   output$ui_corplot <- renderUI({
     plotOutput("corPlot", height = input$plotHeight, width = input$plotWidth)
