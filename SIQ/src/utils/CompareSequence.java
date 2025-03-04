@@ -28,7 +28,7 @@ public class CompareSequence {
 	private int minimumSizeWithLeftRight = 15;
 	private final static String replacementFlank = "FLK1";
 	public final static int minimalRangeSize = 40;
-	private final static double maxMismatchRate = 0.1;
+	private final static double maxMismatchRate = 0.12;
 	private static final int ALLLOWEDJUMPDISTANCE = 1;
 	private static final int MAXIMUMTRIESSOLVING = 5;
 	//this introduces possible problems... I am aware of this 'feature' missing SNVs 30bp away from flanks
@@ -470,6 +470,13 @@ public class CompareSequence {
 		if(this.getType()== Type.TANDEMDUPLICATION){
 			homology = getHomologyTandemDuplication();
 			homologyLength = homology.length();
+			//also get mismatched homology for TDs
+			int pos = leftFlank.getSubjectEnd();
+			int newPos = pos - insert.length();
+			String left = subjectObject.getString().substring(0, newPos);
+			String right = subjectObject.getString().substring(pos);
+			homologyM = Utils.getHomologyAtBreakWithMismatch(left, insert, right, maxMismatchRate);
+			homologyLengthM = homologyM.length();
 		}
 		int delLength = this.getDel().length();
 		if(this.getDel().contains(" - ")){
@@ -577,6 +584,43 @@ public class CompareSequence {
 			ret.append(isEndPosRel);
 		}
 		return ret.toString();
+	}
+	//This method determins the homology, but with allowing a mismatch
+	private String getHomologyTandemDuplication(double maxmismatchrate) {
+		int pos = leftFlank.getSubjectEnd();
+		int newPos = pos - insert.length();
+		String left = subjectObject.getString().substring(0, pos);
+		String right = subjectObject.getString().substring(0, newPos);
+		
+		String hom = "";
+		while(left.length()>0 && right.length()>0 && left.charAt(left.length()-1)==right.charAt(right.length()-1)){
+			//need the reverse
+			hom = left.charAt(left.length()-1)+hom;
+			left = left.substring(0, left.length()-1);
+			right = right.substring(0, right.length()-1);
+		}
+		//ok now check right
+		String rightRest = subjectObject.getString().substring(pos);
+		String tempInsert = this.insert;
+		int mismatch = 0;
+		String homRight = "";
+		int index = 0;
+		while(rightRest.length()>0 && tempInsert.length() > 0 && 
+				(rightRest.charAt(index) == tempInsert.charAt(index) || mismatch < 1)) {
+			if(rightRest.charAt(index) != tempInsert.charAt(index)) {
+				homRight += "X";
+			}
+			else {
+				homRight += rightRest.charAt(index);
+			}
+			mismatch++;
+			index++;
+		}
+		//cannot end with mismatch
+		while(homRight.length() > 0 && homRight.endsWith("X")) {
+			homRight = homRight.substring(0,homRight.length()-1);
+		}
+		return hom+homRight;
 	}
 	/**function that returns the freedom in the position
 	 * e.g. microhomology and/or insertion at multiple possible positions
