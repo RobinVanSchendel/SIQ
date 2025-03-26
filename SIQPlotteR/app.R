@@ -1182,7 +1182,9 @@ server <- function(input, output, session) {
       #print("1")
       nickases = df %>% filter(countEvents == 0, delRelativeStart > 0) %>% 
         select(Alias, delRelativeStart) %>% 
-        rename(nickase = delRelativeStart)
+        rename(nickase = delRelativeStart) %>%
+        ##ensure that this is only there once per alias
+        distinct()
       if(nrow(nickases) > 0){
         ##only alter if anything has changed
         df = dplyr::left_join(df,nickases, by="Alias")
