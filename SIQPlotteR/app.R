@@ -3074,9 +3074,13 @@ server <- function(input, output, session) {
     req(input$Aliases)
     
     el = filter_in_data()
+    ##remove the refs from here
+    el = el %>% filter(Type != "Reference")
+    
     if(nrow(el) == 0){
       return()
     }
+    
     plot = typeplot(el, types = input$Types, fraction = input$fraction)
     #plot <- plot + coord_flip()
     plots=list()
