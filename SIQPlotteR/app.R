@@ -716,7 +716,7 @@ ui <- fluidPage(
       checkboxGroupInput(
         inputId = "CollapseTypes", 
         label = "how to treat Type(s):",
-        choices = c("collapse TDs" = "collapseTD", "split TINS" = "splitTINS" ),
+        choices = c("collapse TDs" = "collapseTD", "split TINS" = "splitTINS" , "split nickase DELs" = "splitDELS"),
         inline = T
       ),
       checkboxInput("facet_wrap",
@@ -989,13 +989,21 @@ server <- function(input, output, session) {
     tdCColor = "#F4A460"
     delins_dual = "grey50"
     delins_snv = "grey30"
+    delnofillColor = "#B03060"
+    delfillLColor = "#9CCA86"
+    delfillRColor = "#1E9099"
+    delfillColor = "#4784C5"
     ##
     colourCode <- c("WT" = wtColor, "DELETION" = delColor, "INSERTION" = insColor, "INSERTION_1bp" = insColor1, "DELINS" = delinsColor,
                     "TINS" = tinsColor, "TANDEMDUPLICATION" = tdColor, 
                     "TANDEMDUPLICATION_COMPOUND" = tdCColor,"SNV" = snvColor, "HDR" = hdrColor,"HDR1MM" = hdr1mmColor, "0bp_homology" = bp0Color,
                     "1bp_homology" = bp1Color,"2bp_homology" = bp2Color,"3bp_homology" = bp3Color,
                     "4bp_homology" = bp4Color, "5-15bp_homology" = bp5Color, "15bp_homology" = bp6Color, "white" = "white",
-                    "TINS_FW" = tinsColor,"TINS_RC" = tinsColorRC, "DELINS_DUAL" = delins_dual, "DELINS_SNV" = delins_snv
+                    "TINS_FW" = tinsColor,"TINS_RC" = tinsColorRC, "DELINS_DUAL" = delins_dual, "DELINS_SNV" = delins_snv,
+                    "DELETION_FILLIN_NO" = delnofillColor,
+                    "DELETION_FILLIN_LEFT" = delfillLColor,
+                    "DELETION_FILLIN_RIGHT" = delfillRColor,
+                    "DELETION_FILLIN_LEFT_RIGHT" = delfillColor
     ) 
     
     hardcodedTypes = c("WT" = "wild-type","INSERTION" = "insertion", "INSERTION_1bp" = "1bp insertion",
@@ -1006,7 +1014,11 @@ server <- function(input, output, session) {
                        "5-15bp_homology" = "deletion/td 5-15bp microhomology", "DELETION" = "deletion", "HDR" = "homology-directed repair"
                        ,"HDR1MM" = "homology-directed repair mismatch", "15bp_homology" = "deletion/td >15bp microhomology",
                        "TINS_FW" = "deletion with templated insert (FW)","TINS_RC" = "deletion with templated insert (RC)",
-                       "DELINS_DUAL" = "delins (likely two events)", "DELINS_SNV" = "deletion plus snv"
+                       "DELINS_DUAL" = "delins (likely two events)", "DELINS_SNV" = "deletion plus snv",
+                       "DELETION_FILLIN_NO" = "deletion no fill-in",
+                       "DELETION_FILLIN_LEFT" = "deletion fill-in left",
+                       "DELETION_FILLIN_RIGHT" = "deletion fill-in right",
+                       "DELETION_FILLIN_LEFT_RIGHT" = "deletion fill-in left right"
                        )
     
     hardcodedTypesDF = data.frame(names(hardcodedTypes), unname(hardcodedTypes), stringsAsFactors = FALSE)
@@ -1158,10 +1170,39 @@ server <- function(input, output, session) {
     }
     ##somehow that makes the type dissappear probably move to another location!
     el = split_tins(el)
+    el = split_dels(el)
 
     print("endOf in_data")
     return(el)
   })
+  
+  split_dels <- function(df){
+    if("splitDELS" %in% input$CollapseTypes){
+      ##here we go
+      #print("1")
+      nickases = df %>% filter(countEvents == 0, delRelativeStart > 0) %>% 
+        select(Alias, delRelativeStart) %>% 
+        rename(nickase = delRelativeStart)
+      if(nrow(nickases) > 0){
+        ##only alter if anything has changed
+        df = dplyr::left_join(df,nickases, by="Alias")
+        
+        ##now change the type
+        df = df %>% mutate(Type = case_when(
+          !is.na(nickase) & Type == "DELETION" & delRelativeStart <= 0 & delRelativeEnd >= nickase ~ "DELETION_FILLIN_NO",
+          !is.na(nickase) & Type == "DELETION" & delRelativeStart > 0 & delRelativeEnd >= nickase ~ "DELETION_FILLIN_LEFT",
+          !is.na(nickase) & Type == "DELETION" & delRelativeStart <= 0 & delRelativeEnd < nickase ~ "DELETION_FILLIN_RIGHT",
+          !is.na(nickase) & Type == "DELETION" & delRelativeStart > 0 & delRelativeEnd < nickase ~ "DELETION_FILLIN_LEFT_RIGHT",
+          TRUE ~ Type
+        )) %>% 
+          ##remove the nickase
+          select(-nickase)
+      }
+      
+    }
+    df
+  }
+  
   
   split_tins <- function(df){
     ##somehow that makes the type dissappear probably move to another location!
@@ -1295,6 +1336,8 @@ server <- function(input, output, session) {
         mutate(Type = SubType)
       
       el = split_tins(el)
+      
+      el = split_dels(el)
       
       el = el %>% group_by(Alias) %>% mutate(totalFraction = sum(fraction))
     }
@@ -3646,7 +3689,8 @@ server <- function(input, output, session) {
     hardCodedTypes = hardcodedTypesDFnonreactive()
     for(colour in hardCodedTypes$Type){
       #print(paste0(colour," ",colourCode[[colour]]))
-      if(grepl("bp",colour, fixed = TRUE) | grepl("HDR1MM",colour, fixed = TRUE)){
+      if(grepl("bp",colour, fixed = TRUE) | grepl("HDR1MM",colour, fixed = TRUE) |
+         grepl("DELETION_",colour, fixed = TRUE)){
         palette = "square" 
       }
       else{
