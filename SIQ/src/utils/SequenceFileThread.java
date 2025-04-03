@@ -158,6 +158,9 @@ public class SequenceFileThread extends Thread {
 		AtomicInteger totalRawReadsCounter = new AtomicInteger(0);
 		HashMap<String, Integer> remarks = new HashMap<String, Integer>();
 		HashMap<String, Integer> commonSequences = new HashMap<String, Integer>();
+
+		//This hash will contain the remarks of a rejected sequence
+		HashMap<String, String> commonSequencesRemarks = new HashMap<String, String>();
 		
 		//for PacBio data
 		//would be better to know that this is PacBio data
@@ -499,6 +502,9 @@ public class SequenceFileThread extends Thread {
 					}
 					else {
 						commonSequences.put(cs.getRaw(),1);
+						//also save the remark!
+						//we can also add the remark for the next sequences
+						commonSequencesRemarks.put(cs.getRaw(), cs.getRemarks());
 					}
 				}
 				//System.out.println(cs.toStringOneLine());
@@ -709,6 +715,10 @@ public class SequenceFileThread extends Thread {
 					cs.determineFlankPositions(true);
 					cs.setCurrentFile(f);
 					cs.setCurrentAlias(alias, f.getName());
+					//fill in the original remark
+					if(cs.getRemarks().length()==0) {
+						cs.setRemarks(commonSequencesRemarks.get(seq));
+					}
 					writerTopStats.println(alias+"\t"+found+"\t"+csEvents.containsKey(cs.getKey(includeStartEnd))+"\t"+times+"\t"+fractionTotal+"\t"+cs.isCorrectPositionLeft()+"\t"+cs.isCorrectPositionLeft()+"\t"+seq+"\t"+cs.toStringOneLine(""));
 				}
 			}
