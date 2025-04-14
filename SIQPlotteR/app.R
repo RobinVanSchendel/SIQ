@@ -533,6 +533,11 @@ ui <- fluidPage(
                     max = 500,
                     value = c(-100,100),
                     step = 5),
+        radioButtons("HeatmapEnds_gradient",
+                     "Select color gradient:",
+                     c("white, black, red",
+                       "white, blue")
+                     ),
         downloadButton('exportheatmapEnd','Download PDF')
       ),
       conditionalPanel(
@@ -1654,15 +1659,21 @@ server <- function(input, output, session) {
     counts1 = data[[1]]
     counts2 = data[[2]]
     
+    ##choose gradient
+    if(input$HeatmapEnds_gradient == "white, black, red"){
+      gradient = scale_fill_gradientn(colours = c("white", "black", "red"))
+    } else{
+      gradient = scale_fill_gradientn(colours = c("white", "blue"))
+    }
     plot1 = ggplot(counts1, aes(x=delRelativeStartTD, y = Alias , fill = fraction)) + 
       geom_tile() +
       #scale_fill_viridis_c()
-      scale_fill_gradientn(colours = c("white", "black", "red")) +
+      gradient +
       theme_object()+
       NULL
     plot2 = ggplot(counts2, aes(x=delRelativeEndTD, y = Alias , fill = fraction)) + 
       geom_tile() +
-      scale_fill_gradientn(colours = c("white", "black", "red")) +
+      gradient +
       theme_object()+
       NULL
     if(length(unique(counts1$Subject))>1){
