@@ -532,7 +532,8 @@ ui <- fluidPage(
                     min = -500,
                     max = 500,
                     value = c(-100,100),
-                    step = 5)
+                    step = 5),
+        downloadButton('exportheatmapEnd','Download PDF')
       ),
       conditionalPanel(
         condition = "input.tabs == 'Alleles'",
@@ -1414,7 +1415,7 @@ server <- function(input, output, session) {
   ##for the plots
   plotsForDownload <- reactiveValues(tornados=NULL, homs=NULL,sizeDiffs=NULL,types=NULL, size=NULL
                                      , snvs=NULL, target=NULL, tornadoTI=NULL, tornadoTIcols=NULL, outcomes=NULL, samples=NULL,
-                                     alleles=NULL, plot1bpInsertion = NULL)
+                                     alleles=NULL, plot1bpInsertion = NULL, heatmapEnds = NULL)
   applyColor <- function(el){
     start_time <- Sys.time()
     if(!is.data.frame(el)){
@@ -1686,6 +1687,9 @@ server <- function(input, output, session) {
       #clear warning message if not needed
       messages$heatmapend_warning <- NULL
     }
+    
+    plotsForDownload$heatmapEnds <- list(first = plot1, second = plot2)
+    
     grid.arrange(plot1, plot2, ncol=2)
   })
   
@@ -2740,6 +2744,17 @@ server <- function(input, output, session) {
     
     plot
   })
+  
+  output$exportheatmapEnd = downloadHandler(
+    filename = function() {"plotsHeatmapEnds.pdf"},
+    content = function(file) {
+      if(!is.null(plotsForDownload$heatmapEnds)){
+        #fixed cols and rows for now
+        ggsave(file, arrangeGrob(grobs=plotsForDownload$heatmapEnds, ncol=2, nrow = 1),height=input$plotHeight/72, width=input$plotWidth/72,limitsize = FALSE, device = "pdf")
+        
+      }
+    }
+  )
   
   output$exportSizeDiff = downloadHandler(
     filename = function() {"plotsSizeDiff.pdf"},
