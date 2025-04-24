@@ -1305,7 +1305,6 @@ public class GUI implements ActionListener, MouseListener {
 	}
 
 	private boolean isNGSFile(File f) {
-		//System.out.println(f.getAbsolutePath());
 		String absPath = f.getAbsolutePath();
 		return absPath.endsWith("fastq")
 				|| absPath.endsWith("fastq.gz")
