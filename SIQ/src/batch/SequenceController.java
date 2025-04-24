@@ -51,7 +51,8 @@ public class SequenceController {
 			MyError.err("The reference input file does not exist: "+f.getAbsolutePath()+"\tor is not DNA");
 		}
 		BufferedReader is = null, is2 = null, is3 = null;
-		RichSequence subject = null, hdr = null;
+		RichSequence subject = null;
+		RichSequenceIterator rsiHDR = null;
 		Vector<Sequence> additional = new Vector<Sequence>();
 		HashMap<String, String> hmAdditional = new HashMap<String, String>();
 		try {
@@ -67,8 +68,7 @@ public class SequenceController {
 			}
 			if(options.getHDR()!=null) {
 				is3 =  new BufferedReader(new FileReader(options.getHDR()));
-				RichSequenceIterator rsi = IOTools.readFastaDNA(is3, null);
-				hdr = rsi.nextRichSequence();
+				rsiHDR = IOTools.readFastaDNA(is3, null);
 			}
 			if(!isDNA(subjectFile)) {
 				is = new BufferedReader(new FileReader(subjectFile));
@@ -98,11 +98,23 @@ public class SequenceController {
 		Subject subjectObject = new Subject(subject,options.getLeftFlank(),options.getRightFlank(), true);
 		subjectObject.setLeftPrimer(options.getLeftPrimer());
 		subjectObject.setRightPrimer(options.getRightPrimer());
+		System.out.println("Swapping in readFilesFASTQMultiThreaded");
 		subjectObject.swapPrimersIfNeeded();
 		subjectObject.setMinPassedPrimer(options.getMinPassedPrimer());
 		//only set if non NULL
-		if(hdr!=null) {
-			subjectObject.setHDR(hdr);
+		if(rsiHDR!=null && rsiHDR.hasNext()) {
+			while(rsiHDR.hasNext()) {
+				try {
+					//add all sequences to HDR
+					subjectObject.addHDR(rsiHDR.nextRichSequence());
+				} catch (NoSuchElementException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (BioException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 		}
 		
 		//kmerl = null;
