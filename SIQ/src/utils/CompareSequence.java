@@ -66,6 +66,7 @@ public class CompareSequence {
 	private int movedPosition = 0;
 	private boolean delinsFilter = true; //defaults to true
 	private boolean isDELINS_Dual = false;
+	private String hdrName = null;
 	
 	
 	public CompareSequence(Subject subjectObject, String query, QualitySequence quals, String dir, boolean checkReverse, String queryName) {
@@ -361,7 +362,7 @@ public class CompareSequence {
 		}
 		if(del!= null && insert != null && del.length()>maxLengthMatch && insert.length()>maxLengthMatch) {
 			String insertDelCommon =  Utils.longestCommonSubstring(del, insert);
-			if(!this.subjectObject.isHDREvent(this) && this.subjectObject.getHDREventOneMismatch(this)!=1 && insertDelCommon.length()>maxLengthMatch){
+			if(this.subjectObject.getHDREvent(this) == null && this.subjectObject.getHDREventOneMismatch(this)!=1 && insertDelCommon.length()>maxLengthMatch){
 				//if we masked, then probably this check is not correct
 				//after testing it turns out that most often this is correct
 				//this.multipleSNVs = insertDelCommon;
@@ -872,6 +873,7 @@ public class CompareSequence {
 	}
 	public Type getType() {
 		boolean containsTD = false;
+		CompareSequence hdr = this.subjectObject.getHDREvent(this);
 		if(is!= null){
 			for(String s :is.getPosS().split(";")){
 				if(s.length()>0 && Integer.parseInt(s) == 0){
@@ -882,7 +884,7 @@ public class CompareSequence {
 		if(this.getDel().length()== 0 && this.getInsertion().length() == 0){
 			return Type.WT;
 		}
-		else if(this.subjectObject.isHDREvent(this)) {
+		else if(hdr != null) {
 			return Type.HDR;
 		}
 		else if(this.getDel().length()== 1 && this.getInsertion().length() == 1){
@@ -906,6 +908,8 @@ public class CompareSequence {
 			//test placement here
 			int mismatches = this.subjectObject.getHDREventOneMismatch(this);
 			if(mismatches == 0) {
+				System.err.println("This should not be possible anymore: HDR found through getHDREventOneMismatch");
+				System.err.println(this.toStringOneLine(null));
 				return Type.HDR;
 			}
 			else if(mismatches == 1) {
@@ -1072,6 +1076,10 @@ public class CompareSequence {
 				return ret+tDNA+orientation;
 			}
 		}
+		else if(getType() == Type.HDR) {
+			//get the HDR name here
+			return hdrName;
+		}
 		return ""+getType();
 	}
 	private String getRangesString() {
@@ -1087,7 +1095,7 @@ public class CompareSequence {
 	public String getRemarks() {
 		return remarks.toString();
 	}
-	private void setRemarks(String remark) {
+	public void setRemarks(String remark) {
 		if(remarks.length()>0){
 			remarks.append(":");
 		}
@@ -1666,5 +1674,9 @@ public class CompareSequence {
 	}
 	public void setDelinsFilter(boolean delinsFilter) {
 		this.delinsFilter = delinsFilter;
+	}
+	//set the HDR name
+	public void setHDRName(String name) {
+		this.hdrName  = name;
 	}
 }

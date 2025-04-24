@@ -397,9 +397,13 @@ public class SequenceFileThread extends Thread {
 							wrongPosition.getAndIncrement();
 						}
 						boolean isHDRevent = false;
-						if(subject.isHDREvent(cs)) {
+						CompareSequence hdr = subject.getHDREvent(cs);
+						//isHDR?
+						if(hdr != null) {
 							cs.resetRemarks();
 							isHDRevent = true;
+							//set the HDR name
+							cs.setHDRName(hdr.getName());
 							//actually we need to check this via the HDR sequence rather than like this...
 							//leftCorrect = cs.getRaw().startsWith(subject.getLeftPrimer());
 							//rightCorrect = cs.getRaw().endsWith(subject.getRightPrimer());
@@ -967,7 +971,11 @@ public class SequenceFileThread extends Thread {
 			try {
 				BufferedReader is = new BufferedReader(new FileReader(hdr));
 				RichSequenceIterator si = IOTools.readFastaDNA(is, null);
-				subject.setHDR(si.nextRichSequence());
+				//add all HDR events here
+				while(si.hasNext()) {
+					subject.addHDR(si.nextRichSequence());
+				}
+				
 			} catch (FileNotFoundException | NoSuchElementException | BioException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

@@ -1,5 +1,7 @@
 package utils;
 
+import java.util.ArrayList;
+
 import org.biojavax.bio.seq.RichSequence;
 
 public class Subject {
@@ -22,8 +24,8 @@ public class Subject {
 	private int endOfRightFlank;
 	private String errorMessage = "";
 	private boolean exitOnError = false;
-	private RichSequence hdr;
-	private CompareSequence hdrCS;
+	private ArrayList<RichSequence> hdrList;
+	private ArrayList<CompareSequence> hdrListCS;
 	private KMERLocation kmerl;
 	//for testing it is now true
 	private boolean isLongRead = false;
@@ -388,45 +390,94 @@ public class Subject {
 			}
 		}
 	}
-	public void setHDR(RichSequence hdr) {
-		this.hdr = hdr;
+	/**Method to add an HDR sequence to capture events that are HDR event
+	 * 
+	 * @param hdr the RichSequence object to add, only unique sequences are added
+	 */
+	public void addHDR(RichSequence hdr) {
+		//check for null
+		if(this.hdrList == null) {
+			hdrList = new ArrayList<RichSequence>();
+		}
+		//check for errors
+		boolean error = false;
+		
+		//the leftPrimer needs to be present in the HDR sequence
 		if(hdr.seqString().toUpperCase().indexOf(leftPrimer)<0) {
-			System.err.println(this.getLeftPrimer() +" "+hdr.seqString().toUpperCase().indexOf(leftPrimer));
+			System.err.println("HDR error, left primer is not present in HDR sequence: "+hdr.getName()+" "+this.getLeftPrimer() +" "+hdr.seqString().toUpperCase().indexOf(leftPrimer));
+			error = true;
 		}
+		//the rightPrimer needs to be present in the HDR sequence
 		if(hdr.seqString().toUpperCase().indexOf(rightPrimer)<0) {
-			System.err.println(this.getRightPrimer()+" "+hdr.seqString().toUpperCase().indexOf(rightPrimer));
+			System.err.println("HDR error, right primer is not present in HDR sequence: "+hdr.getName()+" "+this.getRightPrimer() +" "+hdr.seqString().toUpperCase().indexOf(rightPrimer));
+			error = true;
 		}
 		
-		
-	}
-	public boolean isHDREvent(CompareSequence cs) {
-		if(this.hdr == null) {
-			return false;
-		}
-		//make HDR object
-		if(hdrCS == null) {
-			//bug as RichSequence will return lowercase DNA, so make it uppercase
-			hdrCS = new CompareSequence(this,hdr.seqString().toUpperCase(),null, null, true, "");
-			hdrCS.determineFlankPositions(false);
-			//System.err.println(hdrCS.toStringOneLine());
-		}
-		if(hdrCS!=null) {
-			if(hdrCS.getDel().contentEquals(cs.getDel()) && hdrCS.getInsertion().contentEquals(cs.getInsertion())) {
-				return true;
+		//check if it is unique
+		for(RichSequence r: hdrList) {
+			if(r.seqString().toUpperCase() == hdr.seqString().toUpperCase()) {
+				System.err.println("Error while adding HDR sequence: sequence already exists in the HDR list "+hdr.getName());
+				error = true;
 			}
 		}
-
-		return false;
+		
+		//add if no error
+		if(!error) {
+			hdrList.add(hdr);
+		}
+	}
+	/** This method is there to retrieve the HDR event that this CompareSequence matches to.
+	 *  HDR events are unique, so as soon as a match is found it is returned
+	 * @param cs the CompareSequence to match against
+	 * @return null if no HDR match can be found
+	 */
+	public CompareSequence getHDREvent(CompareSequence cs) {
+		if(this.hdrList == null || hdrList.size() == 0) {
+			return null;
+		}
+		//make HDR CompareSequence objects, this is only done once
+		if(hdrListCS == null) {
+			//initialize
+			hdrListCS = new ArrayList<CompareSequence>();
+			for(RichSequence hdr: this.hdrList) {
+				//create a CompareSequence object, be sure to save the HDR name
+				//bug as RichSequence will return lowercase DNA, so make it uppercase
+				//set the name of the HDR event, no spaces allowed!
+				String hdrName = hdr.getName().replaceAll(" ", "_");
+				CompareSequence hdrCS = new CompareSequence(this,hdr.seqString().toUpperCase(),null, null, true, hdrName);
+				hdrCS.determineFlankPositions(false);
+				//add to list
+				hdrListCS.add(hdrCS);
+			}
+		}
+		//if there are HDR events, start matching
+		if(hdrListCS !=null) {
+			//iterate HDR events
+			for(CompareSequence hdr: this.hdrListCS) {
+				if(hdr.getDel().contentEquals(cs.getDel()) && hdr.getInsertion().contentEquals(cs.getInsertion())) {
+					return hdr;
+				}
+			}
+		}
+		//no match
+		return null;
 	}
 	public KMERLocation getKmerl() {
 		return kmerl;
 	}
+	/** Method that is able to detect if a 1bp mismatch may explain the sequence
+	 *  NOTE: only works if a single HDR event was provided
+	 * 
+	 * @param cs the sequence to compare with
+	 * @return the number of mismatches found comparing the first HDR sequence to the given sequence
+	 */
 	public int getHDREventOneMismatch(CompareSequence cs) {
-		if(this.hdr == null) {
+		if(this.hdrList == null || this.hdrList.size() != 1) {
 			return -1;
 		}
 		//test if it is similar to hdrsequence
 		//String[] lcs = Utils.longestCommonSubstringAllowMismatch(cs.getRaw(), hdr.seqString().toUpperCase(), 1, true);
+		RichSequence hdr = hdrList.get(0);
 		String query = cs.getRaw().replaceAll("X", "");
 		String subject = hdr.seqString().toUpperCase();
 		
@@ -556,7 +607,7 @@ public class Subject {
 		return ret;
 	}
 	public boolean hasHDR() {
-		return hdr != null;
+		return hdrList != null && hdrList.size()>0;
 	}
 	public String getLeftPrimer() {
 		return this.leftPrimer;
