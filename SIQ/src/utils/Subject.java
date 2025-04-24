@@ -415,7 +415,7 @@ public class Subject {
 		
 		//check if it is unique
 		for(RichSequence r: hdrList) {
-			if(r.seqString().toUpperCase() == hdr.seqString().toUpperCase()) {
+			if(r.seqString().toUpperCase().contentEquals(hdr.seqString().toUpperCase())) {
 				System.err.println("Error while adding HDR sequence: sequence already exists in the HDR list "+hdr.getName());
 				error = true;
 			}
