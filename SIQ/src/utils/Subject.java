@@ -515,7 +515,9 @@ public class Subject {
 			
 			//if not found, this will not work at all
 			//or at the wrong location
-			if(startQuery < 0 || endQuery < 0 || startQuery >= endQuery) {
+			//ensure the queries do make sense (within the first 15bp or in the last 15bp)
+			if(startQuery < 0 || endQuery < 0 || startQuery >= endQuery
+					|| startQuery >= 15 || endQuery < (query.length()-15)) {
 				return -1;
 			}
 			query = query.substring(startQuery, endQuery);

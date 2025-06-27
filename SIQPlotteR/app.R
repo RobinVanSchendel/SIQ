@@ -1154,7 +1154,7 @@ server <- function(input, output, session) {
     if("Remarks" %in% colnames(el)){
       el = el %>% filter(is.na(Remarks) | Remarks == "NA")
     }
-    el = el[el$Type!="",]
+    #el = el[el$Type!="",]
     el$Alias <- as.character(el$Alias)
     
     
@@ -1428,19 +1428,21 @@ server <- function(input, output, session) {
     }
     print("applyColor")
     el = el %>% mutate(getHomologyColor = case_when(
-      Type=="SNV" ~ "SNV",
-      Type=="WT" ~ "WT",
-      Type=="INSERTION_1bp" ~ "INSERTION_1bp",
-      Type=="INSERTION" ~ "INSERTION",
-      Type=="DELINS" ~ "DELINS",
-      Type=="HDR" ~ "HDR",
-      Type=="HDR1MM" ~ "HDR1MM",
-      Type=="TINS" ~"TINS",
-      Type=="TINS_FW" ~"TINS_FW",
-      Type=="TINS_RC" ~"TINS_RC",
-      Type=="DELINS_SNV" ~"DELINS_SNV",
-      Type=="DELINS_DUAL" ~"DELINS_DUAL",
-      Type=="TANDEMDUPLICATION_COMPOUND" ~ "INSERTION",
+      Type == "TANDEMDUPLICATION_COMPOUND" ~ "INSERTION",
+      !Type %in% c("DELETION", "TANDEMDUPLICATION") ~ Type,
+      #Type=="SNV" ~ "SNV",
+      #Type=="WT" ~ "WT",
+      #Type=="INSERTION_1bp" ~ "INSERTION_1bp",
+      #Type=="INSERTION" ~ "INSERTION",
+      #Type=="DELINS" ~ "DELINS",
+      #Type=="HDR" ~ "HDR",
+      #Type=="HDR1MM" ~ "HDR1MM",
+      #Type=="TINS" ~"TINS",
+      #Type=="TINS_FW" ~"TINS_FW",
+      #Type=="TINS_RC" ~"TINS_RC",
+      #Type=="DELINS_SNV" ~"DELINS_SNV",
+      #Type=="DELINS_DUAL" ~"DELINS_DUAL",
+      #Type=="TANDEMDUPLICATION_COMPOUND" ~ "INSERTION",
       homologyLength<=4 ~ paste0(homologyLength,"bp_homology"),
       homologyLength>=5 & homologyLength<15 ~ "5-15bp_homology",
       homologyLength>=15 ~ "15bp_homology"
@@ -1449,28 +1451,10 @@ server <- function(input, output, session) {
       #homologyLength>=11 ~ "15bp_homology"
     ))
     
-    #el$getHomologyColor[el$homologyLength==0] <- "0bp_homology"
-    #el$getHomologyColor[el$homologyLength==1] <- "1bp_homology"
-    #el$getHomologyColor[el$homologyLength==2] <- "2bp_homology"
-    #el$getHomologyColor[el$homologyLength==3] <- "3bp_homology"
-    #el$getHomologyColor[el$homologyLength==4] <- "4bp_homology"
-    #el$getHomologyColor[el$homologyLength>=5 & el$homologyLength<15] <- "5-15bp_homology"
-    #el$getHomologyColor[el$homologyLength>=15] <- "15bp_homology"
-    #el$getHomologyColor[el$Type=="SNV"] <- "SNV"
-    #el$getHomologyColor[el$Type=="WT"] <- "WT"
-    #el$getHomologyColor[el$Type=="INSERTION"] <- "INSERTION"
-    #el$getHomologyColor[el$Type=="INSERTION" & el$insSize==1] <- "INSERTION_1bp"
-    #el$getHomologyColor[el$Type=="DELINS"] <- "DELINS"
-    #el$getHomologyColor[el$Type=="HDR"] <- "HDR"
-    #el$getHomologyColor[el$Type=="HDR1MM"] <- "HDR1MM"
-    #el$getHomologyColor[el$Type=="TINS"] <- "TINS"
-    #el$getHomologyColor[el$Type=="TANDEMDUPLICATION_COMPOUND"] <- "INSERTION"
     el$TDcolor = "white"
     el$TDcolor[el$Type=="TANDEMDUPLICATION"] <- "TANDEMDUPLICATION"
     el$TDcolor[el$Type=="TANDEMDUPLICATION_COMPOUND"] <- "TANDEMDUPLICATION_COMPOUND"
-    el$TypeHom = paste(el$Type,el$homologyLength)
-    el$TypeHom[el$Type=="INSERTION" & el$insSize==1] <- "INSERTION_1bp"
-    el$TypeHom <- gsub("-1", "", el$TypeHom)
+    el$TypeHom = ""
     el$TypeTD = "other"
     el$TypeTD[el$Type=="TANDEMDUPLICATION_COMPOUND"] <- "TANDEMDUPLICATION_COMPOUND"
     el$TypeTD[el$Type=="TANDEMDUPLICATION"] <- "TANDEMDUPLICATION"
@@ -1499,7 +1483,8 @@ server <- function(input, output, session) {
                               end.points = el$delRelativeEndTD, type=el$TypeHom, typeTD=el$TypeTD, color=el$getHomologyColor, code=el$Alias, 
                               yheight = el$fraction, typeOrig = el$Type, left = el$delRelativeStartTD+(el$delRelativeEndTD-el$delRelativeStartTD)/2, 
                               startTD=el$delRelativeStart, countEvents = el$countEvents, Pool = el$Subject, tdColor = el$TDcolor, insSize = el$insSize,
-                              Subject = el$Subject, Alias = el$Alias, del = el$del, insert = el$insertion, homology = el$homologyLength, Translocation = el$Translocation)
+                              Subject = el$Subject, Alias = el$Alias, del = el$del, insert = el$insertion, homology = el$homologyLength, Translocation = el$Translocation,
+                              SecondaryType = el$SecondaryType)
       return(plot.data)
     }
     else{
@@ -3619,7 +3604,7 @@ server <- function(input, output, session) {
       aliases = totalAliases$Alias[totalAliases$Subject %in% input$Subject]
       aliases = sort(unique(aliases))
     } else {
-      subAliases = in_data()[in_data()$Subject %in% input$Subject,]
+      subAliases = in_data() %>% filter(Subject %in% input$Subject)
       aliases = sort(unique(subAliases$Alias))
     }
     pre_filter_DF = pre_filter_in_data()
@@ -4307,7 +4292,8 @@ server <- function(input, output, session) {
     test2 = test2 %>% mutate(Outcome = case_when(
       Type == "DELETION" & homologyLength == 0 ~ paste(Text, delSize, "bp, pos:",delRelativeStart),
       Type == "DELETION" ~ paste(Text, delSize,"bp, hom:", paste0(homologyLength,"bp"), homology, ", pos:",delRelativeStart),
-      Type == "WT" | Type == "HDR" ~ paste(Text),
+      Type == "WT" ~ paste(Text),
+      Type == "HDR" ~ paste(Text, SecondaryType),
       Type == "INSERTION_1bp" ~ paste(Text, insertion),
       Type == "SNV" ~ paste(Text, del,">", insertion,"pos:",delRelativeStart),
       Type == "DELINS" & insSize < 6 ~ paste(Text, "del:" ,delSize,", ins:", insSize, " ,ins:",insertion, ", pos:",delRelativeStart),
@@ -5133,6 +5119,12 @@ server <- function(input, output, session) {
       delSize = paste0("<b> mutation: </b>", point$del, " > ", point$insert, "<br/>")
       insSize = NULL
     }
+    
+    ##add HDR info
+    if(point$typeOrig == "HDR" & point$SecondaryType != "HDR"){
+      point$typeOrig = paste(point$typeOrig, point$SecondaryType)
+    }
+    
     wellPanel(
       style = style,
       p(HTML(paste0("<b> Type: </b>", point$typeOrig, "<br/>",
@@ -5277,6 +5269,6 @@ server <- function(input, output, session) {
   
 }
 
+
 # Run the application 
 shinyApp(ui = ui, server = server)
-
