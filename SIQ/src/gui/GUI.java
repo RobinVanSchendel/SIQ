@@ -80,6 +80,7 @@ import org.jcvi.jillion.core.residue.nt.NucleotideSequence;
 import org.jcvi.jillion.trace.chromat.Chromatogram;
 import org.jcvi.jillion.trace.chromat.ChromatogramFactory;
 import batch.SequenceControllerThread;
+import main.SV_Analyzer;
 import utils.AlphanumComparator;
 import utils.AnalyzedFileController;
 import utils.CompareSequence;
@@ -128,6 +129,7 @@ public class GUI implements ActionListener, MouseListener {
 	private ArrayList<RichSequence> sequences;
 	JProgressBar progressBar;
 	JLabel maxE = new JLabel("maxError:");
+	//maxError is for Sanger sequencing
 	private JSpinner maxError;
 	HashMap<String, String> hmAdditional;
 	private PropertiesManager pm;
@@ -1004,6 +1006,18 @@ public class GUI implements ActionListener, MouseListener {
 				e.printStackTrace();
 			}
 		}
+		
+		//add SIQ rundetails
+		sheet = workbook.createSheet("SIQRun");
+		totalRow = 0;
+		printLineToExcel(sheet,"Info\tValue",totalRow++);
+		printLineToExcel(sheet,"SIQ Version\t"+SV_Analyzer.VERSION,totalRow++);
+		printLineToExcel(sheet,"Min support\t"+minSupport.getValue(),totalRow++);
+		printLineToExcel(sheet,"Max base error\t"+baseError.getValue(),totalRow++);
+		printLineToExcel(sheet,"Max cpus\t"+this.cpus.getValue(),totalRow++);
+		printLineToExcel(sheet,"TINS search distance\t"+this.tinsDist.getValue(),totalRow++);
+		printLineToExcel(sheet,"Enable long-read analysis (PacBio/ONT)\t"+this.longReadSeq.isSelected(),totalRow++);
+		
 		
 		try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
             workbook.write(outputStream);
