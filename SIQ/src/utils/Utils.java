@@ -161,7 +161,9 @@ public class Utils {
 				returnIndex = index+1;
 				if(left.charAt(index) == del.charAt(index)){
 					lastCorrectIndex = returnIndex;
+					//System.out.println("lastCorrectIndex\t"+lastCorrectIndex);
 				}
+				//System.out.println("ok: "+homT);
 			}
 			index++;
 		}
@@ -176,8 +178,9 @@ public class Utils {
 		//System.out.println("right"+right);
 		//System.out.println("del"+del);
 		del = delOrig;
-		numberCorrect = 0;
-		numberMisses = 0;
+		//update to leftHom length
+		numberCorrect = leftHom.replaceAll("X", "").length();
+		numberMisses = leftHom.replaceAll("[ACGT]", "").length();
 		index = 0;
 		returnIndex = 0;
 		homT = "";
@@ -204,8 +207,9 @@ public class Utils {
 				returnIndex = index+1;
 				if(right.charAt(index) == del.charAt(index)){
 					lastCorrectIndex = returnIndex;
+					//System.out.println("updateing" +lastCorrectIndex);
 				}
-				//System.out.println(returnIndex);
+				 
 			}
 			index++;
 		}
