@@ -65,17 +65,19 @@ public class SequenceControllerThread implements Runnable{
 		String searchAdditional = "blabla.txt";
 		BufferedReader is2;
 		HashMap<String, String> hmAdditional = new HashMap<String, String>();
-		try {
-			is2 = new BufferedReader(new FileReader(searchAdditional));
-			SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
-			while(si2.hasNext()){
-				Sequence seq = si2.nextSequence();
-				hmAdditional.put(seq.getName(),seq.seqString());
+		if(new File(searchAdditional).exists()) {
+			try {
+				is2 = new BufferedReader(new FileReader(searchAdditional));
+				SequenceIterator si2 = IOTools.readFastaDNA(is2, null);
+				while(si2.hasNext()){
+					Sequence seq = si2.nextSequence();
+					hmAdditional.put(seq.getName(),seq.seqString());
+				}
+				hmAdditional.clear();
+			} catch (FileNotFoundException | NoSuchElementException | BioException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			hmAdditional.clear();
-		} catch (FileNotFoundException | NoSuchElementException | BioException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 		
 		
@@ -89,6 +91,8 @@ public class SequenceControllerThread implements Runnable{
 			subject.swapPrimersIfNeeded();
 			System.out.println("Primers: " +subject.hasPrimers());
 			System.out.println("Flanks: " +subject.hasLeftRight());
+			System.out.println("left: " +subject.getLeftPrimer());
+			System.out.println("right: " +subject.getRightPrimer());
 			//for now no additional sequences to search (final null argument)
 			//SequenceFileThread sft = new SequenceFileThread(n.getR1(), true, subject, n.getOutput(), n.getOutputStats(), n.getMaxError(), null);
 			SequenceFileThread sft = null;
