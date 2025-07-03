@@ -112,7 +112,7 @@ public class TestSingleSequenceQuality {
 			}
 		}
 			Subject subjectObject = new Subject(hprtSeq, left, right);
-			subjectObject.setPacBio(true);
+			subjectObject.setLongRead(true);
 			CompareSequence kmerWith = new CompareSequence(subjectObject,seqS,qual, null, true, "");
 			//CompareSequence(RichSequence subject, String query, QualitySequence quals, String left, String right, String pamSite, String dir, boolean checkReverse, String queryName, KMERLocation kmerl) {
 			//s.setAdditionalSearchString(additional);

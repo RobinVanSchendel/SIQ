@@ -31,15 +31,14 @@ public class TestSingleSequence {
 		
 		//FILL IN
 		
-		String refFile = "Z:\\Marco\\Data\\WRN\\Miseq\\p406-Hprt.fa";
+		String refFile = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan106443ScreenTD\\td.txt";
 		//String refFile = "Z:\\Mammalian\\Sequence Analyzer\\reference sequences NGS\\mmHPRT_o1067-o1068_Amplicon.txt"; 
 		//String seqS = "gctgttgctcgtatttcttcaggaactatctacagctcctcactctttccaaatcgcgcaccgcccggaagaattttgctgttgaactacattggcgggtctacaaacaccggaattctgtccaaggtaaaaaacagcaaacactggtaccacatctttattcaaccaagtaaacctaagaactg";
-		String seqS = "AAGTTCTTTGCTGACCTGCTGGATTACATTAAAGCACTGAATAGAAATAGTGATAGATCCATTCCTATGACTGTAGATTTTATCAGACTGAAGAGCTACTGTGTAAGTATAATTAACTTATAATTAAAAAAATAGGGCCATTCTAGTTTTATCTATATTTTTTTTAAACTTGTGCAAACTATGCTACAT"; 
-		String left = "AAATAGTGATAGATCCATTC";
-		String right = "CTATGACTGTAGATTTTATC";
-		String leftPrimer = "AAGTTCTTTGCTGACCTGCTG"; //"CTGAATGGCGAATGAGCTTG";
-		String rightPrimer = "ATGTAGCATAGTTTGCACAAGTT" + 
-				"";//"GCTGTTGCTCGTATTTCTTC";
+		String seqS = "	ttcgggtttattacagggacagcagagatccagtttggttagtaccgggccgcccaccctcgtgaccaccctgacctacggcgtgcagtgcttcagccgctaccctgacctacggcgtgcagtgcttcagccgctaccccgaccacatgaagcgcgtccaaggtcgggcaggaagagggcctatttcccatgattccttcatatttgcatatacgatacaaggctgttagagagataattagaattaatttgactgtaaacacaaagatattagtacaaaatacgtgacgtagaaagtaataatttcttgggtagtttgcagttttaaaattatgttttaaaatggactatcatatgcttaccgtaacttgaaagtatttcgatttcttggctttatatatcttgtggaaaggacgaaa"; 
+		String left = "gtaccgggccgcccaccct";
+		String right = "cacatgaagcgcgtccaagg";
+		String leftPrimer = null;//"AAGTTCTTTGCTGACCTGCTG"; //"CTGAATGGCGAATGAGCTTG";
+		String rightPrimer = null; //"ATGTAGCATAGTTTGCACAAGTT" + 
 		
 		File hdr = null; //new File("C:\\Temp\\MBSeqData\\MB_hdr.txt"); //new File("Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\References\\PPO_HDR.txt");
 		RichSequence hdrSeq = null;
@@ -97,7 +96,7 @@ public class TestSingleSequence {
 				subjectObject.setRightPrimer(rightPrimer);
 			}
 			if(hdrSeq != null) {
-				subjectObject.setHDR(hdrSeq);
+				subjectObject.addHDR(hdrSeq);
 			}
 			
 			CompareSequence kmerWith = new CompareSequence(subjectObject,seqS.toUpperCase(),null, null, true, "");

@@ -93,7 +93,7 @@ public class TestSingleSequenceSangerShouldWork {
 		}
 			Subject subjectObject = new Subject(hprtSeq, left, right);
 			if(hdr!=null) {
-				subjectObject.setHDR(hdr);
+				subjectObject.addHDR(hdr);
 			}
 				
 			
