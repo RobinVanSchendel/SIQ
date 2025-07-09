@@ -68,7 +68,7 @@ Optional settings:
 
 ## SIQPlotteR
 
-When SIQ is done analysing your samples it will result in an Excel file. This Excel file can be uploaded and directly visualised by SIQPlotteR
+When SIQ is done analysing your samples it will result in an Excel file. This Excel file can be uploaded and directly visualised by SIQPlotteR, which is hosted online:
 
 [Upload to SIQPlotteR](https://siq.researchlumc.nl/SIQPlotter/)
 
