@@ -403,14 +403,20 @@ public class Subject {
 		boolean error = false;
 		
 		//the leftPrimer needs to be present in the HDR sequence
-		if(hdr.seqString().toUpperCase().indexOf(leftPrimer)<0) {
-			System.err.println("HDR error, left primer is not present in HDR sequence: "+hdr.getName()+" "+this.getLeftPrimer() +" "+hdr.seqString().toUpperCase().indexOf(leftPrimer));
-			error = true;
+		//yes, but for PacBio/ONT there is not necessarily a leftPrimer
+		if(leftPrimer != null) {
+			if(hdr.seqString().toUpperCase().indexOf(leftPrimer)<0) {
+				System.err.println("HDR error, left primer is not present in HDR sequence: "+hdr.getName()+" "+this.getLeftPrimer() +" "+hdr.seqString().toUpperCase().indexOf(leftPrimer));
+				error = true;
+			}
 		}
 		//the rightPrimer needs to be present in the HDR sequence
-		if(hdr.seqString().toUpperCase().indexOf(rightPrimer)<0) {
-			System.err.println("HDR error, right primer is not present in HDR sequence: "+hdr.getName()+" "+this.getRightPrimer() +" "+hdr.seqString().toUpperCase().indexOf(rightPrimer));
-			error = true;
+		//yes, but for PacBio/ONT there is not necessarily a rigthPrimer
+		if(rightPrimer != null) {
+			if(hdr.seqString().toUpperCase().indexOf(rightPrimer)<0) {
+				System.err.println("HDR error, right primer is not present in HDR sequence: "+hdr.getName()+" "+this.getRightPrimer() +" "+hdr.seqString().toUpperCase().indexOf(rightPrimer));
+				error = true;
+			}
 		}
 		
 		//check if it is unique
