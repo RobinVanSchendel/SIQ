@@ -25,7 +25,7 @@ public class CompareSequence {
 	private StringBuffer remarks = new StringBuffer();
 	private Left leftFlank;
 	private int minimumSizeWithoutLeftRight = 15; // was 30
-	private int minimumSizeWithLeftRight = 15;
+	public final static int minimumSizeWithLeftRight = 15;
 	private final static String replacementFlank = "FLK1";
 	public final static int minimalRangeSize = 40;
 	private final static double maxMismatchRate = 0.12;
@@ -122,7 +122,7 @@ public class CompareSequence {
 			rightPos = subjectObject.getStartOfRightFlank();
 			int leftPos = subjectObject.getEndOfLeftFlank();
 			//long start = System.nanoTime();
-			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump,leftPos, subjectObject.getMinLocationStartEvent());
+			Left kmerFlankOne = subjectObject.getKmerl().getMatchLeft(query, rightPos, allowJump,leftPos, subjectObject.getMinLocationStartEvent(), ranges.size());
 			//long stop = System.nanoTime();
 			//long duration = stop-start;
 			//System.out.println("getMatchLeft "+duration);
@@ -171,7 +171,8 @@ public class CompareSequence {
 				flankTwo = flankTwoLCS.getString();
 				this.jumpedRight = flankTwoLCS.getJumped();
 				//there is a chance that we are wrong about this call now
-				if(flankOne!=null && flankOne.getQueryStart()>minimumSizeWithLeftRight) {
+				//yes but not for PacBio/ONT
+				if(!subjectObject.isLongRead() && flankOne!=null && flankOne.getQueryStart()>minimumSizeWithLeftRight) {
 					String total = flankOne.getString()+flankTwo;
 					LCS lcs = subjectObject.getKmerl().getLCS(total);
 					//check if WT so far, maybe we took the wrong left
@@ -1232,7 +1233,7 @@ public class CompareSequence {
 					String sub = dna.substring((int)r.getBegin(), (int)r.getEnd());
 					//maybe also do this for non-PacBio?
 					if(subjectObject.isLongRead()) {
-						Left left  = subjectObject.getKmerl().getMatchLeft(sub, subjectObject.getStartOfRightFlank(), true, subjectObject.getEndOfLeftFlank(), -1);
+						Left left  = subjectObject.getKmerl().getMatchLeft(sub, subjectObject.getStartOfRightFlank(), true, subjectObject.getEndOfLeftFlank(), -1, ranges.size());
 						LCS right = null;
 						if(left!=null) {
 							right = subjectObject.getKmerl().getMatchRight(sub, left.getSubjectEnd(), minimumSizeWithLeftRight, true, -1);
