@@ -148,6 +148,7 @@ public class GUI implements ActionListener, MouseListener {
 	private SequenceControllerThread sct;
 	private JButton dirChooserPanel;
 	private JCheckBox longReadSeq;
+	private JCheckBox delinsFilter, remerge;
 	
 	
 	@SuppressWarnings("serial")
@@ -444,9 +445,9 @@ public class GUI implements ActionListener, MouseListener {
 			    String strDate = sdfDate.format(now);
 				JTextField name = new JTextField(strDate);
 				JTextField excelName = new JTextField(strDate+"_SIQ.xlsx");
-				JCheckBox remerge = new JCheckBox();
+				remerge = new JCheckBox();
 				remerge.setSelected(false);
-				JCheckBox delinsFilter = new JCheckBox();
+				delinsFilter = new JCheckBox();
 				delinsFilter.setSelected(true);
 				panel.add(new JLabel("Select output directory"));
 				panel.add(dirChooserPanel);
@@ -1017,7 +1018,9 @@ public class GUI implements ActionListener, MouseListener {
 		printLineToExcel(sheet,"Max cpus\t"+this.cpus.getValue(),totalRow++);
 		printLineToExcel(sheet,"TINS search distance\t"+this.tinsDist.getValue(),totalRow++);
 		printLineToExcel(sheet,"Enable long-read analysis (PacBio/ONT)\t"+this.longReadSeq.isSelected(),totalRow++);
-		
+		printLineToExcel(sheet,"Enable long-read analysis (PacBio/ONT)\t"+this.longReadSeq.isSelected(),totalRow++);
+		printLineToExcel(sheet,"Remerge files\t"+remerge.isSelected(),totalRow++);
+		printLineToExcel(sheet,"Filter DELINS caused by multiple events\t"+delinsFilter.isSelected(),totalRow++);
 		
 		try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
             workbook.write(outputStream);
