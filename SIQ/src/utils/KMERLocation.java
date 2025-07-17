@@ -5,16 +5,20 @@ import java.util.HashMap;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import org.jcvi.jillion.core.Ranges;
+
 public class KMERLocation {
 	private String ref;
 	private static final int KMERLENGTH = 15;
 	HashMap<String, KMER> hm = new HashMap<String, KMER>();
 	private ArrayList<LCS> lcss = new ArrayList<LCS>();
 	private String query;
+	private Subject subjectObject = null;
 	private static final int MINIMUMSECONDSIZE = 30;
 	
-	public KMERLocation (String s) {
-		this.ref = s;
+	public KMERLocation(Subject so) {
+		this.subjectObject  = so;
+		this.ref = so.getRefString();
 		initKMER();
 	}
 	private void initKMER() {
@@ -33,7 +37,7 @@ public class KMERLocation {
 	}
 	private boolean hasQuery(String q) {
 		//not sure if the query.length check is speeding up things
-		if(query!= null && query.length() == q.length() && query.equals(q)) {
+		if(query!= null && query.length() == q.length() && query.contentEquals(q)) {
 			return true;
 		}
 		return false;
@@ -71,7 +75,24 @@ public class KMERLocation {
 		return max;
 	
 	}
-	public Left getMatchLeft(String seq, int rightPos, boolean allowJump, int leftPos, int maxStartPos) {
+	public Left getMatchLeftCheckLongestOnly(LCS l, int rightPos, boolean allowJump, int leftPos, int maxStartPos) {
+		int start = l.getSubjectStart();
+		if(start > rightPos) {
+			return null;
+		}
+		int maxPos = Math.min(l.getSubjectEnd(), rightPos);
+		//it is already fine
+		if(maxPos == l.getSubjectEnd()) {
+			//System.out.println("shortcut");
+			return l;
+		}
+		String leftS = ref.substring(l.getSubjectStart(), maxPos);
+		int queryEndPos = l.getQueryStart()+leftS.length();
+		Left left = new Left(leftS,l.getSubjectStart(), maxPos, l.getQueryStart(),queryEndPos);
+		return left;
+		
+	}
+	public Left getMatchLeft(String seq, int rightPos, boolean allowJump, int leftPos, int maxStartPos, int nrRanges) {
 		if(!hasQuery(seq)) {
 			//System.out.println("replacing");
 			//long start = System.nanoTime();
@@ -116,7 +137,7 @@ public class KMERLocation {
 				return one;
 			}
 			String leftS = ref.substring(one.getSubjectStart(), maxPos);
-			int queryEndPos = seq.indexOf(leftS)+leftS.length();
+			int queryEndPos = one.getQueryStart()+leftS.length();
 			Left l = new Left(leftS,one.getSubjectStart(), maxPos, one.getQueryStart(),queryEndPos);
 			//System.out.println(l);
 			return l;
@@ -125,8 +146,36 @@ public class KMERLocation {
 		//get the longest
 		int longest = -1;
 		LCS max = null;
+		int nextLCS = 0;
 		for(LCS lcs: lcss) {
-			//if(lcs.getSubjectStart()<leftPos) {
+			nextLCS++;
+			//code to get the correct left and right now for a single range:
+			if(nrRanges == 1) {
+				Left left  = getMatchLeftCheckLongestOnly(lcs, subjectObject.getStartOfRightFlank(), true, subjectObject.getEndOfLeftFlank(), -1);
+				LCS right = null;
+				LCS right2 = null;
+				if(left!=null) {
+					right = getMatchRightLongestOnly(lcs, left.getSubjectEnd(), CompareSequence.minimumSizeWithLeftRight, true, -1);
+					//try looking forward as well
+					if(nextLCS < lcss.size()) {
+						right2 = getMatchRightLongestOnly(lcss.get(nextLCS), left.getSubjectEnd(), CompareSequence.minimumSizeWithLeftRight, true, -1);
+					}
+				}
+				if(left!=null && (right!=null || right2 != null)) {
+					//overwrite the right one here because right2 takes priority
+					//question remains if that is indeed true
+					if(right2 != null) {
+						right = right2;
+					}
+					int tempLength = left.getString().length()+right.getString().length();
+					if(tempLength>longest) {
+						max = lcs;
+						longest = tempLength;
+					}
+				}
+			}
+			else {
+				//if(lcs.getSubjectStart()<leftPos) {
 				//recalculate the length based on the part that we can actually search for
 				//based on leftPos
 				int end = Math.min(lcs.getSubjectEnd(), rightPos);
@@ -144,8 +193,7 @@ public class KMERLocation {
 					}
 					//System.out.println("SET:"+max+" "+longest);
 				}
-			//}
-				
+			}
 		}
 		//System.out.println("found max:"+max);
 		if(max == null) {
@@ -204,7 +252,8 @@ public class KMERLocation {
 		int maxPos = Math.min(max.getSubjectEnd(), rightPos);
 		//System.out.println("Changing position to:"+maxPos);
 		String leftS = ref.substring(max.getSubjectStart(), maxPos);
-		int queryEndPos = seq.indexOf(leftS)+leftS.length();
+		//queryEnd is modified here
+		int queryEndPos = max.getQueryStart()+leftS.length();
 		Left l = new Left(leftS,max.getSubjectStart(), maxPos, max.getQueryStart(),queryEndPos, jumped);
 		return l;
 		/*
@@ -416,6 +465,31 @@ public class KMERLocation {
 		return lcs;
 		//System.out.println("final["+origKey+":"+key+"]:"+start+":"+end);
 	}
+	public LCS getMatchRightLongestOnly(LCS lcs, int startPos, int minSize, boolean allowJump, int minPosition) {
+		int longest = -1;
+		LCS max = null;
+		//calculate the length on what we can actually use
+		int start = Math.max(lcs.getSubjectStart(), startPos);
+		int length = lcs.getSubjectEnd()-start;
+		if(lcs.getSubjectEnd()>startPos && length>=minSize) {
+			if(length>longest) {
+				//keep the match close to the designated primer if possible
+				if(minPosition>-1) {
+					if(lcs.getSubjectEnd()>=minPosition) {
+						longest = lcs.getString().length();
+						max = lcs;
+					}
+				}
+				//normal situation
+				else {
+					longest = lcs.getString().length();
+					max = lcs;
+				}
+			}
+		}
+		return max;
+	}
+	
 	public LCS getMatchRight(String seq, int startPos, int minSize, boolean allowJump, int minPosition) {
 		//System.out.println("seq"+seq);
 		//System.out.println("getMatchRight");
@@ -466,7 +540,7 @@ public class KMERLocation {
 				//if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && absDist<=1 && absDistQuery<=1 && lcs.getSubjectStart()<max.getSubjectStart()) {
 				//	second = lcs;
 				//}
-				if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>=startPos && lcs.getSubjectStart()<max.getSubjectStart()) {
+				if(lcs.length()>= MINIMUMSECONDSIZE && lcs != max && lcs.getSubjectEnd()>startPos && lcs.getSubjectStart()<max.getSubjectStart()) {
 					//this will break again the PacBio
 					int distToExpectedCut = lcs.getSubjectEnd()-startPos;
 					//query has to start earlier 
