@@ -19,7 +19,7 @@ import org.apache.commons.cli.ParseException;
 import batch.SequenceController;
 
 public class SV_Analyzer {
-	public final static String VERSION = "2.0";
+	public final static String VERSION = "2.1";
 	public static void main(String[] args) throws ParseException {
 		Options optionsApache = createOptions();
 		CommandLineParser parser = new DefaultParser();
