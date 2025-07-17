@@ -1430,19 +1430,6 @@ server <- function(input, output, session) {
     el = el %>% mutate(getHomologyColor = case_when(
       Type == "TANDEMDUPLICATION_COMPOUND" ~ "INSERTION",
       !Type %in% c("DELETION", "TANDEMDUPLICATION") ~ Type,
-      #Type=="SNV" ~ "SNV",
-      #Type=="WT" ~ "WT",
-      #Type=="INSERTION_1bp" ~ "INSERTION_1bp",
-      #Type=="INSERTION" ~ "INSERTION",
-      #Type=="DELINS" ~ "DELINS",
-      #Type=="HDR" ~ "HDR",
-      #Type=="HDR1MM" ~ "HDR1MM",
-      #Type=="TINS" ~"TINS",
-      #Type=="TINS_FW" ~"TINS_FW",
-      #Type=="TINS_RC" ~"TINS_RC",
-      #Type=="DELINS_SNV" ~"DELINS_SNV",
-      #Type=="DELINS_DUAL" ~"DELINS_DUAL",
-      #Type=="TANDEMDUPLICATION_COMPOUND" ~ "INSERTION",
       homologyLength<=4 ~ paste0(homologyLength,"bp_homology"),
       homologyLength>=5 & homologyLength<15 ~ "5-15bp_homology",
       homologyLength>=15 ~ "15bp_homology"
@@ -1454,7 +1441,7 @@ server <- function(input, output, session) {
     el$TDcolor = "white"
     el$TDcolor[el$Type=="TANDEMDUPLICATION"] <- "TANDEMDUPLICATION"
     el$TDcolor[el$Type=="TANDEMDUPLICATION_COMPOUND"] <- "TANDEMDUPLICATION_COMPOUND"
-    el$TypeHom = ""
+    #el$TypeHom = ""
     el$TypeTD = "other"
     el$TypeTD[el$Type=="TANDEMDUPLICATION_COMPOUND"] <- "TANDEMDUPLICATION_COMPOUND"
     el$TypeTD[el$Type=="TANDEMDUPLICATION"] <- "TANDEMDUPLICATION"
@@ -1480,7 +1467,7 @@ server <- function(input, output, session) {
     ##end of to be removed###
     if("fraction" %in% colnames(el)) {
       plot.data <- data.frame(size = el$delRelativeEndTD-el$delRelativeStartTD, start.points = el$delRelativeStartTD, 
-                              end.points = el$delRelativeEndTD, type=el$TypeHom, typeTD=el$TypeTD, color=el$getHomologyColor, code=el$Alias, 
+                              end.points = el$delRelativeEndTD, typeTD=el$TypeTD, color=el$getHomologyColor, code=el$Alias, 
                               yheight = el$fraction, typeOrig = el$Type, left = el$delRelativeStartTD+(el$delRelativeEndTD-el$delRelativeStartTD)/2, 
                               startTD=el$delRelativeStart, countEvents = el$countEvents, Pool = el$Subject, tdColor = el$TDcolor, insSize = el$insSize,
                               Subject = el$Subject, Alias = el$Alias, del = el$del, insert = el$insertion, homology = el$homologyLength, Translocation = el$Translocation,
@@ -1489,7 +1476,7 @@ server <- function(input, output, session) {
     }
     else{
       plot.data <- data.frame(size = el$delRelativeEndTD-el$delRelativeStartTD, start.points = el$delRelativeStartTD, 
-                              end.points = el$delRelativeEndTD, type=el$TypeHom, typeTD=el$TypeTD, color=el$getHomologyColor, code=el$Alias, 
+                              end.points = el$delRelativeEndTD, typeTD=el$TypeTD, color=el$getHomologyColor, code=el$Alias, 
                               typeOrig = el$Type, left = el$delRelativeStartTD+(el$delRelativeEndTD-el$delRelativeStartTD)/2, 
                               startTD=el$delRelativeStart, Pool = el$Subject, tdColor = el$TDcolor, insSize = el$insSize,
                               Subject = el$Subject, Alias = el$Alias, del = el$del, insert = el$insertion, homology = el$homologyLength)
@@ -4982,6 +4969,19 @@ server <- function(input, output, session) {
   output$multi_list <- renderUI({
     req(input$Aliases)
     aliases = input$Aliases
+    
+    ##reading out this value should not trigger redrawing of this UI element, so isolate
+    current_order <- isolate(input$multiGroupOrder)
+    
+    # Preserve order from current input if available
+    if (!is.null(current_order)) {
+      # Keep only items still in aliases
+      ordered <- current_order[current_order %in% aliases]
+      # Add new items at the end
+      new_items <- setdiff(aliases, ordered)
+      aliases <- c(ordered, new_items)
+    }
+    
     dropdown(
       tags$h3("Sort Samples"),
       bucket_list(
