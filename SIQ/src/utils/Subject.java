@@ -39,7 +39,7 @@ public class Subject {
 		if(subjectComments == null) {
 			this.subjectComments = subjectName;
 		}
-		kmerl = new KMERLocation(this.subject);
+		kmerl = new KMERLocation(this);
 	}
 	public Subject(RichSequence subject, String left, String right, boolean exitOnError) {
 		this(subject, left, right);
