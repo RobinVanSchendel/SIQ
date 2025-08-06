@@ -2584,7 +2584,11 @@ server <- function(input, output, session) {
     
     ##respect the grouping if selected
     if(is_grouped()){
-      el = el %>% mutate(Alias = !!as.name(input$GroupColumn))
+      ##also update the total as that determines if we need to merge events later
+      el = el %>% mutate(Alias = !!as.name(input$GroupColumn)) %>%
+        group_by(Subject, Alias) %>%
+        mutate(totalFraction = sum(fraction)) %>%
+        filter(countEvents > 0)
     }
     
     # FIX this 100 limit
