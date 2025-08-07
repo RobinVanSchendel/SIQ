@@ -2655,7 +2655,7 @@ server <- function(input, output, session) {
       ##added this merge to allow the Type to be influenced by the order of the types
       newdata = merge(newdata, hardcodedTypesDFnonreactive(), by.x ="typeOrig", by.y = "Type")
       newdata$Text = factor(newdata$Text, levels = rev(input$multiType$order))
-      newdata <- newdata[order(newdata$Text,-newdata$size), ] 
+      newdata <- newdata[order(newdata$Text,-newdata$size, newdata$start.points), ] 
     }
     
     newdata = newdata %>% group_by(Alias, Subject) %>% mutate(y.end = cumsum(yheight), y.start = y.end-yheight)
