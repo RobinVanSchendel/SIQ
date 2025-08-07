@@ -1541,8 +1541,9 @@ server <- function(input, output, session) {
   }
   
   ##is the data supposed to be grouped?
+  ##disable grouping if same column is selected
   is_grouped <- function(){
-    return(input$GroupColumn != "-")
+    return(input$GroupColumn != "-" & input$GroupColumn != input$AliasColumn)
   }
   
   output$plot1bpinsertion <- renderPlot({
