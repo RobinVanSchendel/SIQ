@@ -142,6 +142,9 @@ debug = FALSE
 ###test
 TranslocationColorReal = "Translocation"
 
+##maximum number of tornado plots to be shown
+MAXTORNADOS = 100
+
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -1798,8 +1801,13 @@ server <- function(input, output, session) {
     
     ##we need this dummy because in some cases we lose Aliases because
     ##they do not have outcomes and if we select a single outcome they are gone
-    
     dummyOutcome = data %>% select_at(select_var) %>% distinct() %>% mutate(Outcome = "dummy", fraction = 0)
+    
+    ##remove dummy now if present (e.g. in Gene/Barcode)  
+    if(is_grouped()){
+      dummyOutcome = dummyOutcome %>%
+        filter(!!as.symbol(get_group_column()) != "dummy")  
+    }
     
     ##first get the top outcomes
     dataOutcomeControls = data %>% 
@@ -1840,6 +1848,7 @@ server <- function(input, output, session) {
     if(is_grouped()){
       #need to put the group column back in through the dummy
       groupsDF = dummyOutcome %>% select(!!as.symbol(get_group_column()), Alias)
+      
       dataPlot1 = dataPlot1 %>% select(-!!as.symbol(get_group_column()))
       dataPlot1 = dplyr::left_join(dataPlot1, groupsDF)      
     }
@@ -2593,10 +2602,9 @@ server <- function(input, output, session) {
     }
     
     # FIX this 100 limit
-    maxTornadoes = 100
     subjectAliasList = el %>% select(Subject,Alias) %>% distinct() %>% ungroup()
-    if(nrow(subjectAliasList) > maxTornadoes){
-      subjectAliasListSub = subjectAliasList %>% slice_head(n = maxTornadoes)
+    if(nrow(subjectAliasList) > MAXTORNADOS){
+      subjectAliasListSub = subjectAliasList %>% slice_head(n = MAXTORNADOS)
       el = el %>% filter(Subject %in% subjectAliasListSub$Subject, Alias %in% subjectAliasListSub$Alias)
     }
     
@@ -3739,6 +3747,8 @@ server <- function(input, output, session) {
       group_by_at(aliasColumn) %>%
       summarise(Subjects = n_distinct(Subject))
     nrows = sum(df$Subjects)
+    ##ensure the max row is used
+    nrows = min(MAXTORNADOS, nrows)
     return(ceiling((nrows)/input$nrCols))
   }
   plot_rows_no_col <- function() {
