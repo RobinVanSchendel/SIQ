@@ -88,10 +88,11 @@ public class SequenceFileThread extends Thread {
 		try {
 			semaphore.acquire();
 			runReal();
-			semaphore.release();
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			semaphore.release();
 		}
 		
 	}

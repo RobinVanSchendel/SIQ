@@ -158,8 +158,8 @@ public class SequenceControllerThread implements Runnable{
 		}
 		//all threads are done here
 		if(excelFile!=null){
-			GUI.exportToExcel(excelFile);
 			GUI.exportToTSV(tsvFile);
+			GUI.exportToExcel(excelFile);
 			//Don't go to R anymore
 			//ReportPanel.runR(excelFile, false);
 			//ReportPanel.runR(excelFile, true);

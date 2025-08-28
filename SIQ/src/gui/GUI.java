@@ -918,6 +918,15 @@ public class GUI implements ActionListener, MouseListener {
 			}
 			firstFile = false;
 		}
+		if(totalRow > 1048575) {
+			 JOptionPane.showMessageDialog(
+			            guiFrame,
+			            "Not all data written to Excel as there are too many lines (max is 1048575 rows)!",
+			            "Warning",
+			            JOptionPane.WARNING_MESSAGE
+			        );
+
+		}
 		//write stats
 		sheet = workbook.createSheet("Information");
 		totalRow=0;
@@ -1043,6 +1052,9 @@ public class GUI implements ActionListener, MouseListener {
 	}
 
 	private void printLineToExcel(SXSSFSheet sheet, String line, int rowNr) {
+		if(rowNr>1048575) {
+			 return;
+		 }
 		 Row row = sheet.createRow(rowNr);
 		 String[] parts = line.split("\t");
 		 int columnCount = 0;
