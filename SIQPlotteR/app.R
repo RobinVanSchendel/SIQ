@@ -3647,31 +3647,18 @@ server <- function(input, output, session) {
   observeEvent(
     rv$aliases,
     {
-      req(rv$aliases)
       aliases = rv$aliases
-      print("##########changeAliases")
       
-      ##not safe to update the selected aliases as that potentially results in an infinite loop
-      intersect = intersect(aliases, input$Aliases)
-      #print(aliases)
-      #if(!is.null(input$Aliases) && length(intersect) == length(input$Aliases)){
-      #  ##do not update
-      #  return()
-      #}
-      if(length(intersect) > 0 & length(intersect)<100){
-        selected = intersect
-      }
-      #else 
-      else if(length(aliases) >100){
-          selected = NULL
-      } 
-      ##if no overlap between selected and these aliases, select them all
-      else{
+      if(length(aliases)<100){
         selected = aliases
       }
+      #else 
+      else {
+          selected = NULL
+      } 
       ##this does not contain the samples that have 0 reads anymore
       ##which may be an issue for the SampleInfo tab
-      print("updatePickerInput Aliases")
+      #print("updatePickerInput Aliases")
       updatePickerInput(session, "Aliases", choices = aliases, selected = selected)
       #updatePickerInput(session, "Aliases", choices = aliases)
     }
