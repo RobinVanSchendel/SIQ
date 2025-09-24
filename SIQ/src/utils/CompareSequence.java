@@ -359,6 +359,7 @@ public class CompareSequence {
 		//now there is a separate option for this one
 		int maxLengthMatch = 10;
 		if(subjectObject.isLongRead()) {
+			//for every 1000bp the match can be 1bp longer
 			maxLengthMatch = maxLengthMatch + (int)Math.floor(del.length()/1000);
 		}
 		if(del!= null && insert != null && del.length()>maxLengthMatch && insert.length()>maxLengthMatch) {
