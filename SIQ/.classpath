@@ -20,5 +20,6 @@
 	<classpathentry kind="lib" path="libraries/poi-ooxml-5.0.0.jar"/>
 	<classpathentry kind="lib" path="libraries/poi-ooxml-lite-5.0.0.jar"/>
 	<classpathentry kind="lib" path="libraries/xmlbeans-4.0.0.jar"/>
+	<classpathentry kind="lib" path="libraries/htsjdk-3.0.0-SNAPSHOT.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
