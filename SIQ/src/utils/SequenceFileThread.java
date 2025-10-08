@@ -278,10 +278,20 @@ public class SequenceFileThread extends Thread {
 			AtomicInteger totalReads = new AtomicInteger(0);
 			if(this.tableModel!= null) {
 				//might be a bit expensive, but it is convenient to have
-				FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
-				        (id, fastqRecord) -> {
-				        	totalReads.getAndIncrement();
-				        });
+				try {
+					FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
+					        (id, fastqRecord) -> {
+					        	int count = totalReads.incrementAndGet();
+					        	if(count >= maxReads) {
+					        		//stop iterating early
+					        		throw new StopReadingException();
+					        	}
+					        });
+				} catch (StopReadingException e) {
+					// This is expected — used to break out early
+				    System.out.println("Reached maxReads = " + maxReads);
+				}
+				
 				//System.out.println("total sequences "+totalReads.get());
 				if(this.maxReads>0) {
 					int min = (int) Math.min(totalReads.get(), this.maxReads);
