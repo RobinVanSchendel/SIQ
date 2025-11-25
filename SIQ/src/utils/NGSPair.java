@@ -20,7 +20,8 @@ public class NGSPair {
 			}
 			if(f.getName().contains("R1")) {
 				File R1 = f;
-				String R2name = R1.getName().replace("R1", "R2");
+				//to ensure only final R1 is used. This prevents e.g. DBR1_R1.fastq.gz from going wrong 
+				String R2name = replaceLast(R1.getName(), "R1", "R2");
 				File R2 = new File(R1.getAbsolutePath().replace(R1.getName(), R2name));
 				//search for R2
 				boolean added = false;
@@ -59,5 +60,15 @@ public class NGSPair {
 	public File getR2() {
 		return R2;
 	}
+	
+	//Helper method to replace the last occurrence of a String search with replacement in text
+	public static String replaceLast(String text, String search, String replacement) {
+	    int index = text.lastIndexOf(search);
+	    if (index == -1) {
+	        return text; // search string not found
+	    }
+	    return text.substring(0, index) + replacement + text.substring(index + search.length());
+	}
+
 
 }
