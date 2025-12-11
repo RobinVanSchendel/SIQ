@@ -351,7 +351,7 @@ ui <- fluidPage(
         radioButtons(
           "Sort",
           "Select Sort:",
-          c("Start position","End position","Mid position","Size","Type","Closest position"),
+          c("Start position","End position","Mid position","Size","Type","Type and homology","Closest position"),
           selected = "Start position",
           inline = TRUE),
         radioButtons(
@@ -2653,8 +2653,7 @@ server <- function(input, output, session) {
     } else if(sortType == "Mid position"){
       newdata$middle = (newdata$end.points + newdata$start.points)/2
       newdata <- newdata[order(newdata$middle, -newdata$size,newdata$typeOrig), ]
-    }
-    else if(sortType == "Closest position"){
+    } else if(sortType == "Closest position"){
       newdata <- newdata[order(-newdata$closestto0, -newdata$size,newdata$typeOrig), ]
     }
     else if(sortType == "Size"){
@@ -2664,6 +2663,12 @@ server <- function(input, output, session) {
       newdata = merge(newdata, hardcodedTypesDFnonreactive(), by.x ="typeOrig", by.y = "Type")
       newdata$Text = factor(newdata$Text, levels = rev(input$multiType$order))
       newdata <- newdata[order(newdata$Text,-newdata$size, newdata$start.points), ] 
+    } else if(sortType == "Type and homology"){
+      ##added this merge to allow the Type to be influenced by the order of the types
+      newdata = merge(newdata, hardcodedTypesDFnonreactive(), by.x ="typeOrig", by.y = "Type")
+      newdata$Text = factor(newdata$Text, levels = rev(input$multiType$order))
+      ##add sort on homology
+      newdata <- newdata[order(newdata$Text, newdata$homology,-newdata$size, newdata$start.points), ] 
     }
     
     newdata = newdata %>% group_by(Alias, Subject) %>% mutate(y.end = cumsum(yheight), y.start = y.end-yheight)
