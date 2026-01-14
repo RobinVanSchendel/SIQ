@@ -1252,8 +1252,9 @@ server <- function(input, output, session) {
       el$Alias = el[[input$AliasColumn]]
     }
     #make sure the fractions will be set to 1 here already
+    #sometimes dummies have NA as fraction
     el = el %>% group_by(Alias, Subject) %>% 
-      mutate(totalFraction = sum(fraction), fraction = fraction/totalFraction)
+      mutate(totalFraction = sum(fraction, na.rm = TRUE), fraction = fraction/totalFraction)
     return(el)
     
   })
