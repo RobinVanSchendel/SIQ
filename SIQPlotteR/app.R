@@ -725,7 +725,7 @@ ui <- fluidPage(
       checkboxGroupInput(
         inputId = "CollapseTypes", 
         label = "how to treat Type(s):",
-        choices = c("collapse TDs" = "collapseTD", "split TINS" = "splitTINS" , "split nickase DELs" = "splitDELS"),
+        choices = c("collapse TDs" = "collapseTD", "split TINS" = "splitTINS" , "split nickase DELs" = "splitDELS", "split DELINS" = "splitDELINS"),
         inline = T
       ),
       checkboxInput("facet_wrap",
@@ -1007,6 +1007,8 @@ server <- function(input, output, session) {
     delfillLColor = "#9CCA86"
     delfillRColor = "#1E9099"
     delfillColor = "#4784C5"
+    delinsColor12 = "#2D2D2D"
+    delinsColor34 = "#0D0D0D"
     ##
     colourCode <- c("WT" = wtColor, "DELETION" = delColor, "INSERTION" = insColor, "INSERTION_1bp" = insColor1, "DELINS" = delinsColor,
                     "TINS" = tinsColor, "TANDEMDUPLICATION" = tdColor, 
@@ -1017,7 +1019,9 @@ server <- function(input, output, session) {
                     "DELETION_FILLIN_NO" = delnofillColor,
                     "DELETION_FILLIN_LEFT" = delfillLColor,
                     "DELETION_FILLIN_RIGHT" = delfillRColor,
-                    "DELETION_FILLIN_LEFT_RIGHT" = delfillColor
+                    "DELETION_FILLIN_LEFT_RIGHT" = delfillColor,
+                    "DELINS_1,2" = delinsColor12,
+                    "DELINS_3,4"= delinsColor34
     ) 
     
     hardcodedTypes = c("WT" = "wild-type","INSERTION" = "insertion", "INSERTION_1bp" = "1bp insertion",
@@ -1032,7 +1036,9 @@ server <- function(input, output, session) {
                        "DELETION_FILLIN_NO" = "deletion no fill-in",
                        "DELETION_FILLIN_LEFT" = "deletion fill-in left",
                        "DELETION_FILLIN_RIGHT" = "deletion fill-in right",
-                       "DELETION_FILLIN_LEFT_RIGHT" = "deletion fill-in left right"
+                       "DELETION_FILLIN_LEFT_RIGHT" = "deletion fill-in left right",
+                       "DELINS_1,2" = "deletion with insert (ins 1-2bp)",
+                       "DELINS_3,4" = "deletion with insert (ins 3-4bp)"
                        )
     
     hardcodedTypesDF = data.frame(names(hardcodedTypes), unname(hardcodedTypes), stringsAsFactors = FALSE)
@@ -1185,6 +1191,7 @@ server <- function(input, output, session) {
     ##somehow that makes the type dissappear probably move to another location!
     el = split_tins(el)
     el = split_dels(el)
+    el = split_delins(el)
     
     print("endOf in_data")
     return(el)
@@ -1219,6 +1226,16 @@ server <- function(input, output, session) {
     df
   }
   
+  split_delins <- function(df){
+    if("splitDELINS" %in% input$CollapseTypes){
+      df = df %>% mutate(Type = case_when(
+        Type == "DELINS" & insSize <= 2 ~ "DELINS_1,2",
+        Type == "DELINS" & insSize <= 4 ~ "DELINS_3,4",
+        TRUE ~  Type
+      ))
+    }
+    df
+  }
   
   split_tins <- function(df){
     ##somehow that makes the type dissappear probably move to another location!
@@ -1355,6 +1372,8 @@ server <- function(input, output, session) {
       el = split_tins(el)
       
       el = split_dels(el)
+      
+      el = split_delins(el)
       
       el = el %>% group_by(Alias) %>% mutate(totalFraction = sum(fraction))
     }
@@ -3727,8 +3746,10 @@ server <- function(input, output, session) {
     hardCodedTypes = hardcodedTypesDFnonreactive()
     for(colour in hardCodedTypes$Type){
       #print(paste0(colour," ",colourCode[[colour]]))
+      ##TODO: ensure that this is done properly when adding types
       if(grepl("bp",colour, fixed = TRUE) | grepl("HDR1MM",colour, fixed = TRUE) |
-         grepl("DELETION_",colour, fixed = TRUE)){
+         grepl("DELETION_",colour, fixed = TRUE) |
+         grepl("DELINS_",colour, fixed = TRUE)){
         palette = "square" 
       }
       else{
