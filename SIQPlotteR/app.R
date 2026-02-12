@@ -895,6 +895,11 @@ ui <- fluidPage(
                            uiOutput("ui_heatmapend"),
                            DT::dataTableOutput("heatmap_end_data",width = 8)
                   ),
+                  tabPanel("HeatmapTwoEnds",
+                           h3("HeatmapTwoEnds"),
+                           p("Plot of the start and end location for each event"),
+                           uiOutput("ui_heatmapstartend")
+                  ),
 									tabPanel("1bp insertion",
 									         h3("1bp insertion"),
 									         p("display the contribution of the 1bp insertions"),
@@ -1180,7 +1185,7 @@ server <- function(input, output, session) {
     ##somehow that makes the type dissappear probably move to another location!
     el = split_tins(el)
     el = split_dels(el)
-
+    
     print("endOf in_data")
     return(el)
   })
@@ -1601,6 +1606,14 @@ server <- function(input, output, session) {
     ))
   })
   
+  heatmapStartEndData_data <- reactive({
+    req(filter_in_data())
+    req(input$Aliases)
+    data = filter_in_data()
+    calculation = data %>% group_by(Alias, Subject, delRelativeStartTD, delRelativeEndTD) %>% summarise(total_fraction = sum(fraction))
+    calculation
+  })
+  
   heatmapEndData_data <- reactive({
     req(filter_in_data())
     req(input$Aliases)
@@ -1628,6 +1641,21 @@ server <- function(input, output, session) {
     
     return(retList)
   })
+  
+  output$outcomeHeatmapStartEnd <- renderPlot({
+    req(heatmapStartEndData_data())
+    
+    data = heatmapStartEndData_data()
+    ggplot(data, aes(x = delRelativeStartTD , y = delRelativeEndTD , fill = total_fraction )) +
+      geom_tile() +
+      facet_wrap(Alias ~ Subject) +
+      ##perhaps change later
+      #scale_fill_gradientn(colours = c("white", "black", "red")) +
+      scale_fill_viridis_c() +
+      theme_object() +
+      NULL
+  })
+  
   
   output$outcomeHeatmapEnd <- renderPlot({
     req(heatmapEndData_data())
@@ -3789,6 +3817,13 @@ server <- function(input, output, session) {
     height = input$plotHeight
     plotOutput("outcomeHeatmapEnd", height = height, width = input$plotWidth)
   })
+  
+  output$ui_heatmapstartend <- renderUI({
+    height = input$plotHeight
+    plotOutput("outcomeHeatmapStartEnd", height = height, width = input$plotWidth)
+  })
+  
+  
   
   output$ui_homplot <- renderUI({
     plotOutput("homPlot", height = input$plotHeight, width = input$plotWidth)
