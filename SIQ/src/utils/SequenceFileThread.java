@@ -33,6 +33,11 @@ import org.jcvi.jillion.trace.fastq.FastqRecord;
 
 import gui.NGS;
 import gui.NGSTableModel;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 
 public class SequenceFileThread extends Thread {
 
@@ -278,18 +283,34 @@ public class SequenceFileThread extends Thread {
 			AtomicInteger totalReads = new AtomicInteger(0);
 			if(this.tableModel!= null) {
 				//might be a bit expensive, but it is convenient to have
-				try {
-					FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
+				if(isSAMFile(f)) {
+					SamReader reader = SamReaderFactory.makeDefault()
+			                .validationStringency(ValidationStringency.SILENT)
+			                .open(f);
+			            SAMRecordIterator iterator = reader.iterator();
+			            //count all the bam records
+			            while (iterator.hasNext()) {
+			            	iterator.next();
+			            	totalReads.getAndIncrement();
+			            }
+			            System.out.println("Bam file "+f.getName()+" has "+totalReads.get()+" reads");
+				}
+				else {
+					try {
+						FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 					        (id, fastqRecord) -> {
 					        	int count = totalReads.incrementAndGet();
-					        	if(count >= maxReads) {
+					        	//only shortcut when maxReads is set to > 0
+					        	if(maxReads != 0 && count >= maxReads) {
 					        		//stop iterating early
 					        		throw new StopReadingException();
 					        	}
 					        });
-				} catch (StopReadingException e) {
-					// This is expected — used to break out early
-				    System.out.println("Reached maxReads = " + maxReads);
+					} catch (StopReadingException e) {
+						// This is expected — used to break out early
+					    System.out.println("Reached maxReads = " + maxReads);
+					}
+					
 				}
 				
 				//System.out.println("total sequences "+totalReads.get());
@@ -302,7 +323,110 @@ public class SequenceFileThread extends Thread {
 			System.out.println(Thread.currentThread().getName()+"realLeft:"+subject.getLeftPrimer());
 			System.out.println(Thread.currentThread().getName()+"realRight:"+subject.getRightPrimer());
 			AtomicBoolean reverseDecisionMade = new AtomicBoolean(false);
-			FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
+			if(isSAMFile(f)) {
+				//so here all the bam stuff
+				SamReader reader = SamReaderFactory.makeDefault()
+		                .validationStringency(ValidationStringency.SILENT)
+		                .open(f); 
+		            SAMRecordIterator iterator = reader.iterator();
+		            while (iterator.hasNext()) {
+		            	//increment counter
+		            	totalRawReadsCounter.getAndIncrement();
+		                SAMRecord record = iterator.next();
+		                
+		                //create the cigar alignment
+		                CigarAlignment ca = new CigarAlignment(record, subject.getRefString());
+		                //this gets the left matching part
+		                //TODO: change the 15 to a variable
+		                CigarAlignmentSpan spanLeft = ca.getLeftFlank(subject.getEndOfLeftFlank(), 15);
+		                
+		                if(spanLeft != null) {
+		                	//safer to take this position!
+			                CigarAlignmentSpan spanRight = ca.getRightFlank(subject.getStartOfRightFlank()+1, 15);
+			                //if both left and right can be found we are good to go
+			                if(spanRight != null) {
+			                	String left = ca.getSpanRef(spanLeft);
+			                	String right = ca.getSpanRef(spanRight);
+			                	String insert = ca.getInsert(spanLeft, spanRight);
+			                	String query = left+insert+right;
+			                	//System.out.println("query: "+query);
+			                	
+			                	//check to ensure the query is actually present in the SAMRecord
+			                	boolean queryInRecord = record.getReadString().contains(query);
+				                if(!queryInRecord) {
+				                	System.err.println("MAJOR ISSUE!");
+				                	System.err.println("left"+left);
+				                	System.err.println("right"+right);
+				                	System.err.println("ins"+insert);
+				                	System.err.println("query seq "+query);
+				                	System.err.println("sam seq "+record.getReadString());
+				                	//System.exit(0);
+				                }
+				                
+				                //good to go
+				                //TODO: add quality herer?
+				                CompareSequence cs = new CompareSequence(subject, query, null, f.getParentFile().getName(), false, record.getReadName());
+				                //set the name here
+				                cs.setCurrentAlias(alias, f.getName());
+				                cs.determineFlankPositions(true);
+				                //check for HDR
+				                checkAndSetHDR(subject, cs);
+				                //still good to go?
+				                if(cs.getRemarks().isEmpty()){
+				                	cs.setAdditionalSearchString(hmAdditional);
+									cs.setCurrentFile(f);
+									//TODO ensure that this logic is fixed
+									boolean leftCorrect = true;
+									boolean rightCorrect = true;
+									if(cs.getRemarks().isEmpty() && leftCorrect && rightCorrect){
+										correct.getAndIncrement();
+										String key = cs.getKey(includeStartEnd);
+										//this is for the cache
+										
+										lookupDone.put(cs.getQuery(),key);
+										//now really count the event
+										Integer countEventsNr = countEvents.get(key, cs.getBarcode());
+										if(countEventsNr!=null){
+											countEvents.putOrAdd(key, cs.getBarcode(), 1);
+											//while this works, it might be slow and/or incorrect!
+											//the best would be to give the majority here
+											//replaced not so great sequences with more accurate ones
+											//to be able to filter better later
+											//20180731, added match positions as now sometimes shorter events are selected
+											//which causes problems with filters later
+											if(cs.getNrXs()<csEvents.get(key).getNrXs() && cs.getMatchStart()<= csEvents.get(key).getMatchStart() && cs.getMatchEnd() >=csEvents.get(key).getMatchEnd()  ) {
+												csEvents.put(key, cs);
+											}
+											//can also be done if matchPositions are smaller
+											else if(cs.getNrXs()==csEvents.get(key).getNrXs() && (cs.getMatchStart()< csEvents.get(key).getMatchStart() || cs.getMatchEnd() >csEvents.get(key).getMatchEnd())) {
+												csEvents.put(key, cs);
+											}
+										}
+										else{
+											countEvents.putOrAdd(key,cs.getBarcode(), 1);
+											//save the object instead
+											csEvents.put(key, cs);
+										}
+									}
+				                }
+			                }
+		                }
+		                else {
+		                	//increment some counter here
+		                	
+		                }
+		                counter.getAndIncrement();
+		                updateGUI(start, counter.get(), correct.get(), totalReads.get(), null);
+		                if(maxReads>0 && counter.get()>= this.maxReads) {
+							System.out.println(counter.get()+" >= "+this.maxReads);
+							//update the table model
+							updateGUI(start, counter.get(), correct.get(), totalReads.get(), "Writing");
+							throw new BreakException();
+						}
+		            }
+			}
+			else {
+				FastqFileReader.forEach( f, FastqQualityCodec.SANGER, 
 			        (id, fastqRecord) -> {
 			    totalRawReadsCounter.getAndIncrement();
 				QualitySequence quals = fastqRecord.getQualitySequence();
@@ -407,18 +531,8 @@ public class SequenceFileThread extends Thread {
 							}
 							wrongPosition.getAndIncrement();
 						}
-						boolean isHDRevent = false;
-						CompareSequence hdr = subject.getHDREvent(cs);
-						//isHDR?
-						if(hdr != null) {
-							cs.resetRemarks();
-							isHDRevent = true;
-							//set the HDR name
-							cs.setHDRName(hdr.getName());
-							//actually we need to check this via the HDR sequence rather than like this...
-							//leftCorrect = cs.getRaw().startsWith(subject.getLeftPrimer());
-							//rightCorrect = cs.getRaw().endsWith(subject.getRightPrimer());
-						}
+						checkAndSetHDR(subject, cs);
+						
 						if(cs.getRemarks().isEmpty()) {
 							if(leftCorrect && rightCorrect) {
 								cs.setAdditionalSearchString(hmAdditional);
@@ -527,19 +641,7 @@ public class SequenceFileThread extends Thread {
 				counter.getAndIncrement();
 				//has GUI
 				//are slooooow, so update more often
-				if(subject.isLongRead() && this.tableModel!=null) {
-					long end = System.nanoTime();
-					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
-					if(duration>1000) {
-						float perc = counter.get()/(float)totalReads.get();
-						this.tableModel.setStatus(ngs, perc);
-						this.tableModel.setTotal(ngs, counter.get());
-						this.tableModel.setCorrect(ngs, correct.get());
-						this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
-						//reset timer
-						start.set(end);
-					}
-				}
+				updateGUI(start, counter.get(), correct.get(), totalReads.get(), null);
 				if(counter.get()%10000==0){
 					long end = System.nanoTime();
 					long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
@@ -551,26 +653,11 @@ public class SequenceFileThread extends Thread {
 						System.out.println("Clearing cache");
 						lookupDone.clear();
 					}
-					//update GUI stuff if applicable
-					if(this.tableModel!= null) {
-						float perc = counter.get()/(float)totalReads.get();
-						this.tableModel.setStatus(ngs, perc);
-						this.tableModel.setTotal(ngs, counter.get());
-						this.tableModel.setCorrect(ngs, correct.get());
-						this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
-					}
 				}
 				if(maxReads>0 && counter.get()>= this.maxReads) {
 					System.out.println(counter.get()+" >= "+this.maxReads);
 					//update the table model
-					if(this.tableModel!= null) {
-						float perc = counter.get()/(float)totalReads.get();
-						this.tableModel.setStatus(ngs, perc);
-						this.tableModel.setTotal(ngs, counter.get());
-						this.tableModel.setCorrect(ngs, correct.get());
-						this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
-						this.tableModel.setTextStatus(ngs,"Writing");
-					}
+					updateGUI(start, counter.get(), correct.get(), totalReads.get(), "Writing");
 					throw new BreakException();
 				}
 				//forced stop
@@ -579,15 +666,9 @@ public class SequenceFileThread extends Thread {
 					throw new BreakException();
 				}
 			});
-			//final update
-			if(this.tableModel!= null) {
-				float perc = counter.get()/(float)totalReads.get();
-				this.tableModel.setStatus(ngs, perc);
-				this.tableModel.setTotal(ngs, counter.get());
-				this.tableModel.setCorrect(ngs, correct.get());
-				this.tableModel.setPercentage(ngs, correct.get()/(float)counter.get());
-				this.tableModel.setTextStatus(ngs,"Writing");
 			}
+			//final update
+			forceUpdateGUI(start, counter.get(), correct.get(), totalReads.get(), "Writing");
 			
 			
 		} catch (IOException | RuntimeException e) {
@@ -801,6 +882,54 @@ public class SequenceFileThread extends Thread {
 	}
 	*/
 
+	private void forceUpdateGUI(AtomicLong start, int counter, int correct, int totalReads, String status) {
+		if(this.tableModel!= null) {
+			float perc = counter/(float)totalReads;
+			this.tableModel.setStatus(ngs, perc);
+			this.tableModel.setTotal(ngs, counter);
+			this.tableModel.setCorrect(ngs, correct);
+			this.tableModel.setPercentage(ngs, correct/(float)counter);
+			if(status != null) {
+				tableModel.setTextStatus(ngs, status);
+			}
+		}
+	}
+	private void updateGUI(AtomicLong start, int counter, int correct, int totalReads, String status) {
+		if(this.tableModel == null) {
+			return;
+		}
+		if(counter%10000==0){
+			//update GUI stuff if applicable
+			forceUpdateGUI(start, counter, correct, totalReads, status);
+		}
+		else if(subject.isLongRead()) {
+			long end = System.nanoTime();
+			long duration = TimeUnit.MILLISECONDS.convert((end-start.get()), TimeUnit.NANOSECONDS);
+			if(duration>1000) {
+				forceUpdateGUI(start, counter, correct, totalReads, status);
+				//reset timer
+				start.set(end);
+			}
+		}
+		
+	}
+	private boolean checkAndSetHDR(Subject subject, CompareSequence cs) {
+		// TODO Auto-generated method stub
+		CompareSequence hdr = subject.getHDREvent(cs);
+		//isHDR?
+		if(hdr != null) {
+			cs.resetRemarks();
+			//set the HDR name
+			cs.setHDRName(hdr.getName());
+			return true;
+		}
+		return false;
+		
+	}
+	private boolean isSAMFile(File f2) {
+		return f.getName().endsWith(".bam") ||
+				f.getName().endsWith(".sam");
+	}
 	private String getGene(String barcode) {
 		int index = barcode.lastIndexOf("-");
 		if(index>0) {
