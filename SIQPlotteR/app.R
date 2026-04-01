@@ -4542,6 +4542,8 @@ server <- function(input, output, session) {
         
         
         colorTypeSub = colorType[names(colorType) %in% unique(test2Sub$Text)] 
+        ##ensure allele plot listens to ordering
+        test2Sub[[input$GroupColumn]] = factor(test2Sub[[input$GroupColumn]], levels = input$multiGroupReplicateOrder)
         plot2 = ggplot(test2Sub, aes(x=mean, y = Outcome, fill = Text)) + 
           geom_bar(stat="identity") +
           geom_errorbar(aes(xmin=mean-sd, xmax=mean+sd), width=.2, stat = "identity") +
@@ -5071,7 +5073,7 @@ server <- function(input, output, session) {
     ##Really make sure this is only done for the tabs that use the GroupColumn
     ##otherwise it might get set, but it breaks other tabs
     ##added tornado plot now as well
-    allowedTabs = c("Type","Homology","1bp insertion","Tornado","Efficiency","Target", "Size")
+    allowedTabs = c("Type","Homology","1bp insertion","Tornado","Efficiency","Target", "Size","Alleles")
     
     if(input$tabs %in% allowedTabs){
       req(filter_in_data())
