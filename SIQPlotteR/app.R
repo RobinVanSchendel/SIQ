@@ -5072,42 +5072,52 @@ server <- function(input, output, session) {
       label = "Sort Samples"
     )
   })
+  ##for sorting grouped samples
   output$multi_list_group <- renderUI({
     req(input$Aliases)
-    if(!is_grouped()){
-      return()
-    }
-    groups = NULL
-    ##Really make sure this is only done for the tabs that use the GroupColumn
-    ##otherwise it might get set, but it breaks other tabs
-    ##added tornado plot now as well
-    allowedTabs = c("Type","Homology","1bp insertion","Tornado","Efficiency","Target", "Size","Alleles")
     
-    if(input$tabs %in% allowedTabs){
-      req(filter_in_data())
-      el = filter_in_data()
-      groups = sort(unique(el[[input$GroupColumn]]))
-    } else{
-      return()
+    if (!is_grouped()) {
+      return(NULL)
     }
+    
+    allowedTabs <- c("Type","Homology","1bp insertion","Tornado",
+                     "Efficiency","Target","Size","Alleles")
+    
+    if (!(input$tabs %in% allowedTabs)) {
+      return(NULL)
+    }
+    
+    req(filter_in_data())
+    el <- filter_in_data()
+    
+    # current groups from data
+    groups <- sort(unique(el[[input$GroupColumn]]))
+    
+    # get previous order WITHOUT triggering re-render
+    current_order <- isolate(input$multiGroupReplicateOrder)
+    
+    # reconcile previous order with current data
+    if (!is.null(current_order)) {
+      current_order <- current_order[current_order %in% groups]
+      groups <- c(current_order, setdiff(groups, current_order))
+    }
+    
     dropdown(
       tags$h3("Sort Grouped Samples"),
       bucket_list(
         header = "This list determines the order in the graph if grouping is possible",
         add_rank_list(
-          input_id= "multiGroupReplicateOrder",
+          input_id = "multiGroupReplicateOrder",
           text = "Re-order Grouped Samples here",
           labels = groups
         ),
         group_name = "multiGroupReplicate"
-        
       ),
       icon = icon("sort"),
       label = "Sort Grouped Samples"
     )
-    
-    
   })
+  
   output$type_list <- renderUI({
     req(input$Types)
     #print(input$Types)
