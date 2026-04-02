@@ -3119,14 +3119,18 @@ server <- function(input, output, session) {
     }
     
     ##spread for viewing
-    countDF[[input$GroupColumn]] = factor(countDF[[input$GroupColumn]], levels = input$multiGroupReplicateOrder)
+    if(is_grouped()){
+      countDF[[input$GroupColumn]] = factor(countDF[[input$GroupColumn]], levels = input$multiGroupReplicateOrder)
+    }
     countDFSpread = countDF %>% pivot_wider(names_from = Type, values_from = values_from_columns, 
                                             names_glue = names_glue,
                                             names_vary = "slowest",
                                             names_sort = FALSE,
                                             names_expand = TRUE
-                                            ) %>%
-      arrange(.data[[input$GroupColumn]])
+                                            )
+    if(is_grouped()){
+      countDFSpread = countDFSpread %>% arrange(.data[[input$GroupColumn]])
+    }
     columns = ncol(countDFSpread)
     
     ##round the numbers because the table will get too large otherwise
