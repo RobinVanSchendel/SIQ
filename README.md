@@ -55,8 +55,8 @@ SIQ has the possibilities for the following input:
 * R2 - paired end sequencing file. If provided SIQ will merge R1 and R2 using FLASH (optional)
 * reference - reference file containing your DNA sequence in FASTA format. Needs to contain the primer sequences as well if supplied. Keep the reference file small as this determines the runtime of SIQ (required)
 * alias - your sample name (required)
-* left flank - the stretch of DNA that just touches your expected target site. See below for a graphical example (required, see [flanks](#flanks))
-* right flank - the stretch of DNA that just touches your expected target site. See below for a graphical example. In the case of for example Cas9 nickases this can designate the second sgRNA target site (required)
+* left flank - the stretch of DNA that just touches your expected target site. See above for a graphical example (required, see [flanks](#flanks))
+* right flank - the stretch of DNA that just touches your expected target site. See above for a graphical example. In the case of for example Cas9 nickases this can designate the second sgRNA target site (which can lay at an arbitrary distance from the left flank. (required)
 * #bases past primer - the number of bases your sequence reads at least have to pass the primer to be included as a real event. This filter is there to make sure your primers annealed at the target site in the DNA (default: 5, 0 disables this filter)
 
 Optional settings:
