@@ -148,13 +148,15 @@ MAXTORNADOS = 100
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-  
+
+  uiOutput("sidebar_width_css"),
+
   # logout button
   div(class = "pull-right", shinyauthr::logoutUI(id = "logout")),
-  
-  # Sidebar with a slider input for number of bins 
+
+  # Sidebar with a slider input for number of bins
   sidebarLayout(
-    sidebarPanel(
+    sidebarPanel(width = 4,
       #h1("SIQPlotteR"),
       img(src="SIQ_title.png",width=200),
       radioButtons(
@@ -251,7 +253,10 @@ ui <- fluidPage(
                      value = 13),
         numericInput(inputId = "theme_line_thickness",
                      label = "line thickness",
-                     value = 0.25)
+                     value = 0.25),
+        sliderInput(inputId = "sidebar_width",
+                    label = "Sidebar width",
+                    min = 1, max = 4, value = 4, step = 1)
       ),
       conditionalPanel(
         condition = "input.tabs == 'Efficiency'",
@@ -935,8 +940,17 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
-  
-  
+
+  output$sidebar_width_css <- renderUI({
+    w <- if (is.null(input$sidebar_width)) 4 else input$sidebar_width
+    sidebar_pct <- round(w / 12 * 100, 4)
+    main_pct    <- round((12 - w) / 12 * 100, 4)
+    tags$style(HTML(paste0(
+      ".col-sm-4 { width: ", sidebar_pct, "% !important; }",
+      ".col-sm-8 { width: ", main_pct, "% !important; }"
+    )))
+  })
+
   observe({
     req(credentials())
     if(credentials()$user_auth){
