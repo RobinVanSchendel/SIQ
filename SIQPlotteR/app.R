@@ -743,6 +743,9 @@ ui <- fluidPage(
         c("all reads","mutagenic reads", "selected types"),
         inline = T
       ),
+      checkboxInput("correctHomologyCutsite",
+                    "Correct homology to not cross cut site",
+                    value = FALSE),
       ##disabled
       #radioButtons(
       #  "homologyColumn",
@@ -1421,16 +1424,38 @@ server <- function(input, output, session) {
     #  ##only update the homologies if the mismatch amount is larger
     #  if("homologyLengthMismatch10.ref" %in% colnames(el)){
     #    el = el %>% mutate(
-    #      homologyLength = ifelse( homologyLengthMismatch10.ref > homologyLength,homologyLengthMismatch10.ref,homologyLength) 
+    #      homologyLength = ifelse( homologyLengthMismatch10.ref > homologyLength,homologyLengthMismatch10.ref,homologyLength)
     #    )
     #  }
     #  else{
     #    el = el %>% mutate(
-    #      homologyLength = ifelse( `homologyLengthMismatch10%ref` > homologyLength,`homologyLengthMismatch10%ref`,homologyLength) 
+    #      homologyLength = ifelse( `homologyLengthMismatch10%ref` > homologyLength,`homologyLengthMismatch10%ref`,homologyLength)
     #    )
     #  }
     #}
-    
+
+    ##correct homologyLength for deletions spanning the cut site:
+    ##when a deletion is around position 0 the homology may be seen to the left of that
+    ##for example xxxxTAG----[T|AG|]xxxxx where the TAG is the microhomology but the T is left
+    ##to the cut site
+    if(input$correctHomologyCutsite)  {
+      eligible = el$Type == "DELETION" &
+                 el$delRelativeStart < 0 &
+                 el$delRelativeEndRight >= 0 &
+                 el$homologyLength > 0 &
+        ##delRelativeEnd is needed to also ensure it works for dual sgRNAs
+                 el$delRelativeEnd < el$homologyLength
+      if(any(eligible)) {
+        idx = which(eligible)
+        ##alter the homology if needed
+        homs = substr(el$homology[idx], el$homologyLength[idx]-el$delRelativeEndRight[idx]+1,el$homologyLength[idx])
+        ##set it back in the df
+        ##NOTE: homologyLengthMismatch is now not adapted
+        el$homology[idx] = homs
+        el$homologyLength[idx] = nchar(homs)
+      }
+    }
+
     print(paste("filter_in_data",Sys.time()))
     return(el)
   })
