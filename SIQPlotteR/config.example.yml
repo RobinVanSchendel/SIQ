@@ -1,0 +1,20 @@
+# Example SIQPlotteR settings. Copy this file to config.yml and fill in your own paths;
+# config.yml is not in git. Without config.yml SIQPlotteR runs without the Database tab.
+#
+# Settings are per operating system (linux / windows / darwin), for each either:
+#   db_path:      a fixed SIQ Amplicon DB file (opened read-only), or
+#   snapshot_dir: a folder of snapshot_*.db files; the one named in latest.json is used,
+#                 otherwise the newest one.
+# output_path_map (optional) rewrites the start of the SIQ output paths stored in the DB,
+# for machines where that share is mounted somewhere else.
+# Use single quotes around paths with backslashes.
+
+siq_db:
+  linux:
+    db_path: /path/to/amplicon_manager.db
+    output_path_map:
+      from: '\\fileserver\share\'
+      to: /mnt/share/
+
+  windows:
+    snapshot_dir: 'X:\path\to\snapshots'

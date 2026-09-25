@@ -111,14 +111,90 @@ if(!require(sodium)){
   install.packages("sodium", repos = "https://mirror.lyrahosting.com/CRAN/")
   library(sodium)
 }
-if(!require(heatmaply)){
-  install.packages("heatmaply", repos = "https://mirror.lyrahosting.com/CRAN/")
-  library(heatmaply)
-}
+#if(!require(heatmaply)){
+#  install.packages("heatmaply", repos = "https://mirror.lyrahosting.com/CRAN/")
+#  library(heatmaply)
+#}
 
 
 
 source("user_base.R")
+
+## SIQ Amplicon DB
+## Where the database lives is set per operating system in config.yml, which is not in git
+## because it holds internal paths (see config.example.yml). Without it there is no Database tab.
+siq_config_file <- "config.yml"
+siq_db_config <- if(file.exists(siq_config_file)){
+  tryCatch(yaml::read_yaml(siq_config_file)$siq_db[[tolower(Sys.info()[["sysname"]])]],
+           error = function(e){
+             message("SIQ DB: cannot read ", siq_config_file, " (", conditionMessage(e), ")")
+             NULL
+           })
+}
+siq_is_windows <- .Platform$OS.type == "windows"
+
+## returns the database file to use, or NULL when there is none:
+## either a fixed db_path, or the most recent snapshot in snapshot_dir
+siq_db_resolve_path <- function(){
+  if(!is.null(siq_db_config$db_path)){
+    return(if(file.exists(siq_db_config$db_path)) siq_db_config$db_path else NULL)
+  }
+  siq_db_snapshot_dir <- siq_db_config$snapshot_dir
+  if(is.null(siq_db_snapshot_dir)) return(NULL)
+  latest <- file.path(siq_db_snapshot_dir, "latest.json")
+  if(file.exists(latest)){
+    f <- tryCatch(jsonlite::fromJSON(latest)$file, error = function(e) NULL)
+    if(!is.null(f) && file.exists(file.path(siq_db_snapshot_dir, f))){
+      return(file.path(siq_db_snapshot_dir, f))
+    }
+  }
+  ## no (usable) latest.json: take the newest snapshot file
+  snaps <- list.files(siq_db_snapshot_dir, pattern = "^snapshot_.*\\.db$", full.names = TRUE)
+  if(length(snaps) == 0) return(NULL)
+  snaps[which.max(file.mtime(snaps))]
+}
+
+## runs queries on a read-only connection. A WAL database in a directory we cannot write
+## to can refuse a read-only open (no -shm); then query a private copy of .db + -wal instead.
+siq_db_query <- function(path, queries){
+  run <- function(p){
+    con <- dbConnect(RSQLite::SQLite(), dbname = p, flags = RSQLite::SQLITE_RO)
+    on.exit(dbDisconnect(con))
+    lapply(queries, function(q) dbGetQuery(con, q))
+  }
+  tryCatch(run(path), error = function(e){
+    message("SIQ DB: read-only open failed (", conditionMessage(e), "), using a temporary copy")
+    tmp <- file.path(tempdir(), "siq_db_copy")
+    dir.create(tmp, showWarnings = FALSE)
+    unlink(list.files(tmp, full.names = TRUE))
+    copy <- file.path(tmp, basename(path))
+    file.copy(path, copy)
+    if(file.exists(paste0(path, "-wal"))) file.copy(paste0(path, "-wal"), paste0(copy, "-wal"))
+    run(copy)
+  })
+}
+
+## SIQ output path as stored in the DB (a Windows UNC path) -> path usable on this machine,
+## using output_path_map from config.yml to swap the share for where it is mounted here
+siq_local_path <- function(p){
+  map <- siq_db_config$output_path_map
+  if(!is.null(map$from) && !is.null(map$to)){
+    hit <- startsWith(tolower(p), tolower(map$from))
+    p[hit] <- paste0(map$to, substring(p[hit], nchar(map$from) + 1))
+  }
+  if(!siq_is_windows) p <- gsub("\\", "/", p, fixed = TRUE)
+  p
+}
+
+siq_db_path <- siq_db_resolve_path()
+## only show the Database tab when the database can actually be read
+siq_db_available <- !is.null(siq_db_path) && tryCatch({
+  siq_db_query(siq_db_path, list("SELECT 1 FROM experiments LIMIT 1"))
+  TRUE
+}, error = function(e){
+  message("SIQ DB: ", siq_db_path, " cannot be read (", conditionMessage(e), "), hiding the Database tab")
+  FALSE
+})
 
 ##Music DB name
 dbname = "data/MBCrisprMBAgain_1_1.db"
@@ -132,7 +208,10 @@ options(shiny.maxRequestSize=4048*1024^2)
 exampleExcel = "data/20220609_220725_SIQ.xlsx"  ## for testing
 #exampleExcel = "Z:\\Datasets - NGS, UV_TMP, MMP\\Targeted Sequencing\\Hartwig\\GenomeScan104596\\Analysis\\20200928_GenomeScan104269_104596_NMS_part_for_siq_testing.xlsx"
 #exampleExcel = "Z:\\Projects\\2023_HPRT_sites\\SIQ\\Old\\20230829_SIQ_NMS_total_gt1000_p404_405_mm.xlsx"
-exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
+exampleData = NULL
+if(file.exists(exampleExcel)){
+  exampleData = read_excel(exampleExcel, sheet = "rawData", guess_max = 100000)
+}
 
 seleced_input = 2
 selected_tab = "Welcome"
@@ -161,11 +240,11 @@ ui <- fluidPage(
       img(src="SIQ_title.png",width=200),
       radioButtons(
         "data_input", "",
-        choices = 
-          list("Load example SIQ paper data" = 1,
-               "Upload file (TSV, Text, Excel)" = 2
-          )
-        ,
+        choices = {
+          base <- list("Load example SIQ paper data" = 1,
+                       "Upload file (TSV, Text, Excel)" = 2)
+          if(siq_db_available) c(base, list("Load from SIQ database" = 6)) else base
+        },
         selected = seleced_input),
       conditionalPanel(
         condition = "input.data_input=='2'",
@@ -918,6 +997,89 @@ ui <- fluidPage(
 									         h3("Note: to download all data, please select Show 'All' entries (slow on large sets)", style="color:red"),
 									         DT::dataTableOutput("datatable",width = "100%"),
 									),
+                  if(siq_db_available) tabPanel("Database",
+                    h3("Load samples from SIQ database"),
+                    fluidRow(
+                      column(9, uiOutput("siq_db_info")),
+                      column(3, actionButton("siq_db_refresh", "Refresh database",
+                                             icon = icon("sync"), class = "pull-right"))
+                    ),
+                    tabsetPanel(id = "siq_db_mode",
+                    tabPanel("Experiments",
+                    br(),
+                    fluidRow(
+                      column(5,
+                        h4("Experiments"),
+                        DT::dataTableOutput("siq_exp_table")
+                      ),
+                      column(7,
+                        uiOutput("siq_exp_details"),
+                        DT::dataTableOutput("siq_exp_samples_table"),
+                        br(),
+                        actionButton("siq_exp_load", "Load experiment",
+                                     icon = icon("upload"), class = "btn-primary"),
+                        verbatimTextOutput("siq_exp_load_status")
+                      )
+                    )
+                    ),
+                    tabPanel("Browse samples",
+                    br(),
+                    fluidRow(
+                      column(3,
+                        h4("Filters"),
+                        pickerInput("siq_filter_target", "Target:",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                        pickerInput("siq_filter_cell_line", "Cell Line:",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                        pickerInput("siq_filter_genotype", "Genotype:",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                        pickerInput("siq_filter_treatment", "Treatment (Cas):",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                        pickerInput("siq_filter_drug", "Drug Treatment:",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                        pickerInput("siq_filter_selection", "Selection:",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                        pickerInput("siq_filter_species", "Species:",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                        pickerInput("siq_filter_owner", "Owner:",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                      ),
+                      column(9,
+                        h4("Matching samples — select rows to load"),
+                        p(em("Use filters on the left to narrow down, then select rows and click Load.")),
+                        fluidRow(
+                          column(6,
+                            actionButton("siq_db_select_all",   "Select all",    icon = icon("check-square")),
+                            actionButton("siq_db_deselect_all", "Deselect all",  icon = icon("square"))
+                          )
+                        ),
+                        br(),
+                        DT::dataTableOutput("siq_db_table"),
+                        br(),
+                        actionButton("siq_db_load", "Load selected samples",
+                                     icon = icon("upload"), class = "btn-primary"),
+                        verbatimTextOutput("siq_db_load_status")
+                      )
+                    )
+                    )
+                    )
+                  ),
                   tabPanel("About",
                            h3("About SIQPlotteR"),
                            p("The SIQPlotteR web app is a dedicated tool for exploring data that has been generated by SIQ. Users can explore their data by generating different kind
@@ -954,33 +1116,6 @@ server <- function(input, output, session) {
     )))
   })
 
-  observe({
-    req(credentials())
-    if(credentials()$user_auth){
-      updateRadioButtons(session,
-                         inputId = "data_input",
-                         choices =
-                           list("Load example SIQ paper data" = 1,
-                                "Upload file (TSV, Text, Excel)" = 2,
-                                "MUSIC screen" = 3,
-                                "MUSIC subscreen" = 4,
-                                "MUSIC subscreen TUDelft" = 5
-                           ),
-                         selected = as.numeric(input$data_input),
-                         )
-    }
-    else{
-      updateRadioButtons(session,
-                         inputId = "data_input",
-                         choices =
-                           list("Load example SIQ paper data" = 1,
-                                "Upload file (TSV, Text, Excel)" = 2
-                           ),
-                         selected = seleced_input,
-      )
-    }
-      
-  })
   
   credentials <- shinyauthr::loginServer(
     id = "login",
@@ -1132,6 +1267,298 @@ server <- function(input, output, session) {
     input$minEvents
   }) %>% debounce(500)
   
+  # ── SIQ database tab ────────────────────────────────────────────────────────
+
+  siq_db_loaded_data <- reactiveVal(NULL)
+
+  ## reads everything the Database tab shows from the database file at 'path'
+  siq_db_read <- function(path){
+    res <- siq_db_query(path, list(
+      meta = "
+        SELECT r.sample_id, r.output_path, r.finished_at, r.siq_jar,
+               t.name          AS target,
+               l.name          AS cell_line,
+               l.genotype,
+               l.species,
+               s.treatment     AS cas,
+               s.drug_treatment,
+               s.selection_method AS selection,
+               s.owner
+        FROM siq_runs r
+        JOIN samples         s  ON r.sample_id    = s.sample_id
+        LEFT JOIN subtargets st ON s.subtarget_id = st.id
+        LEFT JOIN targets    t  ON t.id = COALESCE(st.target_id, s.target_id)
+        LEFT JOIN lines      l  ON s.line_id      = l.id
+        WHERE r.status = 'ran_ok'
+        ORDER BY r.finished_at DESC",
+      experiments = "
+        SELECT e.id, e.name, e.description, e.owner, e.pubmed_id, e.reference_url,
+               e.created_at, e.updated_at, e.final_at, e.final_by, e.reopened_at, e.reopened_by,
+               COUNT(es.sample_id) AS n_samples
+        FROM experiments e
+        LEFT JOIN experiment_samples es ON es.experiment_id = e.id
+        GROUP BY e.id
+        ORDER BY e.updated_at DESC",
+      ## experiment_samples.sample_id is samples.id; siq_runs links on the text samples.sample_id
+      exp_samples = "
+        SELECT es.experiment_id, es.sample_id AS sample_pk, s.sample_id, es.sample_name,
+               es.label, es.replicate,
+               t.name AS target, l.name AS cell_line, l.genotype,
+               s.treatment AS cas, s.drug_treatment,
+               r.output_path, r.finished_at
+        FROM experiment_samples es
+        JOIN samples s      ON s.id = es.sample_id
+        LEFT JOIN targets t ON t.id = s.target_id
+        LEFT JOIN lines l   ON l.id = s.line_id
+        LEFT JOIN siq_runs r ON r.id = (
+          SELECT r2.id FROM siq_runs r2
+          WHERE r2.sample_id = s.sample_id AND r2.status = 'ran_ok'
+          ORDER BY r2.finished_at DESC LIMIT 1)
+        ORDER BY es.experiment_id, es.label, es.replicate, es.sample_name"
+    ))
+    ## samples without a target, line, ... would otherwise drop out of the filter pickers
+    filter_cols <- c("target", "cell_line", "genotype", "species", "cas", "drug_treatment", "selection", "owner")
+    res$meta[filter_cols] <- lapply(res$meta[filter_cols],
+                                    function(x) ifelse(is.na(x) | x == "", "(none)", x))
+    res$path    <- path
+    res$read_at <- Sys.time()
+    res
+  }
+
+  ## reads the SIQ output files of 'meta' (needs output_path; label/replicate/experiment optional)
+  ## and returns them as one data frame, or NULL when nothing could be read
+  siq_db_load_files <- function(meta){
+    no_run <- is.na(meta$output_path) | meta$output_path == ""
+    if(any(no_run)){
+      showNotification(paste(sum(no_run), "sample(s) have no SIQ output and are skipped."), type = "warning")
+    }
+    meta <- meta[!no_run, , drop = FALSE]
+    dup <- duplicated(meta$output_path)
+    if(any(dup)){
+      showNotification(paste(sum(dup), "sample(s) point to an output file that is already loaded and are skipped."),
+                       type = "warning")
+    }
+    meta <- meta[!dup, , drop = FALSE]
+    if(nrow(meta) == 0) return(NULL)
+    dfs <- list()
+    withProgress(message = paste("Loading", nrow(meta), "samples..."), value = 0, {
+      for(i in seq_len(nrow(meta))){
+        path <- siq_local_path(meta$output_path[i])
+        incProgress(1 / nrow(meta))
+        if(!file.exists(path)){
+          showNotification(paste("File not found:", path), type = "warning")
+          next
+        }
+        el <- fread(path, header = TRUE, stringsAsFactors = FALSE, data.table = FALSE, fill = TRUE)
+        if("experiment" %in% colnames(meta)) el$Experiment <- meta$experiment[i]
+        ## experiments can name samples: only when both label and replicate are filled in
+        if(all(c("label", "replicate") %in% colnames(meta))){
+          lab <- meta$label[i]
+          rep <- meta$replicate[i]
+          labelled <- !is.na(lab) && lab != "" && !is.na(rep)
+          el$SIQ_Alias <- as.character(el$Alias)
+          el$Label     <- if(labelled) lab else as.character(el$Alias)
+          el$Replicate <- if(labelled) as.character(rep) else NA_character_
+          if(labelled) el$Alias <- paste0(lab, "_", rep)
+        }
+        dfs[[length(dfs) + 1]] <- el
+      }
+    })
+    if(length(dfs) == 0) return(NULL)
+    bind_rows(dfs)
+  }
+
+  siq_db_set_loaded <- function(d){
+    if(is.null(d)){
+      showNotification("None of the output files could be found on disk.", type = "error")
+      return()
+    }
+    siq_db_loaded_data(d)
+    updateRadioButtons(session, "data_input", selected = 6)
+    showNotification(paste(length(unique(d$Alias)), "sample(s) loaded. Switch to any plot tab to explore."),
+                     type = "message")
+  }
+
+  if(siq_db_available){
+
+    siq_db_state <- reactiveVal(siq_db_read(siq_db_path))
+
+    observeEvent(input$siq_db_refresh, {
+      path <- siq_db_resolve_path()
+      if(is.null(path)){
+        showNotification("SIQ database could not be found, keeping the current data.", type = "error")
+        return()
+      }
+      state <- tryCatch(siq_db_read(path), error = function(e){
+        showNotification(paste("Reading the SIQ database failed:", conditionMessage(e)), type = "error")
+        NULL
+      })
+      if(!is.null(state)){
+        siq_db_state(state)
+        showNotification("SIQ database refreshed.", type = "message")
+      }
+    })
+
+    output$siq_db_info <- renderUI({
+      st <- siq_db_state()
+      p(icon("database"), " ", code(st$path),
+        " (modified ", format(file.mtime(st$path), "%Y-%m-%d %H:%M"), ") — ",
+        nrow(st$meta), " samples with SIQ output, ",
+        nrow(st$experiments), " experiments. Read at ", format(st$read_at, "%H:%M:%S"), ".")
+    })
+
+    # ── experiments ──
+
+    output$siq_exp_table <- DT::renderDataTable({
+      ex <- siq_db_state()$experiments %>%
+        mutate(status = ifelse(is.na(final_at), "open", "final")) %>%
+        select(name, owner, samples = n_samples, status, updated = updated_at)
+      DT::datatable(ex,
+        rownames  = FALSE,
+        selection = list(mode = "single", selected = if(nrow(ex) > 0) 1 else NULL),
+        options   = list(pageLength = 25, dom = "ftip", scrollX = TRUE))
+    })
+
+    siq_exp_selected <- reactive({
+      row <- input$siq_exp_table_rows_selected
+      req(length(row) == 1)
+      siq_db_state()$experiments[row, ]
+    })
+
+    siq_exp_samples <- reactive({
+      ex <- siq_exp_selected()
+      samples <- siq_db_state()$exp_samples %>% filter(experiment_id == ex$id)
+      samples$experiment <- rep(ex$name, nrow(samples))
+      samples$note <- ifelse(is.na(samples$output_path), "no SIQ output",
+                      ifelse(duplicated(samples$output_path) & !is.na(samples$output_path),
+                             "same output file as another sample", ""))
+      samples
+    })
+
+    output$siq_exp_details <- renderUI({
+      ex <- siq_exp_selected()
+      links <- list()
+      if(!is.na(ex$pubmed_id) && ex$pubmed_id != ""){
+        links[[length(links) + 1]] <- a(paste("PubMed", ex$pubmed_id), target = "_blank",
+          href = paste0("https://pubmed.ncbi.nlm.nih.gov/", ex$pubmed_id, "/"))
+      }
+      if(!is.na(ex$reference_url) && ex$reference_url != ""){
+        links[[length(links) + 1]] <- a(ex$reference_url, href = ex$reference_url, target = "_blank")
+      }
+      status <- if(is.na(ex$final_at)) "open" else paste0("final (", ex$final_at, " by ", ex$final_by, ")")
+      if(!is.na(ex$reopened_at)) status <- paste0(status, ", reopened ", ex$reopened_at, " by ", ex$reopened_by)
+      tagList(
+        h4(ex$name),
+        if(!is.na(ex$description) && ex$description != "") p(ex$description),
+        p(strong("Owner: "), ex$owner, br(), strong("Status: "), status,
+          if(length(links) > 0) tagList(br(), strong("Reference: "), links)),
+        p(em("All samples are loaded, or only the selected rows if you select any. ",
+             "Samples with a label and replicate are renamed to label_replicate; ",
+             "use Label as Grouping/Replicate column to combine replicates."))
+      )
+    })
+
+    output$siq_exp_samples_table <- DT::renderDataTable({
+      s <- siq_exp_samples() %>%
+        select(sample_name, label, replicate, target, cell_line, genotype, cas, drug_treatment, note)
+      DT::datatable(s,
+        rownames  = FALSE,
+        selection = "multiple",
+        options   = list(pageLength = 100, dom = "ftip", scrollX = TRUE))
+    })
+
+    observeEvent(input$siq_exp_load, {
+      samples <- siq_exp_samples()
+      rows <- input$siq_exp_samples_table_rows_selected
+      if(length(rows) > 0) samples <- samples[rows, ]
+      if(nrow(samples) == 0){
+        showNotification("This experiment has no samples.", type = "warning")
+        return()
+      }
+      siq_db_set_loaded(siq_db_load_files(samples))
+    })
+
+    output$siq_exp_load_status <- renderText({
+      d <- siq_db_loaded_data()
+      if(is.null(d)) return("No data loaded yet.")
+      paste(length(unique(d$Alias)), "sample(s) loaded,", nrow(d), "events total.")
+    })
+
+    # ── browse samples ──
+
+    populate_picker <- function(id, values){
+      updatePickerInput(session, id,
+        choices  = sort(unique(values)),
+        selected = unique(values))
+    }
+
+    observe({
+      meta <- siq_db_state()$meta
+      populate_picker("siq_filter_target",     meta$target)
+      populate_picker("siq_filter_cell_line",  meta$cell_line)
+      populate_picker("siq_filter_genotype",   meta$genotype)
+      populate_picker("siq_filter_species",    meta$species)
+      populate_picker("siq_filter_treatment",  meta$cas)
+      populate_picker("siq_filter_drug",       meta$drug_treatment)
+      populate_picker("siq_filter_selection",  meta$selection)
+      populate_picker("siq_filter_owner",      meta$owner)
+    })
+
+    siq_db_filtered <- reactive({
+      meta <- siq_db_state()$meta
+      if(length(input$siq_filter_target)    > 0) meta <- meta %>% filter(target         %in% input$siq_filter_target)
+      if(length(input$siq_filter_cell_line) > 0) meta <- meta %>% filter(cell_line      %in% input$siq_filter_cell_line)
+      if(length(input$siq_filter_genotype)  > 0) meta <- meta %>% filter(genotype       %in% input$siq_filter_genotype)
+      if(length(input$siq_filter_species)   > 0) meta <- meta %>% filter(species        %in% input$siq_filter_species)
+      if(length(input$siq_filter_treatment) > 0) meta <- meta %>% filter(cas            %in% input$siq_filter_treatment)
+      if(length(input$siq_filter_drug)      > 0) meta <- meta %>% filter(drug_treatment %in% input$siq_filter_drug)
+      if(length(input$siq_filter_selection) > 0) meta <- meta %>% filter(selection      %in% input$siq_filter_selection)
+      if(length(input$siq_filter_owner)     > 0) meta <- meta %>% filter(owner          %in% input$siq_filter_owner)
+      meta
+    })
+
+    output$siq_db_table <- DT::renderDataTable({
+      meta <- siq_db_filtered() %>%
+        select(sample_id, target, cell_line, genotype, species, cas, drug_treatment, selection, owner, finished_at, siq_jar)
+      DT::datatable(meta,
+        rownames  = FALSE,
+        selection = "multiple",
+        filter    = "top",
+        options   = list(
+          pageLength = 100,
+          lengthMenu = c(25, 50, 100, 250, 500, 1000),
+          scrollX = TRUE,
+          dom = "lftip"))
+    })
+
+    observeEvent(input$siq_db_select_all, {
+      meta <- siq_db_filtered()
+      DT::dataTableProxy("siq_db_table") %>% DT::selectRows(seq_len(nrow(meta)))
+    })
+
+    observeEvent(input$siq_db_deselect_all, {
+      DT::dataTableProxy("siq_db_table") %>% DT::selectRows(NULL)
+    })
+
+    observeEvent(input$siq_db_load, {
+      rows <- input$siq_db_table_rows_selected
+      if(length(rows) == 0){
+        showNotification("Select at least one row in the table first.", type = "warning")
+        return()
+      }
+      siq_db_set_loaded(siq_db_load_files(siq_db_filtered()[rows, ]))
+    })
+
+    output$siq_db_load_status <- renderText({
+      d <- siq_db_loaded_data()
+      if(is.null(d)) return("No data loaded yet.")
+      paste(length(unique(d$Alias)), "sample(s) loaded,", nrow(d), "events total.")
+    })
+
+  }
+
+  # ── end SIQ database tab ────────────────────────────────────────────────────
+
   in_data <- reactive({
     req(input$data_input)
     if(input$data_input == 1){
@@ -1152,33 +1579,21 @@ server <- function(input, output, session) {
       else{
         ## <200Mb
         #if(fileNameXLS$size<200*1024*1024){
-          el = read.csv(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, sep = "\t")
+          #el = read.csv(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, sep = "\t")
         #}
         #else{
         #  start_time = start_time <- Sys.time()
-        #  el = fread(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, data.table = F)
+        el = fread(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, data.table = F, fill = T)
         #  end_time <- Sys.time()
         #  print(paste("fread",end_time-start_time, "seconds"))
         #}
       }
     }
-    ## MUSIC screen and subscreen
-    ##all >2 is a DB
-    else if(input$data_input > 2){
-      
-      dbnameCurrent = get_current_dbname()
-      con <- dbConnect(RSQLite::SQLite(), dbname = dbnameCurrent)
-      geneTable <- tbl(con, "genes")
-    
-      #el = fread(file, header = T, stringsAsFactors = FALSE, data.table = FALSE)
-      el = geneTable %>% collect()
-      el = el %>% mutate(Subject = Alias)
-      
-      dbDisconnect(conn = con)
-      
-      ##needed to not break down the process below
-      el$Type = "dummy"
-      el$insSize = 0
+    ## SIQ database — data pre-loaded by the Database tab
+    else if(input$data_input == 6){
+      req(siq_db_loaded_data())
+      el <- siq_db_loaded_data()
+      el
     }
     
     
@@ -1265,19 +1680,6 @@ server <- function(input, output, session) {
     return(df)
   }
   
-  get_current_dbname <- function(){
-    if(input$data_input == 3){
-      return(dbname)
-    }
-    if(input$data_input == 4){
-      return(dbnameSubScreen)
-    }
-    if(input$data_input == 5){
-      return(dbNameSubScreenTUDelft)
-    }
-    stop("Not an option")
-  }
-    
   pre_pre_filter_in_data <- reactive({
     req(in_data())
     if(!is.null(input$AliasColumn)){
@@ -1347,53 +1749,12 @@ server <- function(input, output, session) {
     df
   })
   
-  get_db_data <- reactive({
-    dbnameCur = get_current_dbname()
-    
-    con <- dbConnect(RSQLite::SQLite(), dbname = dbnameCur)
-    geneTable <- tbl(con, "tornado")
-    
-    genes = input$Aliases
-    print("quering DB...")
-    el = geneTable %>% filter(!!as.symbol(input$AliasColumn) %in% genes) %>% collect()
-    
-    ##split tins if needed
-    
-    print("quering done...")
-    dbDisconnect(conn = con)
-    el
-  })
-  
-  
   filter_in_data <- reactive({
     req(pre_filter_in_data())
     req(input$Aliases)
     
-    if((input$data_input > 2) & input$AliasColumn == "Alias"){
-      return()
-    }
     ##remove aliases not plotted
     el = pre_filter_in_data()
-    
-    ##so now load in the data
-    if(input$data_input > 2){
-      el = get_db_data()
-      
-      ##alter following columns
-      ##change this as this is undesired in the end
-      el = el %>% 
-        mutate(Subject = Alias) %>%
-        mutate(Alias = !!as.symbol(input$AliasColumn)) %>%
-        mutate(Type = SubType)
-      
-      el = split_tins(el)
-      
-      el = split_dels(el)
-      
-      el = split_delins(el)
-      
-      el = el %>% group_by(Alias) %>% mutate(totalFraction = sum(fraction))
-    }
     
     
     #rename the references accordingly
@@ -1411,8 +1772,7 @@ server <- function(input, output, session) {
     ##add dummy rows
     aliases = unique(el$Alias)
     remAliases = setdiff(input$Aliases, aliases)
-    ##do not do this for the MUSIC screen as that will remove the entire data frame
-    if(input$data_input != 3 && length(aliases)>0 && length(remAliases)>0){
+    if(length(aliases)>0 && length(remAliases)>0){
       req(in_stat())
       dummies = in_stat()[in_stat()$Alias %in% remAliases,]
       bind_rows(el,dummies)
@@ -1461,6 +1821,7 @@ server <- function(input, output, session) {
   })
   
   in_stat <- reactive({
+    if(input$data_input == 6) return(NULL)
     if(input$data_input == 1){
       fileNameXLS = exampleExcel
     }else{
@@ -1488,6 +1849,7 @@ server <- function(input, output, session) {
   plotsForDownload <- reactiveValues(tornados=NULL, homs=NULL,sizeDiffs=NULL,types=NULL, size=NULL
                                      , snvs=NULL, target=NULL, tornadoTI=NULL, tornadoTIcols=NULL, outcomes=NULL, samples=NULL,
                                      alleles=NULL, plot1bpInsertion = NULL, heatmapEnds = NULL)
+
   applyColor <- function(el){
     start_time <- Sys.time()
     if(!is.data.frame(el)){
@@ -3566,8 +3928,7 @@ server <- function(input, output, session) {
   observeEvent(
     rv$subjects,{
     choices = rv$subjects
-    #data_input == 1 = example data
-    if(input$data_input == 1){
+    if(input$data_input == 1 || input$data_input == 6){
       selected = choices
     } else{
       selected = choices[1]
@@ -3580,9 +3941,6 @@ server <- function(input, output, session) {
     req(input$data_input)
     if(debug){
       print("just an observe AliasColumn")
-    }
-    if(input$data_input == 3){
-      updatePickerInput(session, inputId = "AliasColumn", selected = "Gene")
     }
   })
   
@@ -3632,7 +3990,7 @@ server <- function(input, output, session) {
       print(paste("updatePickerInput Types observe"))
     }
     ##need to set the types for the screen
-    if(input$data_input > 2){
+    if(input$data_input > 2 && input$data_input != 6){
       ##perhaps change the TINS still, depending on presence of 'split TINS'
       types = c("HDR","DELETION","DELINS","INSERTION","TINS","WT","INSERTION_1bp", "TINS_FW", "TINS_RC")
       choices = hardcodedTypesDF()[hardcodedTypesDF()$Type %in% types,]
@@ -3714,13 +4072,7 @@ server <- function(input, output, session) {
     pre_filter_DF = pre_filter_in_data()
     ##additionalFilter for the max fraction to be included
     #remove Aliases that don't have enough counts
-    ##for the MUSIC screen this filtering does not work
-    ##the data is not there yet and causes a major slow down
-    ##You might have to fix this later on
-    if(input$data_input == 3){
-      plotAliases = unique(pre_filter_DF$Alias)
-    }
-    else if(d_minEvents()>0 && input$data_input != 3){
+    if(d_minEvents()>0){
       if(input$minReadsOn == "mutagenic reads"){
         pre_filter_DF = pre_filter_DF %>%
           filter(Type !="WT")
