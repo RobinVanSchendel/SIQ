@@ -3080,6 +3080,8 @@ server <- function(input, output, session) {
     start_time = Sys.time()
     
 
+    ##identical events from different samples in one tornado have to be merged later on
+    needsMerge = FALSE
     ##respect the grouping if selected
     if(is_grouped()){
       ##each Alias already sums to 1 (pre_pre_filter_in_data), which also averages files that
@@ -3087,13 +3089,14 @@ server <- function(input, output, session) {
       ##not their sum (which matters when the y-axis is not scaled to 1)
       el = el %>% group_by(Subject, !!as.name(input$GroupColumn)) %>%
         mutate(nAliasesGroup = n_distinct(Alias)) %>% ungroup()
-      ##also update the total as that determines if we need to merge events later
+      needsMerge = any(el$nAliasesGroup > 1)
       el = el %>% mutate(Alias = !!as.name(input$GroupColumn)) %>%
-        group_by(Subject, Alias) %>%
-        mutate(totalFraction = sum(fraction)) %>%
         filter(countEvents > 0) %>%
         mutate(fraction = fraction / nAliasesGroup)
     }
+    ##files that share an Alias: totalFraction is then the number of files (it is set before
+    ##any filtering, in pre_pre_filter_in_data); the margin ignores rounding in a single file
+    needsMerge = needsMerge || any(el$totalFraction > 1.0001, na.rm = TRUE)
     
     # FIX this 100 limit
     subjectAliasList = el %>% select(Subject,Alias) %>% distinct() %>% ungroup()
@@ -3117,12 +3120,8 @@ server <- function(input, output, session) {
     
     ##this code compresses events that are the same, but come from different files
     ##into a single event
-    ##perhaps it would be wise to only do that if the Alias is combined of several files
-    ##but since the Alias column is overwritten we ware not sure at this moment if the data
-    ##is from multiple files
-    maxFraction = max(el$totalFraction)
-    ##this expensive call is usually not needed, but sometimes it is
-    if(maxFraction > 1){
+    ##this expensive call is usually not needed, but sometimes it is (see needsMerge)
+    if(needsMerge){
       newdata = newdata %>% group_by(across(c(-yheight, -countEvents))) %>%
         summarise(yheight = sum(yheight), countEvents = sum(countEvents))
     }
