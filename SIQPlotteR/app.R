@@ -186,6 +186,34 @@ siq_local_path <- function(p){
   p
 }
 
+## bind_rows for SIQ output files: fread guesses column types per file (a column that is
+## empty in one file is logical there, text in another), so make each column one type first.
+## Columns that are entirely NA in a file do not count; mixed numbers become numeric, anything
+## else mixed becomes character.
+siq_bind_rows <- function(dfs){
+  cols <- unique(unlist(lapply(dfs, colnames)))
+  for(col in cols){
+    classes <- unique(unlist(lapply(dfs, function(d){
+      if(col %in% colnames(d) && !all(is.na(d[[col]]))) class(d[[col]])[1]
+    })))
+    if(length(classes) == 0) classes <- "logical"
+    target <- if(length(classes) == 1) classes
+              else if(all(classes %in% c("logical", "integer", "numeric"))) "numeric"
+              else "character"
+    dfs <- lapply(dfs, function(d){
+      if(col %in% colnames(d) && class(d[[col]])[1] != target){
+        d[[col]] <- switch(target,
+          numeric   = as.numeric(d[[col]]),
+          integer   = as.integer(d[[col]]),
+          logical   = as.logical(d[[col]]),
+          as.character(d[[col]]))
+      }
+      d
+    })
+  }
+  bind_rows(dfs)
+}
+
 siq_db_path <- siq_db_resolve_path()
 ## only show the Database tab when the database can actually be read
 siq_db_available <- !is.null(siq_db_path) && tryCatch({
@@ -1014,11 +1042,10 @@ ui <- fluidPage(
                       ),
                       column(7,
                         uiOutput("siq_exp_details"),
-                        DT::dataTableOutput("siq_exp_samples_table"),
-                        br(),
                         actionButton("siq_exp_load", "Load experiment",
                                      icon = icon("upload"), class = "btn-primary"),
-                        verbatimTextOutput("siq_exp_load_status")
+                        verbatimTextOutput("siq_exp_load_status"),
+                        DT::dataTableOutput("siq_exp_samples_table")
                       )
                     )
                     ),
@@ -1275,7 +1302,8 @@ server <- function(input, output, session) {
   siq_db_read <- function(path){
     res <- siq_db_query(path, list(
       meta = "
-        SELECT r.sample_id, r.output_path, r.finished_at, r.siq_jar,
+        SELECT s.id AS sample_pk, s.sample_id, f.run_name AS run,
+               r.output_path, r.finished_at, r.siq_jar,
                t.name          AS target,
                l.name          AS cell_line,
                l.genotype,
@@ -1285,7 +1313,8 @@ server <- function(input, output, session) {
                s.selection_method AS selection,
                s.owner
         FROM siq_runs r
-        JOIN samples         s  ON r.sample_id    = s.sample_id
+        JOIN samples         s  ON s.id           = r.sample_row_id
+        LEFT JOIN files      f  ON f.id           = s.file_id
         LEFT JOIN subtargets st ON s.subtarget_id = st.id
         LEFT JOIN targets    t  ON t.id = COALESCE(st.target_id, s.target_id)
         LEFT JOIN lines      l  ON s.line_id      = l.id
@@ -1299,21 +1328,20 @@ server <- function(input, output, session) {
         LEFT JOIN experiment_samples es ON es.experiment_id = e.id
         GROUP BY e.id
         ORDER BY e.updated_at DESC",
-      ## experiment_samples.sample_id is samples.id; siq_runs links on the text samples.sample_id
+      ## experiment_samples.sample_id and siq_runs.sample_row_id are samples.id; the text
+      ## samples.sample_id is only a name and not unique, so never join on it
       exp_samples = "
         SELECT es.experiment_id, es.sample_id AS sample_pk, s.sample_id, es.sample_name,
                es.label, es.replicate,
                t.name AS target, l.name AS cell_line, l.genotype,
-               s.treatment AS cas, s.drug_treatment,
+               s.treatment AS cas, s.drug_treatment, f.run_name AS run,
                r.output_path, r.finished_at
         FROM experiment_samples es
-        JOIN samples s      ON s.id = es.sample_id
-        LEFT JOIN targets t ON t.id = s.target_id
-        LEFT JOIN lines l   ON l.id = s.line_id
-        LEFT JOIN siq_runs r ON r.id = (
-          SELECT r2.id FROM siq_runs r2
-          WHERE r2.sample_id = s.sample_id AND r2.status = 'ran_ok'
-          ORDER BY r2.finished_at DESC LIMIT 1)
+        JOIN samples s       ON s.id = es.sample_id
+        LEFT JOIN files f    ON f.id = s.file_id
+        LEFT JOIN targets t  ON t.id = s.target_id
+        LEFT JOIN lines l    ON l.id = s.line_id
+        LEFT JOIN siq_runs r ON r.sample_row_id = s.id AND r.status = 'ran_ok'
         ORDER BY es.experiment_id, es.label, es.replicate, es.sample_name"
     ))
     ## samples without a target, line, ... would otherwise drop out of the filter pickers
@@ -1349,28 +1377,38 @@ server <- function(input, output, session) {
           showNotification(paste("File not found:", path), type = "warning")
           next
         }
-        el <- fread(path, header = TRUE, stringsAsFactors = FALSE, data.table = FALSE, fill = TRUE)
+        el <- tryCatch(fread(path, header = TRUE, stringsAsFactors = FALSE, data.table = FALSE, fill = TRUE),
+                       error = function(e){
+                         showNotification(paste("Cannot read", path, ":", conditionMessage(e)), type = "warning")
+                         NULL
+                       })
+        if(is.null(el)) next
         if("experiment" %in% colnames(meta)) el$Experiment <- meta$experiment[i]
-        ## experiments can name samples: only when both label and replicate are filled in
-        if(all(c("label", "replicate") %in% colnames(meta))){
-          lab <- meta$label[i]
-          rep <- meta$replicate[i]
-          labelled <- !is.na(lab) && lab != "" && !is.na(rep)
+        ## experiments name their samples: the label becomes the Alias (so samples with the same
+        ## label are pooled), otherwise the experiment's sample name; the replicate is kept as a
+        ## column to group on
+        if(all(c("label", "replicate", "sample_name") %in% colnames(meta))){
+          lab  <- meta$label[i]
+          name <- meta$sample_name[i]
+          rep  <- meta$replicate[i]
           el$SIQ_Alias <- as.character(el$Alias)
-          el$Label     <- if(labelled) lab else as.character(el$Alias)
-          el$Replicate <- if(labelled) as.character(rep) else NA_character_
-          if(labelled) el$Alias <- paste0(lab, "_", rep)
+          el$Replicate <- if(!is.na(rep)) as.character(rep) else NA_character_
+          if(!is.na(lab) && lab != "") el$Alias <- lab
+          else if(!is.na(name) && name != "") el$Alias <- name
         }
         dfs[[length(dfs) + 1]] <- el
       }
     })
     if(length(dfs) == 0) return(NULL)
-    bind_rows(dfs)
+    tryCatch(siq_bind_rows(dfs), error = function(e){
+      showNotification(paste("Combining the sample files failed:", conditionMessage(e)), type = "error", duration = NULL)
+      NULL
+    })
   }
 
   siq_db_set_loaded <- function(d){
     if(is.null(d)){
-      showNotification("None of the output files could be found on disk.", type = "error")
+      showNotification("No data loaded.", type = "error")
       return()
     }
     siq_db_loaded_data(d)
@@ -1453,14 +1491,14 @@ server <- function(input, output, session) {
         p(strong("Owner: "), ex$owner, br(), strong("Status: "), status,
           if(length(links) > 0) tagList(br(), strong("Reference: "), links)),
         p(em("All samples are loaded, or only the selected rows if you select any. ",
-             "Samples with a label and replicate are renamed to label_replicate; ",
-             "use Label as Grouping/Replicate column to combine replicates."))
+             "Samples get their label as Alias, or their sample name when there is no label (SIQ's own name is kept in SIQ_Alias); ",
+             "the replicate is in the Replicate column, which you can select as Grouping/Replicate column."))
       )
     })
 
     output$siq_exp_samples_table <- DT::renderDataTable({
       s <- siq_exp_samples() %>%
-        select(sample_name, label, replicate, target, cell_line, genotype, cas, drug_treatment, note)
+        select(sample_name, label, replicate, run, target, cell_line, genotype, cas, drug_treatment, note)
       DT::datatable(s,
         rownames  = FALSE,
         selection = "multiple",
@@ -1519,7 +1557,7 @@ server <- function(input, output, session) {
 
     output$siq_db_table <- DT::renderDataTable({
       meta <- siq_db_filtered() %>%
-        select(sample_id, target, cell_line, genotype, species, cas, drug_treatment, selection, owner, finished_at, siq_jar)
+        select(sample_id, run, target, cell_line, genotype, species, cas, drug_treatment, selection, owner, finished_at, siq_jar)
       DT::datatable(meta,
         rownames  = FALSE,
         selection = "multiple",
@@ -3041,13 +3079,20 @@ server <- function(input, output, session) {
     print("start: tornadoPlotData")
     start_time = Sys.time()
     
+
     ##respect the grouping if selected
     if(is_grouped()){
+      ##each Alias already sums to 1 (pre_pre_filter_in_data), which also averages files that
+      ##share an Alias. A group holds several Aliases, so its fraction is the mean over them,
+      ##not their sum (which matters when the y-axis is not scaled to 1)
+      el = el %>% group_by(Subject, !!as.name(input$GroupColumn)) %>%
+        mutate(nAliasesGroup = n_distinct(Alias)) %>% ungroup()
       ##also update the total as that determines if we need to merge events later
       el = el %>% mutate(Alias = !!as.name(input$GroupColumn)) %>%
         group_by(Subject, Alias) %>%
         mutate(totalFraction = sum(fraction)) %>%
-        filter(countEvents > 0)
+        filter(countEvents > 0) %>%
+        mutate(fraction = fraction / nAliasesGroup)
     }
     
     # FIX this 100 limit
