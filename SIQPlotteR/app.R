@@ -189,7 +189,9 @@ siq_local_path <- function(p){
 ## bind_rows for SIQ output files: fread guesses column types per file (a column that is
 ## empty in one file is logical there, text in another), so make each column one type first.
 ## Columns that are entirely NA in a file do not count; mixed numbers become numeric, anything
-## else mixed becomes character.
+## else mixed becomes character. Empty cells of a column that becomes character get "" rather
+## than NA, as fread gives "" for the empty cells of a text column: otherwise empty would be ""
+## for some samples and NA for others, and the same event would not match across samples.
 siq_bind_rows <- function(dfs){
   cols <- unique(unlist(lapply(dfs, colnames)))
   for(col in cols){
@@ -206,7 +208,7 @@ siq_bind_rows <- function(dfs){
           numeric   = as.numeric(d[[col]]),
           integer   = as.integer(d[[col]]),
           logical   = as.logical(d[[col]]),
-          as.character(d[[col]]))
+          coalesce(as.character(d[[col]]), ""))
       }
       d
     })
@@ -370,6 +372,20 @@ ui <- fluidPage(
         checkboxInput(inputId = "mutFreqBoxPlot", label = "Show boxplot",value = T),
         checkboxInput(inputId = "mutFreqViolinPlot", label = "Show violin", value = T),
         checkboxInput(inputId = "mutFreqTableSummary", label = "Show data summary", value = T)
+      ),
+      ##diversity plot only ###
+      conditionalPanel(
+        condition = "input.tabs == 'Diversity'",
+        sliderInput("diversityTop", "Number of top outcomes shown:",
+                    min = 5, max = 1000, value = 100, step = 5),
+        radioButtons("diversityScale", "Fraction of:",
+                     c("Selected events" = "selected", "All reads" = "all"),
+                     selected = "selected", inline = TRUE),
+        checkboxInput("diversitySameY", "Same y-axis for all samples", value = TRUE),
+        checkboxInput("diversitySameX", "Same x-axis for all samples", value = TRUE),
+        checkboxInput("diversityLog", "Log10 y-axis", value = FALSE),
+        sliderInput("diversityCols", "Number of columns:", min = 1, max = 6, value = 2),
+        downloadButton('exportDiversity', "Export to PDF")
       ),
       ##type plot only ###
       conditionalPanel(
@@ -949,6 +965,14 @@ ui <- fluidPage(
                            h3("Mutational Outcomes"),
                            uiOutput("ui_alleles"),
                            div(DT::dataTableOutput("allele_data",width = 8), style = "font-family: Courier,courier")
+                           ),
+                  tabPanel("Diversity",
+                           h3("Outcome diversity"),
+                           p("For each sample the distinct outcomes are ranked from most to least frequent and numbered.
+                             The top outcomes are shown individually; all other outcomes are combined in the 'rest' bar.
+                             The table below lists which event each number is."),
+                           uiOutput("ui_diversity"),
+                           DT::dataTableOutput("diversity_data_table", width = "100%")
                            ),
                   tabPanel("Efficiency",h3("Targeting efficiency"),
                            p("For each sample the fraction of non wild-type reads are shown."),
@@ -1636,7 +1660,7 @@ server <- function(input, output, session) {
     
     
     if("Remarks" %in% colnames(el)){
-      el = el %>% filter(is.na(Remarks) | Remarks == "NA")
+      el = el %>% filter(is.na(Remarks) | Remarks %in% c("NA", ""))
     }
     #el = el[el$Type!="",]
     el$Alias <- as.character(el$Alias)
@@ -1886,7 +1910,7 @@ server <- function(input, output, session) {
   ##for the plots
   plotsForDownload <- reactiveValues(tornados=NULL, homs=NULL,sizeDiffs=NULL,types=NULL, size=NULL
                                      , snvs=NULL, target=NULL, tornadoTI=NULL, tornadoTIcols=NULL, outcomes=NULL, samples=NULL,
-                                     alleles=NULL, plot1bpInsertion = NULL, heatmapEnds = NULL)
+                                     alleles=NULL, plot1bpInsertion = NULL, heatmapEnds = NULL, diversity = NULL)
 
   applyColor <- function(el){
     start_time <- Sys.time()
@@ -2042,7 +2066,211 @@ server <- function(input, output, session) {
     plotsForDownload$plot1bpInsertion = plot
     plot
   })
-  
+
+  ##outcome diversity: per sample, or per group when a grouping column is selected, the distinct
+  ##outcomes ranked by fraction. Returns list(outcomes = one row per Unit and outcome with its rank,
+  ##samples = the fraction of every sample for every outcome of its Unit, 0 when absent)
+  diversity_data <- reactive({
+    req(filter_in_data())
+    ##the event types come from the type selection (filter_in_data)
+    el = filter_in_data() %>% ungroup()
+    grouped = is_grouped()
+    ##the samples that make up each Unit, taken before events are dropped so that a sample
+    ##without any selected event still counts (as 0) in its group's mean
+    el$Unit = if(grouped) as.character(el[[get_group_column()]]) else el$Alias
+    units = el %>% filter(!is.na(Alias), !is.na(Unit)) %>% distinct(Subject, Unit, Alias)
+
+    el = el %>% filter(countEvents > 0)
+    req(nrow(el) > 0)
+    ##an outcome is a distinct event; files that share an Alias add up
+    outcome_cols = intersect(c("Type", "delRelativeStart", "delRelativeEnd", "del", "insertion", "SNVMutation"),
+                             colnames(el))
+    ##an empty value is NA in some files and "" in others (a column that is empty in a whole
+    ##file is read as NA), which would split one outcome in two
+    el = el %>% mutate(across(any_of(c("del", "insertion", "SNVMutation")), ~ coalesce(as.character(.x), "")))
+    samples = el %>% group_by(across(all_of(c("Subject", "Unit", "Alias", outcome_cols)))) %>%
+      summarise(countEvents = sum(countEvents), fraction = sum(fraction), .groups = "drop") %>%
+      group_by(Subject, Alias)
+    if(input$diversityScale == "selected"){
+      samples = samples %>% mutate(fraction = fraction / sum(fraction))
+    }
+    samples = samples %>% ungroup()
+    samples$OutcomeKey = do.call(paste, c(samples[outcome_cols], sep = "|"))
+
+    ##a Unit's fraction of an outcome is the mean over its samples; absent means 0
+    nSamples = units %>% count(Subject, Unit, name = "nSamples")
+    outcomes = samples %>%
+      group_by(across(all_of(c("Subject", "Unit", "OutcomeKey", outcome_cols)))) %>%
+      summarise(countEvents = sum(countEvents), fraction = sum(fraction), nWithOutcome = n(), .groups = "drop") %>%
+      left_join(nSamples, by = c("Subject", "Unit")) %>%
+      mutate(fraction = fraction / nSamples) %>%
+      group_by(Subject, Unit) %>%
+      arrange(desc(fraction), desc(countEvents), .by_group = TRUE) %>%
+      mutate(Outcome = row_number(), nOutcomes = n()) %>%
+      ungroup()
+
+    ##every sample of a Unit for every outcome of that Unit, for the dots
+    samples = units %>%
+      inner_join(outcomes %>% select(Subject, Unit, OutcomeKey, Outcome), by = c("Subject", "Unit"),
+                 relationship = "many-to-many") %>%
+      left_join(samples %>% select(Subject, Alias, OutcomeKey, fraction), by = c("Subject", "Alias", "OutcomeKey")) %>%
+      mutate(fraction = coalesce(fraction, 0))
+    list(outcomes = outcomes, samples = samples, grouped = grouped)
+  })
+
+  ##one panel per sample or group (and target when there are several)
+  diversity_panels <- function(div){
+    df = div$outcomes
+    units = unique(df$Unit)
+    order = if(div$grouped) input$multiGroupReplicateOrder else input$multiGroupOrder
+    if(!is.null(order)){
+      units = c(intersect(order, units), setdiff(units, order))
+    }
+    panels = df %>% distinct(Subject, Unit, nSamples, nOutcomes) %>%
+      arrange(match(Unit, units), Subject) %>%
+      mutate(Panel = if(n_distinct(Subject) > 1) paste0(Subject, " - ", Unit) else Unit,
+             Panel = if(div$grouped) paste0(Panel, "\n(", nSamples, ifelse(nSamples == 1, " sample, ", " samples, "),
+                                            nOutcomes, " outcomes)")
+                     else paste0(Panel, "\n(", nOutcomes, " outcomes)"))
+    panels$Panel = factor(panels$Panel, levels = unique(panels$Panel))
+    panels
+  }
+
+  output$diversityPlot <- renderPlot({
+    div = diversity_data()
+    df = div$outcomes
+    top_n = input$diversityTop
+    ##the x-axis runs to the most outcomes any panel shows, with the rest bar after a gap
+    shown_n = min(top_n, max(df$Outcome))
+    has_rest = any(df$Outcome > top_n)
+    rest_x = shown_n + max(3, ceiling(shown_n * 0.08))
+    panels = diversity_panels(div) %>% select(Subject, Unit, Panel)
+
+    top = df %>% filter(Outcome <= top_n) %>% mutate(x = Outcome, Fill = Type) %>%
+      left_join(panels, by = c("Subject", "Unit"))
+    rest = df %>% filter(Outcome > top_n) %>%
+      group_by(Subject, Unit) %>%
+      summarise(fraction = sum(fraction), nRest = n(), .groups = "drop") %>%
+      mutate(x = rest_x, Fill = "rest") %>%
+      left_join(panels, by = c("Subject", "Unit"))
+    ##dots: each sample's fraction of the outcome (or of the rest), only for groups
+    dots = NULL
+    if(div$grouped){
+      dots = div$samples %>% mutate(x = ifelse(Outcome <= top_n, Outcome, rest_x)) %>%
+        group_by(Subject, Unit, Alias, x) %>%
+        summarise(fraction = sum(fraction), .groups = "drop") %>%
+        left_join(panels, by = c("Subject", "Unit"))
+      ##a sample without the outcome has no place on a log scale
+      if(input$diversityLog) dots = dots %>% filter(fraction > 0)
+    }
+    ##the "+n" label of the rest bar goes above its bar and dots
+    rest$labelY = rest$fraction
+    if(!is.null(dots) && nrow(rest) > 0){
+      restDots = dots %>% filter(x == rest_x) %>% group_by(Subject, Unit) %>%
+        summarise(maxDot = max(fraction), .groups = "drop")
+      rest = rest %>% left_join(restDots, by = c("Subject", "Unit")) %>%
+        mutate(labelY = pmax(fraction, coalesce(maxDot, 0)))
+    }
+
+    types = hardcodedTypesDF()
+    colors = c(setNames(types$Color, types$Type), rest = "grey45")
+    labels = c(setNames(types$Text, types$Type), rest = "rest (all other outcomes)")
+    fills = intersect(names(colors), c(unique(top$Fill), unique(rest$Fill)))
+
+    ##x breaks per panel (the x-axis can be free): outcome numbers plus the rest bar
+    x_breaks = function(lims){
+      b = pretty(c(max(1, lims[1]), min(shown_n, lims[2])))
+      b = b[b >= 1 & b <= shown_n & b == round(b)]
+      if(has_rest && rest_x <= lims[2]) b = c(b, rest_x)
+      b
+    }
+    x_labels = function(b) ifelse(b == rest_x, "rest", b)
+    x_max = if(has_rest) rest_x + 1 else shown_n + 0.5
+    facet_scales = paste0(if(input$diversitySameX) "fixed" else "free_x", "/",
+                          if(input$diversitySameY) "fixed" else "free_y")
+    facet_scales = switch(facet_scales, "fixed/fixed" = "fixed", "free_x/fixed" = "free_x",
+                          "fixed/free_y" = "free_y", "free_x/free_y" = "free")
+    y_label = if(input$diversityScale == "selected") "Fraction of selected events" else "Fraction of all reads"
+    if(div$grouped) y_label = paste(y_label, "(mean of samples)")
+
+    ##bars are drawn from a baseline: 0, or on a log scale the power of 10 below the smallest
+    ##fraction (geom_col would start log bars at 1 and let them hang down)
+    base = 0
+    if(input$diversityLog){
+      smallest = c(top$fraction, rest$fraction, if(!is.null(dots)) dots$fraction)
+      base = 10^floor(log10(min(smallest[smallest > 0])))
+    }
+    top = top %>% mutate(xmin = x - 0.45, xmax = x + 0.45)
+    rest = rest %>% mutate(xmin = x - 0.75, xmax = x + 0.75)
+
+    plot = ggplot(mapping = aes(xmin = xmin, xmax = xmax, ymin = base, ymax = fraction, fill = Fill)) +
+      geom_rect(data = top) +
+      geom_rect(data = rest) +
+      geom_text(data = rest, aes(x = x, y = labelY, label = paste0("+", nRest)),
+                inherit.aes = FALSE, vjust = -0.3, size = 3) +
+      scale_fill_manual(values = colors, breaks = fills, labels = labels[fills], name = "Type") +
+      facet_wrap(~ Panel, ncol = input$diversityCols, scales = facet_scales) +
+      labs(x = "Outcome (ranked by fraction)", y = if(input$diversityLog) paste(y_label, "(log10)") else y_label) +
+      theme_object()
+    if(!is.null(dots)){
+      plot = plot + geom_point(data = dots, aes(x = x, y = fraction), inherit.aes = FALSE,
+                               size = 1, alpha = 0.7, position = position_jitter(width = 0.2, height = 0, seed = 1))
+    }
+    ##a fixed x-axis runs to the most outcomes any panel shows; a free one fits each panel
+    if(input$diversitySameX){
+      plot = plot + scale_x_continuous(breaks = x_breaks, labels = x_labels,
+                                       limits = c(0.5, x_max), expand = c(0, 0))
+    } else{
+      plot = plot + scale_x_continuous(breaks = x_breaks, labels = x_labels,
+                                       expand = expansion(add = 0.3))
+    }
+    if(input$diversityLog){
+      plot = plot + scale_y_log10(expand = expansion(mult = c(0, 0.1)))
+    } else{
+      plot = plot + scale_y_continuous(expand = expansion(mult = c(0, 0.08)))
+    }
+    plotsForDownload$diversity = plot
+    plot
+  })
+
+  diversity_height <- function(){
+    rows = ceiling(nrow(diversity_panels(diversity_data())) / input$diversityCols)
+    max(1, rows) * input$plotHeight / 2
+  }
+
+  output$ui_diversity <- renderUI({
+    req(diversity_data())
+    plotOutput("diversityPlot", height = diversity_height(), width = input$plotWidth)
+  })
+
+  output$diversity_data_table <- DT::renderDataTable({
+    div = diversity_data()
+    df = div$outcomes %>%
+      select(any_of(c("Subject", "Unit", "Outcome", "Type", "delRelativeStart", "delRelativeEnd",
+                      "del", "insertion", "SNVMutation", "countEvents", "fraction", "nWithOutcome", "nSamples")))
+    if(div$grouped){
+      df = df %>% rename(!!get_group_column() := Unit, `mean fraction` = fraction,
+                         `samples with outcome` = nWithOutcome, samples = nSamples)
+      fraction_col = "mean fraction"
+    } else{
+      df = df %>% rename(Alias = Unit) %>% select(-nWithOutcome, -nSamples)
+      fraction_col = "fraction"
+    }
+    DT::datatable(df, rownames = FALSE, filter = "top",
+                  options = list(pageLength = 25, scrollX = TRUE)) %>%
+      DT::formatSignif(fraction_col, 4)
+  })
+
+  output$exportDiversity = downloadHandler(
+    filename = function() { paste0(format(Sys.time(), "%Y%m%d_%H%M%S_"), "plotsDiversity.pdf") },
+    content = function(file) {
+      if(!is.null(plotsForDownload$diversity)){
+        ggsave(file, plotsForDownload$diversity, height = diversity_height() / 72,
+               width = input$plotWidth / 72, limitsize = FALSE)
+      }
+    }
+  )
+
   output$heatmap_end_data <- DT::renderDataTable({
     req(heatmapEndData_data())
     
@@ -5520,7 +5748,7 @@ server <- function(input, output, session) {
     }
     
     allowedTabs <- c("Type","Homology","1bp insertion","Tornado",
-                     "Efficiency","Target","Size","Alleles")
+                     "Efficiency","Target","Size","Alleles","Diversity")
     
     if (!(input$tabs %in% allowedTabs)) {
       return(NULL)
