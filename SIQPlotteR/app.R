@@ -878,6 +878,8 @@ ui <- fluidPage(
       uiOutput("type_list"),
       uiOutput("multi_list"),
       uiOutput("multi_list_group"),
+      radioButtons("colorPalette", "Color palette:", c("Classical", "Beach"),
+                   selected = "Classical", inline = TRUE),
       uiOutput("color_test"),
     ),
     
@@ -1183,78 +1185,74 @@ server <- function(input, output, session) {
     active = reactive(credentials()$user_auth)
   )
   
-  hardcodedTypesDFnonreactive <- function(){
-    ###THIS NEEDS TO BE RESTRUCTURED
-    bp0Color = "#DAE8F5"
-    bp1Color = "#B9D5E9"
-    bp2Color = "#88BDDC"
-    bp3Color = "#539CCB"
-    bp4Color = "#2A7ABA"
-    bp5Color = "#0E559F"
-    bp6Color = "#0e2b9f"
-    snvColor = "#8B4500"
-    wtColor = "green"
-    insColor = "#B3B3B3"
-    insColor1 = "#9400D3"
-    delColor = "#1E90FF"
-    delinsColor = "#4D4D4D"
-    hdrColor = "#FF6A6A"
-    hdr1mmColor = "#F08D8D"
-    tinsColor = "#FF0000"
-    tinsColorRC = "#AA0000"
-    tdColor = "#FF7F00"
-    tdCColor = "#F4A460"
-    delins_dual = "grey50"
-    delins_snv = "grey30"
-    delnofillColor = "#B03060"
-    delfillLColor = "#9CCA86"
-    delfillRColor = "#1E9099"
-    delfillColor = "#4784C5"
-    delinsColor12 = "#2D2D2D"
-    delinsColor34 = "#0D0D0D"
-    ##
-    colourCode <- c("WT" = wtColor, "DELETION" = delColor, "INSERTION" = insColor, "INSERTION_1bp" = insColor1, "DELINS" = delinsColor,
-                    "TINS" = tinsColor, "TANDEMDUPLICATION" = tdColor, 
-                    "TANDEMDUPLICATION_COMPOUND" = tdCColor,"SNV" = snvColor, "HDR" = hdrColor,"HDR1MM" = hdr1mmColor, "0bp_homology" = bp0Color,
-                    "1bp_homology" = bp1Color,"2bp_homology" = bp2Color,"3bp_homology" = bp3Color,
-                    "4bp_homology" = bp4Color, "5-15bp_homology" = bp5Color, "15bp_homology" = bp6Color, "white" = "white",
-                    "TINS_FW" = tinsColor,"TINS_RC" = tinsColorRC, "DELINS_DUAL" = delins_dual, "DELINS_SNV" = delins_snv,
-                    "DELETION_FILLIN_NO" = delnofillColor,
-                    "DELETION_FILLIN_LEFT" = delfillLColor,
-                    "DELETION_FILLIN_RIGHT" = delfillRColor,
-                    "DELETION_FILLIN_LEFT_RIGHT" = delfillColor,
-                    "DELINS_1,2" = delinsColor12,
-                    "DELINS_3,4"= delinsColor34
-    ) 
-    
-    hardcodedTypes = c("WT" = "wild-type","INSERTION" = "insertion", "INSERTION_1bp" = "1bp insertion",
-                       "DELINS" = "deletion with insert", "TINS" = "deletion with templated insert","TANDEMDUPLICATION" = "tandem duplication (td)",         
-                       "TANDEMDUPLICATION_COMPOUND" = "tandem duplication plus (td+)", "SNV" = "snv", "0bp_homology" = "deletion/td 0bp microhomology",              
-                       "1bp_homology" = "deletion/td 1bp microhomology", "2bp_homology" = "deletion/td 2bp microhomology",
-                       "3bp_homology" = "deletion/td 3bp microhomology", "4bp_homology" = "deletion/td 4bp microhomology",
-                       "5-15bp_homology" = "deletion/td 5-15bp microhomology", "DELETION" = "deletion", "HDR" = "homology-directed repair"
-                       ,"HDR1MM" = "homology-directed repair mismatch", "15bp_homology" = "deletion/td >15bp microhomology",
-                       "TINS_FW" = "deletion with templated insert (FW)","TINS_RC" = "deletion with templated insert (RC)",
-                       "DELINS_DUAL" = "delins (likely two events)", "DELINS_SNV" = "deletion plus snv",
-                       "DELETION_FILLIN_NO" = "deletion no fill-in",
-                       "DELETION_FILLIN_LEFT" = "deletion fill-in left",
-                       "DELETION_FILLIN_RIGHT" = "deletion fill-in right",
-                       "DELETION_FILLIN_LEFT_RIGHT" = "deletion fill-in left right",
-                       "DELINS_1,2" = "deletion with insert (ins 1-2bp)",
-                       "DELINS_3,4" = "deletion with insert (ins 3-4bp)"
-                       )
-    
-    hardcodedTypesDF = data.frame(names(hardcodedTypes), unname(hardcodedTypes), stringsAsFactors = FALSE)
-    colnames(hardcodedTypesDF) = c("Type", "Text")
-    colourCodeDF = data.frame(names(colourCode), unname(colourCode), stringsAsFactors = FALSE)
-    colnames(colourCodeDF) = c("Type", "Color")
-    
-    hardcodedTypesDF = merge(hardcodedTypesDF, colourCodeDF, by = "Type")
-    return(hardcodedTypesDF)
+  ## event types: label and Classical colour. A new type in the data that is not listed here is
+  ## still shown, with its own name as label and a colour from typeFallbackColors
+  typesTable = tibble::tribble(
+    ~Type,                        ~Text,                                  ~Color,
+    "WT",                         "wild-type",                            "green",
+    "DELETION",                   "deletion",                             "#1E90FF",
+    "INSERTION",                  "insertion",                            "#B3B3B3",
+    "INSERTION_1bp",              "1bp insertion",                        "#9400D3",
+    "DELINS",                     "deletion with insert",                 "#4D4D4D",
+    "DELINS_1,2",                 "deletion with insert (ins 1-2bp)",     "#2D2D2D",
+    "DELINS_3,4",                 "deletion with insert (ins 3-4bp)",     "#0D0D0D",
+    "DELINS_DUAL",                "delins (likely two events)",           "grey50",
+    "DELINS_SNV",                 "deletion plus snv",                    "grey30",
+    "TINS",                       "deletion with templated insert",       "#FF0000",
+    "TINS_FW",                    "deletion with templated insert (FW)",  "#FF0000",
+    "TINS_RC",                    "deletion with templated insert (RC)",  "#AA0000",
+    "TANDEMDUPLICATION",          "tandem duplication (td)",              "#FF7F00",
+    "TANDEMDUPLICATION_COMPOUND", "tandem duplication plus (td+)",        "#F4A460",
+    "SNV",                        "snv",                                  "#8B4500",
+    "HDR",                        "homology-directed repair",             "#FF6A6A",
+    "HDR1MM",                     "homology-directed repair mismatch",    "#F08D8D",
+    "0bp_homology",               "deletion/td 0bp microhomology",        "#DAE8F5",
+    "1bp_homology",               "deletion/td 1bp microhomology",        "#B9D5E9",
+    "2bp_homology",               "deletion/td 2bp microhomology",        "#88BDDC",
+    "3bp_homology",               "deletion/td 3bp microhomology",        "#539CCB",
+    "4bp_homology",               "deletion/td 4bp microhomology",        "#2A7ABA",
+    "5-15bp_homology",            "deletion/td 5-15bp microhomology",     "#0E559F",
+    "15bp_homology",              "deletion/td >15bp microhomology",      "#0e2b9f",
+    "DELETION_FILLIN_NO",         "deletion no fill-in",                  "#B03060",
+    "DELETION_FILLIN_LEFT",       "deletion fill-in left",                "#9CCA86",
+    "DELETION_FILLIN_RIGHT",      "deletion fill-in right",               "#1E9099",
+    "DELETION_FILLIN_LEFT_RIGHT", "deletion fill-in left right",          "#4784C5"
+  )
+  ## the colours another palette uses instead of the Classical ones
+  typePalettes = list(
+    Beach = c("DELINS" = "#00868B", "INSERTION" = "#FFF68F", "INSERTION_1bp" = "#D6B200",
+              "WT" = "#E5E5E5", "DELINS_SNV" = "#047070")
+  )
+  typeFallbackColors = c("#E7298A", "#66A61E", "#E6AB02", "#7570B3", "#A6761D", "#1B9E77", "#D95F02", "#666666")
+
+  ## Type, Text and Color of every event type for a palette ("Classical" or a name in
+  ## typePalettes), plus the types in extraTypes that are not in typesTable
+  hardcodedTypesDFnonreactive <- function(palette = "Classical", extraTypes = NULL){
+    df = as.data.frame(typesTable, stringsAsFactors = FALSE)
+    if(!is.null(palette) && palette %in% names(typePalettes)){
+      colors = typePalettes[[palette]]
+      df$Color[match(names(colors), df$Type)] = colors
+    }
+    extra = setdiff(extraTypes, c(df$Type, NA, ""))
+    if(length(extra) > 0){
+      df = rbind(df, data.frame(Type = extra, Text = extra, stringsAsFactors = FALSE,
+                                Color = rep_len(typeFallbackColors, length(extra))))
+    }
+    df = df[order(df$Type), ]
+    rownames(df) = NULL
+    df
   }
-  
+
+  ## event types in the loaded data that typesTable does not know; only changes (and so only
+  ## redraws the colour pickers) when that set changes
+  extraTypes <- reactiveVal(character(0))
+  observe({
+    types = tryCatch(unique(as.character(in_data()$Type)), error = function(e) character(0))
+    extraTypes(sort(setdiff(types, c(typesTable$Type, NA, ""))))
+  })
+
   hardcodedTypesDF <- reactive({
-    hardcodedTypesDF = hardcodedTypesDFnonreactive()
+    hardcodedTypesDF = hardcodedTypesDFnonreactive(input$colorPalette, extraTypes())
     #set colours from input
     for(colour in hardcodedTypesDF$Type){
       if(!is.null(input[[paste0(colour,"Picker")]])){
@@ -3381,12 +3379,12 @@ server <- function(input, output, session) {
       newdata <- newdata[order(-newdata$size, newdata$typeOrig, newdata$start.points), ] 
     } else if(sortType == "Type"){
       ##added this merge to allow the Type to be influenced by the order of the types
-      newdata = merge(newdata, hardcodedTypesDFnonreactive(), by.x ="typeOrig", by.y = "Type")
+      newdata = merge(newdata, hardcodedTypesDF(), by.x ="typeOrig", by.y = "Type")
       newdata$Text = factor(newdata$Text, levels = rev(input$multiType$order))
       newdata <- newdata[order(newdata$Text,-newdata$size, newdata$start.points), ] 
     } else if(sortType == "Type and homology"){
       ##added this merge to allow the Type to be influenced by the order of the types
-      newdata = merge(newdata, hardcodedTypesDFnonreactive(), by.x ="typeOrig", by.y = "Type")
+      newdata = merge(newdata, hardcodedTypesDF(), by.x ="typeOrig", by.y = "Type")
       newdata$Text = factor(newdata$Text, levels = rev(input$multiType$order))
       ##add sort on homology
       newdata <- newdata[order(newdata$Text, newdata$homology,-newdata$size, newdata$start.points), ] 
@@ -4418,7 +4416,8 @@ server <- function(input, output, session) {
   output$color_test <- renderUI({
     start_time <- Sys.time()
     colours <- list()
-    hardCodedTypes = hardcodedTypesDFnonreactive()
+    ##switching the palette redraws the pickers with its colours (replacing picked colours)
+    hardCodedTypes = hardcodedTypesDFnonreactive(input$colorPalette, extraTypes())
     for(colour in hardCodedTypes$Type){
       #print(paste0(colour," ",colourCode[[colour]]))
       ##TODO: ensure that this is done properly when adding types
@@ -5618,7 +5617,7 @@ server <- function(input, output, session) {
     
     colourCode = colourCode[names(colourCode) %in% newdata$color | names(colourCode) %in% newdata$tdColor]
     
-    ColorText = hardcodedTypesDFnonreactive()
+    ColorText = hardcodedTypesDF()
     ColorText = ColorText %>% filter(Type %in% names(colourCode))
     if(TranslocationColorReal %in% newdata$TranslocationColor){
       ColorText = rbind(ColorText, c(TranslocationColorReal,"translocation","#c994c7"))
