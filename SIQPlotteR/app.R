@@ -156,22 +156,37 @@ siq_db_resolve_path <- function(){
 
 ## runs queries on a read-only connection. A WAL database in a directory we cannot write
 ## to can refuse a read-only open (no -shm); then query a private copy of .db + -wal instead.
+## The result's "siq_mode" attribute says how it was read: "live", "copy", or "copy without WAL"
+## when the -wal file could not be read: the data is then only as recent as the last checkpoint.
 siq_db_query <- function(path, queries){
-  run <- function(p){
-    con <- dbConnect(RSQLite::SQLite(), dbname = p, flags = RSQLite::SQLITE_RO)
+  run <- function(p, flags = RSQLite::SQLITE_RO){
+    con <- dbConnect(RSQLite::SQLite(), dbname = p, flags = flags)
     on.exit(dbDisconnect(con))
     lapply(queries, function(q) dbGetQuery(con, q))
   }
-  tryCatch(run(path), error = function(e){
-    message("SIQ DB: read-only open failed (", conditionMessage(e), "), using a temporary copy")
+  res <- tryCatch({
+    r <- run(path)
+    attr(r, "siq_mode") <- "live"
+    r
+  }, error = function(e){
+    message("SIQ DB: read-only open of ", path, " failed (", conditionMessage(e), "), using a temporary copy")
     tmp <- file.path(tempdir(), "siq_db_copy")
     dir.create(tmp, showWarnings = FALSE)
     unlink(list.files(tmp, full.names = TRUE))
     copy <- file.path(tmp, basename(path))
-    file.copy(path, copy)
-    if(file.exists(paste0(path, "-wal"))) file.copy(paste0(path, "-wal"), paste0(copy, "-wal"))
-    run(copy)
+    if(!file.copy(path, copy)) stop("cannot copy ", path)
+    mode <- "copy"
+    wal <- paste0(path, "-wal")
+    if(file.exists(wal) && !file.copy(wal, paste0(copy, "-wal"))){
+      message("SIQ DB: cannot read ", wal, ": the data is only as recent as the last checkpoint")
+      mode <- "copy without WAL"
+    }
+    ##the copy is ours: open it writable so SQLite can replay the copied WAL
+    r <- run(copy, RSQLite::SQLITE_RW)
+    attr(r, "siq_mode") <- mode
+    r
   })
+  res
 }
 
 ## SIQ output path as stored in the DB (a Windows UNC path) -> path usable on this machine,
@@ -1061,19 +1076,14 @@ ui <- fluidPage(
                     tabsetPanel(id = "siq_db_mode",
                     tabPanel("Experiments",
                     br(),
-                    fluidRow(
-                      column(5,
-                        h4("Experiments"),
-                        DT::dataTableOutput("siq_exp_table")
-                      ),
-                      column(7,
-                        uiOutput("siq_exp_details"),
-                        actionButton("siq_exp_load", "Load experiment",
-                                     icon = icon("upload"), class = "btn-primary"),
-                        verbatimTextOutput("siq_exp_load_status"),
-                        DT::dataTableOutput("siq_exp_samples_table")
-                      )
-                    )
+                    h4("Experiments"),
+                    DT::dataTableOutput("siq_exp_table"),
+                    hr(),
+                    uiOutput("siq_exp_details"),
+                    actionButton("siq_exp_load", "Load experiment",
+                                 icon = icon("upload"), class = "btn-primary"),
+                    verbatimTextOutput("siq_exp_load_status"),
+                    DT::dataTableOutput("siq_exp_samples_table")
                     ),
                     tabPanel("Browse samples",
                     br(),
@@ -1109,6 +1119,10 @@ ui <- fluidPage(
                           options = list(`actions-box` = TRUE, `live-search` = TRUE,
                                          `selected-text-format` = "count > 3")),
                         pickerInput("siq_filter_owner", "Owner:",
+                          choices = NULL, multiple = TRUE,
+                          options = list(`actions-box` = TRUE, `live-search` = TRUE,
+                                         `selected-text-format` = "count > 3")),
+                        pickerInput("siq_filter_run", "Run:",
                           choices = NULL, multiple = TRUE,
                           options = list(`actions-box` = TRUE, `live-search` = TRUE,
                                          `selected-text-format` = "count > 3")),
@@ -1367,10 +1381,11 @@ server <- function(input, output, session) {
         ORDER BY es.experiment_id, es.label, es.replicate, es.sample_name"
     ))
     ## samples without a target, line, ... would otherwise drop out of the filter pickers
-    filter_cols <- c("target", "cell_line", "genotype", "species", "cas", "drug_treatment", "selection", "owner")
+    filter_cols <- c("run", "target", "cell_line", "genotype", "species", "cas", "drug_treatment", "selection", "owner")
     res$meta[filter_cols] <- lapply(res$meta[filter_cols],
                                     function(x) ifelse(is.na(x) | x == "", "(none)", x))
     res$path    <- path
+    res$mode    <- attr(res, "siq_mode")
     res$read_at <- Sys.time()
     res
   }
@@ -1428,6 +1443,14 @@ server <- function(input, output, session) {
     })
   }
 
+  ## "90 samples loaded as 18 Aliases ...": samples (SIQ_Alias) with the same label share an Alias
+  siq_db_loaded_text <- function(d){
+    nAliases = length(unique(d$Alias))
+    nSamples = if("SIQ_Alias" %in% colnames(d)) length(unique(d$SIQ_Alias)) else nAliases
+    if(nSamples == nAliases) paste(nSamples, "sample(s) loaded")
+    else paste(nSamples, "samples loaded as", nAliases, "Aliases (samples with the same label are pooled)")
+  }
+
   siq_db_set_loaded <- function(d){
     if(is.null(d)){
       showNotification("No data loaded.", type = "error")
@@ -1435,8 +1458,7 @@ server <- function(input, output, session) {
     }
     siq_db_loaded_data(d)
     updateRadioButtons(session, "data_input", selected = 6)
-    showNotification(paste(length(unique(d$Alias)), "sample(s) loaded. Switch to any plot tab to explore."),
-                     type = "message")
+    showNotification(paste0(siq_db_loaded_text(d), ". Switch to any plot tab to explore."), type = "message")
   }
 
   if(siq_db_available){
@@ -1461,10 +1483,19 @@ server <- function(input, output, session) {
 
     output$siq_db_info <- renderUI({
       st <- siq_db_state()
-      p(icon("database"), " ", code(st$path),
-        " (modified ", format(file.mtime(st$path), "%Y-%m-%d %H:%M"), ") — ",
-        nrow(st$meta), " samples with SIQ output, ",
-        nrow(st$experiments), " experiments. Read at ", format(st$read_at, "%H:%M:%S"), ".")
+      ##in WAL mode recent changes are in the -wal file, not yet in the .db file itself
+      modified <- max(file.mtime(c(st$path, paste0(st$path, "-wal"))), na.rm = TRUE)
+      tagList(
+        p(icon("database"), " ", code(st$path),
+          " (modified ", format(modified, "%Y-%m-%d %H:%M"), ") — ",
+          nrow(st$meta), " samples with SIQ output, ",
+          nrow(st$experiments), " experiments. Read at ", format(st$read_at, "%H:%M:%S"),
+          if(identical(st$mode, "copy")) " from a temporary copy", "."),
+        if(identical(st$mode, "copy without WAL"))
+          p(icon("exclamation-triangle"), strong(" The -wal file of the database cannot be read: "),
+            "the latest changes are missing (the data is only as recent as the last checkpoint). ",
+            "Check the file permissions of ", code(paste0(st$path, "-wal")), ".", style = "color: #b94a48;")
+      )
     })
 
     # ── experiments ──
@@ -1492,8 +1523,27 @@ server <- function(input, output, session) {
       samples$note <- ifelse(is.na(samples$output_path), "no SIQ output",
                       ifelse(duplicated(samples$output_path) & !is.na(samples$output_path),
                              "same output file as another sample", ""))
+      shared <- siq_shared_labels(samples)
+      n_shared <- shared$samples[match(samples$label, shared$label)]
+      samples$note <- ifelse(is.na(n_shared), samples$note,
+                             paste0(ifelse(samples$note == "", "", paste0(samples$note, "; ")),
+                                    "label shared by ", n_shared, " samples"))
       samples
     })
+
+    ## labels used by more than one sample: those samples are pooled into one Alias on loading
+    siq_shared_labels <- function(samples){
+      samples %>% filter(!is.na(label), label != "") %>%
+        count(label, name = "samples") %>% filter(samples > 1) %>% arrange(desc(samples))
+    }
+
+    siq_shared_labels_text <- function(shared, n_labels){
+      examples <- paste0("'", head(shared$label, 3), "' (", head(shared$samples, 3), " samples)", collapse = ", ")
+      paste0(nrow(shared), " of the ", n_labels, " labels are used by more than one sample (",
+             sum(shared$samples), " samples), e.g. ", examples, ". Samples with the same label are pooled ",
+             "into one Alias: the replicate does not keep them apart. To keep samples separate, give each ",
+             "its own label.")
+    }
 
     output$siq_exp_details <- renderUI({
       ex <- siq_exp_selected()
@@ -1507,6 +1557,8 @@ server <- function(input, output, session) {
       }
       status <- if(is.na(ex$final_at)) "open" else paste0("final (", ex$final_at, " by ", ex$final_by, ")")
       if(!is.na(ex$reopened_at)) status <- paste0(status, ", reopened ", ex$reopened_at, " by ", ex$reopened_by)
+      samples <- siq_exp_samples()
+      shared <- siq_shared_labels(samples)
       tagList(
         h4(ex$name),
         if(!is.na(ex$description) && ex$description != "") p(ex$description),
@@ -1514,7 +1566,11 @@ server <- function(input, output, session) {
           if(length(links) > 0) tagList(br(), strong("Reference: "), links)),
         p(em("All samples are loaded, or only the selected rows if you select any. ",
              "Samples get their label as Alias, or their sample name when there is no label (SIQ's own name is kept in SIQ_Alias); ",
-             "the replicate is in the Replicate column, which you can select as Grouping/Replicate column."))
+             "the replicate is in the Replicate column, which you can select as Grouping/Replicate column.")),
+        if(nrow(shared) > 0)
+          p(icon("exclamation-triangle"), strong(" Shared labels: "),
+            siq_shared_labels_text(shared, length(unique(samples$label[!is.na(samples$label) & samples$label != ""]))),
+            style = "color: #b94a48;")
       )
     })
 
@@ -1535,13 +1591,18 @@ server <- function(input, output, session) {
         showNotification("This experiment has no samples.", type = "warning")
         return()
       }
+      shared <- siq_shared_labels(samples)
+      if(nrow(shared) > 0){
+        showNotification(siq_shared_labels_text(shared, length(unique(samples$label[!is.na(samples$label) & samples$label != ""]))),
+                         type = "warning", duration = 15)
+      }
       siq_db_set_loaded(siq_db_load_files(samples))
     })
 
     output$siq_exp_load_status <- renderText({
       d <- siq_db_loaded_data()
       if(is.null(d)) return("No data loaded yet.")
-      paste(length(unique(d$Alias)), "sample(s) loaded,", nrow(d), "events total.")
+      paste0(siq_db_loaded_text(d), ", ", nrow(d), " events total.")
     })
 
     # ── browse samples ──
@@ -1562,6 +1623,7 @@ server <- function(input, output, session) {
       populate_picker("siq_filter_drug",       meta$drug_treatment)
       populate_picker("siq_filter_selection",  meta$selection)
       populate_picker("siq_filter_owner",      meta$owner)
+      populate_picker("siq_filter_run",        meta$run)
     })
 
     siq_db_filtered <- reactive({
@@ -1574,6 +1636,7 @@ server <- function(input, output, session) {
       if(length(input$siq_filter_drug)      > 0) meta <- meta %>% filter(drug_treatment %in% input$siq_filter_drug)
       if(length(input$siq_filter_selection) > 0) meta <- meta %>% filter(selection      %in% input$siq_filter_selection)
       if(length(input$siq_filter_owner)     > 0) meta <- meta %>% filter(owner          %in% input$siq_filter_owner)
+      if(length(input$siq_filter_run)       > 0) meta <- meta %>% filter(run            %in% input$siq_filter_run)
       meta
     })
 
@@ -1612,7 +1675,7 @@ server <- function(input, output, session) {
     output$siq_db_load_status <- renderText({
       d <- siq_db_loaded_data()
       if(is.null(d)) return("No data loaded yet.")
-      paste(length(unique(d$Alias)), "sample(s) loaded,", nrow(d), "events total.")
+      paste0(siq_db_loaded_text(d), ", ", nrow(d), " events total.")
     })
 
   }
