@@ -3123,8 +3123,9 @@ server <- function(input, output, session) {
       } else if(input$typePlotOutcome=="XY"){
         start_time = Sys.time()
         ##get the fraction per type
+        ##per Subject/Alias: the same Alias can exist in multiple Subjects
         dataDF = data %>%
-          group_by(Alias,Type) %>%
+          group_by(Subject,Alias,Type) %>%
           count(wt=fraction, name = "fraction")
         test = 1
         dataSpread = dataDF %>%
@@ -3134,19 +3135,26 @@ server <- function(input, output, session) {
         if("mean_homology_deletion" %in% input$controlsY | "mean_homology_deletion" %in% input$controlsX){
           dataDF = data %>%
             filter(Type=="DELETION")%>%
-            group_by(Alias) %>%
+            group_by(Subject,Alias) %>%
             summarise(mean_homology_deletion = weighted.mean(homologyLength,countEvents))
-          dataSpread = merge(dataSpread,dataDF,by="Alias", all.x=T)
+          dataSpread = merge(dataSpread,dataDF,by=c("Subject","Alias"), all.x=T)
         }
         if("mean_homology_TD" %in% input$controlsY | "mean_homology_TD" %in% input$controlsX){
           dataDF = data %>%
             filter(Type=="TANDEMDUPLICATION")%>%
-            group_by(Alias) %>%
+            group_by(Subject,Alias) %>%
             summarise(mean_homology_TD = weighted.mean(homologyLength,countEvents))
-          dataSpread = merge(dataSpread,dataDF,by="Alias", all.x=T)
+          dataSpread = merge(dataSpread,dataDF,by=c("Subject","Alias"), all.x=T)
         }
         
         print(paste("means",Sys.time()-start_time))
+        
+        ##add the Subject to the label if the same Alias can occur in multiple Subjects
+        if(length(unique(dataSpread$Subject)) > 1){
+          dataSpread = dataSpread %>% mutate(label = paste(Alias, Subject))
+        } else{
+          dataSpread = dataSpread %>% mutate(label = Alias)
+        }
         
         ##color samples based on SD difference
         dfForOutliers = dataSpread %>%
@@ -3166,11 +3174,11 @@ server <- function(input, output, session) {
         ##only show outliers
         if(input$OutcomeXYoutliers){
           dataSpread = dataSpread %>%
-            mutate(rank = ifelse(!!as.name(input$controlsX)<minValue | !!as.name(input$controlsX)>maxValue,Alias,NA))
+            mutate(rank = ifelse(!!as.name(input$controlsX)<minValue | !!as.name(input$controlsX)>maxValue,label,NA))
         } else {
           ##show all labels
           dataSpread = dataSpread %>%
-            mutate(rank = Alias)
+            mutate(rank = label)
         }
        
         print(paste("mutate outliers",Sys.time()-start_time))
@@ -3271,8 +3279,9 @@ server <- function(input, output, session) {
       }
       ##added plot based on secondary Type
       el = el %>% mutate(SecondaryTypeHit = paste(SecondaryType,junction,sep = "_"))
-      elCount = el %>% filter(Type == "DELINS" | Type == "TINS") %>% group_by(Alias) %>% count(SecondaryTypeHit,wt=fraction)
+      elCount = el %>% filter(Type == "DELINS" | Type == "TINS") %>% group_by(Subject, Alias) %>% count(SecondaryTypeHit,wt=fraction)
       plotBars = ggplot(elCount, aes(x = Alias, y=n, fill = SecondaryTypeHit)) + geom_bar(stat = "identity") + 
+        facet_grid(~Subject, scales = "free_x", space = "free_x") +
         scale_fill_viridis_d() + 
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
         theme_object() +
@@ -3286,7 +3295,7 @@ server <- function(input, output, session) {
       
       
       junctions = unique(el$junction)
-      counts = el %>% group_by(Alias,junction) %>% count(wt=fraction)
+      counts = el %>% group_by(Subject,Alias,junction) %>% count(wt=fraction)
       ymax=-1
       if(input$yaxisTINS == "max of plots"){
         ymax = max(counts$n)
@@ -3294,21 +3303,30 @@ server <- function(input, output, session) {
       
       
       
-      for(alias in input$multiGroupOrder){
-        for(junction in junctions){
-          if(input$yaxisTINS == "max of junction"){
-            ymax = max(counts$n[counts$junction == junction])
+      ##one row per Subject/Alias: the same Alias can exist in multiple Subjects
+      aliasSubjects = filter_in_data() %>% ungroup() %>% select(Subject, Alias) %>% distinct()
+      multiSubject = length(unique(aliasSubjects$Subject)) > 1
+      for(subject in sort(unique(aliasSubjects$Subject))){
+        for(alias in intersect(input$multiGroupOrder, aliasSubjects$Alias[aliasSubjects$Subject == subject])){
+          for(junction in junctions){
+            if(input$yaxisTINS == "max of junction"){
+              ymax = max(counts$n[counts$junction == junction])
+            }
+            xmin = min(el$position[el$junction == junction])-20
+            xmax = max(el$position[el$junction == junction])+20
+
+            dfSub = el[el$Subject == subject & el$Alias ==alias & el$junction == junction,]
+            label = if(multiSubject) paste(alias, subject) else alias
+            if(nrow(dfSub)>0){
+              plot = tornadoPlatFlankInsert(dfSub,ymax, xmin, xmax, sortType = input$sortTypeTI)
+              if(multiSubject){
+                plot = plot + ggtitle(paste(label, " ", junction))
+              }
+            }else{
+              plot = text_grob(paste(label,"\nNO DATA"), size = 10)
+            }
+            plots[[paste0(subject,alias,junction)]] <- plot
           }
-          xmin = min(el$position[el$junction == junction])-20
-          xmax = max(el$position[el$junction == junction])+20
-          
-          dfSub = el[el$Alias ==alias & el$junction == junction,]
-          if(nrow(dfSub)>0){
-            plot = tornadoPlatFlankInsert(dfSub,ymax, xmin, xmax, sortType = input$sortTypeTI)
-          }else{
-            plot = text_grob(paste(alias,"\nNO DATA"), size = 10)
-          }
-          plots[[paste0(alias,junction)]] <- plot
         }
       }
       plotsForDownload$tornadoTI <- plots
@@ -4125,12 +4143,24 @@ server <- function(input, output, session) {
     
     ## to plot at least something if the stats df is not present
     if(is.null(in_stat())){
+      ##sample information is only stored in the 'Information' sheet of SIQ .xlsx files
+      if(input$data_input == 2 && !is.null(input$file1$name) && grepl("\\.txt$", input$file1$name, ignore.case = TRUE)){
+        plotsForDownload$samples = NULL
+        return(as_ggplot(text_grob("Sample information is not available for .txt files.\nUpload the SIQ .xlsx file (with an 'Information' sheet) to see this.", size = 15)))
+      }
       el = filter_in_data()
-      testDF = el %>% group_by(Alias) %>% dplyr::count(wt=countEvents)
+      testDF = el %>% group_by(Subject, Alias) %>% dplyr::count(wt=countEvents)
       
       AliasSubject = getAliasSubjectDF(in_stat(),input$multiGroupOrder)
-      testDF = merge(AliasSubject,testDF,by = "Alias",all.x=T)
-      
+      AliasSubject = AliasSubject[AliasSubject$Subject %in% input$Subject,]
+      testDF = merge(AliasSubject,testDF,by = c("Alias","Subject"),all.x=T)
+
+      ##e.g. when the Alias column was overwritten, the raw data Aliases do not match the selection
+      if(nrow(testDF) == 0){
+        plotsForDownload$samples = NULL
+        return(as_ggplot(text_grob("Sample information is not available for the selected samples.\nUpload the SIQ .xlsx file (with an 'Information' sheet) to see this.", size = 15)))
+      }
+
       testDF$Alias = factor(testDF$Alias, levels = union(input$multiGroupOrder,testDF$Alias))
       
       plot <- ggplot(testDF, aes(x=Alias, y=n)) + geom_bar(stat = "identity") +
@@ -4998,16 +5028,12 @@ server <- function(input, output, session) {
   }
   
   sizeDiffPlot <- function(el, xmin = xmin, xmax = xmax, colors = 3, fraction = "absolute"){
-    testData = el %>% group_by(Alias) %>% dplyr::count(sizeDiff = insSize-delSize, wt = fraction)
+    testData = el %>% group_by(Subject, Alias) %>% dplyr::count(sizeDiff = insSize-delSize, wt = fraction)
     if(fraction == "relative"){
-      testData = testData %>% group_by(Alias) %>% mutate(n = n / sum(n))
+      testData = testData %>% group_by(Subject, Alias) %>% mutate(n = n / sum(n))
     }
-    testData = testData %>% mutate(n = if_else(sizeDiff < 0, -1*n, n))
+    testData = testData %>% ungroup() %>% mutate(n = if_else(sizeDiff < 0, -1*n, n))
     #title = paste0(unique(el$Subject)," sizeDiff ",unique(el$Type))
-    
-    #get the subject in there
-    AliasSubject = unique(el[c("Alias", "Subject")])
-    testData = merge(testData,AliasSubject,by = "Alias")
     
     
     p <- ggplot(testData)+geom_tile(aes(x=Alias,y=sizeDiff, fill=n))+
@@ -5040,7 +5066,8 @@ server <- function(input, output, session) {
 
         ##recalculate fraction as this is not done within filter_in_data
     if(input$alleleFractionBasedOn == "relative"){
-      el = el %>% filter(fraction != Inf) %>% group_by(Alias) %>% mutate(fraction = fraction/sum(fraction))
+      ##normalise per Subject/Alias: the same Alias (e.g. Barcode) can exist in multiple Subjects
+      el = el %>% filter(fraction != Inf) %>% group_by(Subject, Alias) %>% mutate(fraction = fraction/sum(fraction)) %>% ungroup()
     } else if(input$alleleFractionBasedOn == "mutagenic"){
       ##Get the mutagenic fraction per Alias/Subject through this call
       mutFractions = mutagenic_fractions()
@@ -5408,9 +5435,9 @@ server <- function(input, output, session) {
       return()
     }
     el = filter_in_data()
-    ##ensure the total fraction is set to 1
+    ##ensure the total fraction is set to 1 per Subject/Alias
     el = el %>% 
-      group_by(Alias) %>% 
+      group_by(Subject, Alias) %>% 
       mutate(fraction = fraction / sum(fraction)) %>%
       ungroup()
     
@@ -5439,7 +5466,12 @@ server <- function(input, output, session) {
       ##only SNVS
       el = el %>% filter(Type == "SNV")
     }
-    
+
+    if(nrow(el) == 0){
+      plotsForDownload$snvs = NULL
+      return(as_ggplot(text_grob("No SNVs present in the selected samples", size = 15)))
+    }
+
     if(input$sepBySubject == "Combined plot"){
       test = el %>% group_by(Subject, Alias) %>% count (delRelativeStart,wt = fraction, name = "snv") 
       #test = merge(testDF,test,by="Alias")
