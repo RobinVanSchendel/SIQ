@@ -217,8 +217,18 @@ siq_bind_rows <- function(dfs){
     target <- if(length(classes) == 1) classes
               else if(all(classes %in% c("logical", "integer", "numeric"))) "numeric"
               else "character"
+    ## a column of the target type, to give the all-NA columns of other files that type
+    ## (e.g. integer64 or Date, which the conversions below do not cover)
+    template <- NULL
+    for(d in dfs){
+      if(col %in% colnames(d) && class(d[[col]])[1] == target){ template <- d[[col]]; break }
+    }
     dfs <- lapply(dfs, function(d){
       if(col %in% colnames(d) && class(d[[col]])[1] != target){
+        if(target != "character" && !is.null(template) && all(is.na(d[[col]]))){
+          d[[col]] <- template[rep(NA_integer_, nrow(d))]
+          return(d)
+        }
         d[[col]] <- switch(target,
           numeric   = as.numeric(d[[col]]),
           integer   = as.integer(d[[col]]),
@@ -1414,7 +1424,7 @@ server <- function(input, output, session) {
           showNotification(paste("File not found:", path), type = "warning")
           next
         }
-        el <- tryCatch(fread(path, header = TRUE, stringsAsFactors = FALSE, data.table = FALSE, fill = TRUE),
+        el <- tryCatch(fread(path, header = TRUE, stringsAsFactors = FALSE, data.table = FALSE, fill = TRUE, integer64 = "double"),
                        error = function(e){
                          showNotification(paste("Cannot read", path, ":", conditionMessage(e)), type = "warning")
                          NULL
@@ -1706,7 +1716,7 @@ server <- function(input, output, session) {
         #}
         #else{
         #  start_time = start_time <- Sys.time()
-        el = fread(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, data.table = F, fill = T)
+        el = fread(fileNameXLS$datapath, header=T, stringsAsFactors = FALSE, data.table = F, fill = T, integer64 = "double")
         #  end_time <- Sys.time()
         #  print(paste("fread",end_time-start_time, "seconds"))
         #}
