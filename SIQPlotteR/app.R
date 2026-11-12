@@ -6127,9 +6127,10 @@ server <- function(input, output, session) {
     
     themeObj$axis.line = element_line(colour = 'black', linewidth = input$theme_line_thickness)
     themeObj$axis.ticks = element_line(colour = 'black', linewidth = input$theme_line_thickness)
-    
+    themeObj$axis.text = element_text(colour = "black")
+
     if(input$theme_text_vertical){
-      themeObj$axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5)
+      themeObj$axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5, colour = "black")
     }
     themeObj
   })
