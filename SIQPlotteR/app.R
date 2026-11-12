@@ -1287,7 +1287,7 @@ server <- function(input, output, session) {
     # strip "/td" from homology labels when no tandem duplications are in the displayed data
     hasTD = tryCatch({
       el = filter_in_data()
-      !is.null(el) && any(el$Type %in% c("TANDEMDUPLICATION", "TANDEMDUPLICATION_COMPOUND"), na.rm = TRUE)
+      !is.null(el) && any(el$Type == "TANDEMDUPLICATION", na.rm = TRUE)
     }, error = function(e) TRUE)
     if(!hasTD) {
       homTypes = c("0bp_homology","1bp_homology","2bp_homology","3bp_homology",
