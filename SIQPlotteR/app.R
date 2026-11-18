@@ -3403,7 +3403,15 @@ server <- function(input, output, session) {
     if(nrow(el) == 0){
       return()
     }
-    
+
+    ## Reference rows (countEvents==0 WT, e.g. from a dummy Barcode) have NA fractions
+    ## and are stripped by tornadoplot() anyway – remove them here so they cannot
+    ## corrupt sum(fraction) and cumsum(yheight) for the groups they belong to.
+    el = el %>% filter(Type != "Reference")
+    if(nrow(el) == 0){
+      return()
+    }
+
     print("start: tornadoPlotData")
     start_time = Sys.time()
     
