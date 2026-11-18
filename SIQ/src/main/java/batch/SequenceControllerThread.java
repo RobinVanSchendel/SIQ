@@ -7,7 +7,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
@@ -44,6 +47,10 @@ public class SequenceControllerThread implements Runnable{
 	private File excelFile;
 	private File tsvFile;
 	private NGSTableModel m;
+	// run settings stored for manifest.json
+	private int runMaxReads, runMinSupport, runTinsDistValue;
+	private double runMaxError;
+	private boolean runRemerge, runDelinsFilter, runLongread;
 	
 	public void setNGSfromGUI(Vector<NGS> v, NGSTableModel m, GUI GUI, int maxReads, int minSupport, double maxError, String flashExec, int cpus, int tinsDistValue, boolean remerge, boolean delinsFilter, boolean longread) {
 		this.GUI = GUI;
@@ -51,6 +58,13 @@ public class SequenceControllerThread implements Runnable{
 		this.m = m;
 		readyToRun = true;
 		this.cpus = cpus;
+		this.runMaxReads = maxReads;
+		this.runMinSupport = minSupport;
+		this.runMaxError = maxError;
+		this.runTinsDistValue = tinsDistValue;
+		this.runRemerge = remerge;
+		this.runDelinsFilter = delinsFilter;
+		this.runLongread = longread;
 		
 		//Thread stuff
 		System.out.println("Gonna start "+cpus+" cpus");
@@ -164,6 +178,7 @@ public class SequenceControllerThread implements Runnable{
 			//ReportPanel.runR(excelFile, false);
 			//ReportPanel.runR(excelFile, true);
 		}
+		writeManifest();
 		if(v.size()>0) {
 			File dir = v.get(0).getOutputDir();
 			System.out.println(dir);
@@ -208,6 +223,48 @@ public class SequenceControllerThread implements Runnable{
 		GUI.guiFrame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 		//add button to export stuff to Combined file
 	}
+	private void writeManifest() {
+		if(v == null || v.size() == 0) return;
+		File dir = v.get(0).getOutputDir();
+		if(dir == null) return;
+		File manifestFile = new File(dir, "manifest.json");
+		try (FileWriter fw = new FileWriter(manifestFile)) {
+			fw.write("{\n");
+			fw.write("  \"siq_version\": \"" + main.SV_Analyzer.VERSION + "\",\n");
+			fw.write("  \"run_timestamp\": \"" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\",\n");
+			fw.write("  \"settings\": {\n");
+			fw.write("    \"max_reads\": " + runMaxReads + ",\n");
+			fw.write("    \"min_support\": " + runMinSupport + ",\n");
+			fw.write("    \"max_error\": " + runMaxError + ",\n");
+			fw.write("    \"tins_distance\": " + runTinsDistValue + ",\n");
+			fw.write("    \"remerge\": " + runRemerge + ",\n");
+			fw.write("    \"delins_filter\": " + runDelinsFilter + ",\n");
+			fw.write("    \"long_read\": " + runLongread + "\n");
+			fw.write("  },\n");
+			fw.write("  \"samples\": [\n");
+			for(int i = 0; i < v.size(); i++) {
+				NGS n = v.get(i);
+				fw.write("    {\n");
+				fw.write("      \"alias\": \"" + escapeJson(n.getAlias()) + "\",\n");
+				fw.write("      \"r1\": \"" + escapeJson(n.getR1() != null ? n.getR1().getAbsolutePath() : "") + "\",\n");
+				fw.write("      \"reference\": \"" + escapeJson(n.getSubject()) + "\",\n");
+				fw.write("      \"hdr\": \"" + escapeJson(n.getHDR() != null ? n.getHDR().getAbsolutePath() : "") + "\",\n");
+				fw.write("      \"output\": \"" + escapeJson(n.getOutput() != null ? n.getOutput().getAbsolutePath() : "") + "\"\n");
+				fw.write("    }" + (i < v.size()-1 ? "," : "") + "\n");
+			}
+			fw.write("  ]\n");
+			fw.write("}\n");
+			System.out.println("Manifest written to: " + manifestFile.getAbsolutePath());
+		} catch (IOException e) {
+			System.err.println("Could not write manifest.json: " + e.getMessage());
+		}
+	}
+
+	private static String escapeJson(String s) {
+		if(s == null) return "";
+		return s.replace("\\", "\\\\").replace("\"", "\\\"");
+	}
+
 	public void stop(){
         exit = true;
     }
