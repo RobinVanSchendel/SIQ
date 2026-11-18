@@ -45,7 +45,7 @@ public class Subject {
 		this(subject, left, right);
 		this.exitOnError = exitOnError;
 		if(this.exitOnError && errorMessage.length()>0) {
-			System.exit(0);
+			throw new IllegalStateException(errorMessage);
 		}
 	}
 	public Subject(RichSequence subject, String left, String right) {
@@ -92,7 +92,6 @@ public class Subject {
 			}
 			if(subject.indexOf(rightFlank)<0) {
 				System.err.println("Cannot find rightFlank "+rightFlank);
-				//System.exit(0);
 				rightSet = false;
 			}
 			else {
@@ -119,7 +118,7 @@ public class Subject {
 				if(subject.indexOf(leftPrimerRC)<0) {
 					System.err.println("Cannot find leftPrimer "+leftPrimer);
 					if(this.exitOnError) {
-						System.exit(0);
+						throw new IllegalStateException(errorMessage);
 					}
 					this.leftPrimerSet = false;
 					//still have to return otherwise primer gets set
@@ -175,7 +174,7 @@ public class Subject {
 					System.err.println("Cannot find rightPrimer "+rightPrimer);
 					this.rightPrimerSet = false;
 					if(this.exitOnError) {
-						System.exit(0);
+						throw new IllegalStateException(errorMessage);
 					}
 					//still have to return here
 					return;
@@ -183,7 +182,6 @@ public class Subject {
 				else {
 					this.rightPrimer = rightPrimerTemp;
 				}
-				//System.exit(0);
 			}
 			this.startOfRightPrimer = subject.indexOf(rightPrimer);
 			int lastPos = subject.lastIndexOf(rightPrimer);
@@ -221,8 +219,6 @@ public class Subject {
 			if(subject.indexOf(this.leftFlank)<0) {
 				System.err.println("Cannot find leftFlank "+leftFlank+" "+subject.indexOf(this.leftFlank));
 				System.err.println(subject);
-				//System.err.println(subject.length());
-				//System.exit(0);
 				leftSet = false;
 			}
 			//found
@@ -270,7 +266,7 @@ public class Subject {
 		int index = subject.indexOf(string);
 		if(index<0) {
 			System.err.println("We cannot even find string once");
-			System.exit(0);
+			throw new IllegalStateException(errorMessage);
 		}
 		else {
 			int index2 = subject.indexOf(string, index+1);
@@ -404,18 +400,18 @@ public class Subject {
 		
 		//the leftPrimer needs to be present in the HDR sequence
 		//yes, but for PacBio/ONT there is not necessarily a leftPrimer
+		//warn only: HDR templates that don't extend to the primer sites should still be valid
 		if(leftPrimer != null) {
 			if(hdr.seqString().toUpperCase().indexOf(leftPrimer)<0) {
-				System.err.println("HDR error, left primer is not present in HDR sequence: "+hdr.getName()+" "+this.getLeftPrimer() +" "+hdr.seqString().toUpperCase().indexOf(leftPrimer));
-				error = true;
+				System.err.println("HDR warning, left primer is not present in HDR sequence: "+hdr.getName()+" "+this.getLeftPrimer() +" "+hdr.seqString().toUpperCase().indexOf(leftPrimer));
 			}
 		}
 		//the rightPrimer needs to be present in the HDR sequence
-		//yes, but for PacBio/ONT there is not necessarily a rigthPrimer
+		//yes, but for PacBio/ONT there is not necessarily a rightPrimer
+		//warn only: HDR templates that don't extend to the primer sites should still be valid
 		if(rightPrimer != null) {
 			if(hdr.seqString().toUpperCase().indexOf(rightPrimer)<0) {
-				System.err.println("HDR error, right primer is not present in HDR sequence: "+hdr.getName()+" "+this.getRightPrimer() +" "+hdr.seqString().toUpperCase().indexOf(rightPrimer));
-				error = true;
+				System.err.println("HDR warning, right primer is not present in HDR sequence: "+hdr.getName()+" "+this.getRightPrimer() +" "+hdr.seqString().toUpperCase().indexOf(rightPrimer));
 			}
 		}
 		
@@ -463,6 +459,12 @@ public class Subject {
 				if(hdr.getDel().contentEquals(cs.getDel()) && hdr.getInsertion().contentEquals(cs.getInsertion())) {
 					return hdr;
 				}
+				//fallback for strange situation where the HDR is very close to the right end
+				if(cs.getLeftFlank(0) != null && ( cs.getRightFlank(0) == null || cs.getRightFlank(0).length()==0) ) {
+					if(hdr.getQuery().contains(cs.getQuery()) || cs.getQuery().contains(hdr.getQuery())) {
+						return hdr;
+					}
+				} 
 			}
 		}
 		//no match
