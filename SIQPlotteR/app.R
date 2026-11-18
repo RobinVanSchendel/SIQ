@@ -4355,14 +4355,26 @@ server <- function(input, output, session) {
         choices = colNamesAll,
         selected = selected
     )
-    colNamesAll = c("-",colNamesAll)
-    
-    #keeep current selection
+
+    ## Only offer grouping columns whose number of unique values is <= the
+    ## number of unique values in the sample (Alias) column.  Columns with
+    ## more distinct values would split samples rather than aggregate them,
+    ## which is not a meaningful grouping (e.g. Barcode > Alias).
+    nAlias = n_distinct(df[[selected]])
+    validGroupCols = colNamesAll[
+      sapply(colNamesAll, function(col) n_distinct(df[[col]]) <= nAlias)
+    ]
+    validGroupCols = c("-", validGroupCols)
+
+    ## Reset to "-" if the current selection is no longer valid
+    currentGroup = if(is.null(input$GroupColumn)) "-" else input$GroupColumn
+    if(!currentGroup %in% validGroupCols) currentGroup = "-"
+
     updateSelectInput(session,"GroupColumn",
-                      choices = colNamesAll,
-                      selected = input$GroupColumn
+                      choices = validGroupCols,
+                      selected = currentGroup
     )
-    
+
   })
   
   observeEvent(
