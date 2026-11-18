@@ -352,7 +352,19 @@ ui <- fluidPage(
       ),
       selectInput(
         "GroupColumn",
-        "Select Grouping/Replicate Column:", 
+        tags$span(
+          "Select Grouping/Replicate Column:",
+          tags$i(
+            class = "fa fa-info-circle",
+            title = paste(
+              "Only columns with at most as many unique values as the",
+              "selected Sample column are shown.",
+              "Columns with more distinct values would split samples rather",
+              "than aggregate them, which is not a meaningful grouping."
+            ),
+            style = "cursor:help; color:#aaa; margin-left:4px;"
+          )
+        ),
         c("-"),
         selected = "-"
       ),
