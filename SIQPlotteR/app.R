@@ -356,12 +356,7 @@ ui <- fluidPage(
           "Select Grouping/Replicate Column:",
           tags$i(
             class = "fa fa-info-circle",
-            title = paste(
-              "Only columns with at most as many unique values as the",
-              "selected Sample column are shown.",
-              "Columns with more distinct values would split samples rather",
-              "than aggregate them, which is not a meaningful grouping."
-            ),
+            title = "Only columns with at most as many unique values as the selected Sample column are shown.",
             style = "cursor:help; color:#aaa; margin-left:4px;"
           )
         ),
@@ -4382,7 +4377,21 @@ server <- function(input, output, session) {
     currentGroup = if(is.null(input$GroupColumn)) "-" else input$GroupColumn
     if(!currentGroup %in% validGroupCols) currentGroup = "-"
 
+    groupLabel = tags$span(
+      "Select Grouping/Replicate Column:",
+      tags$i(
+        class = "fa fa-info-circle",
+        title = paste0(
+          "Only columns with ≤ ", nAlias, " unique value(s) are shown ",
+          "(", selected, " has ", nAlias, "). ",
+          "Columns with more distinct values would split samples rather than aggregate them."
+        ),
+        style = "cursor:help; color:#aaa; margin-left:4px;"
+      )
+    )
+
     updateSelectInput(session,"GroupColumn",
+                      label = groupLabel,
                       choices = validGroupCols,
                       selected = currentGroup
     )
