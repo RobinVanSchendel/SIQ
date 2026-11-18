@@ -5,6 +5,10 @@ import gui.PropertiesManager;
 import utils.MyOptions;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
@@ -20,7 +24,27 @@ import org.apache.commons.cli.ParseException;
 import batch.SequenceController;
 
 public class SV_Analyzer {
-	public final static String VERSION = "2.2";
+	public final static String VERSION = readVersion();
+
+	private static String readVersion() {
+		try {
+			String className = SV_Analyzer.class.getSimpleName() + ".class";
+			URL classUrl = SV_Analyzer.class.getResource(className);
+			if (classUrl != null) {
+				String classPath = classUrl.toString();
+				if (classPath.startsWith("jar:")) {
+					String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
+					Manifest manifest = new Manifest(new URL(manifestPath).openStream());
+					Attributes attr = manifest.getMainAttributes();
+					String v = attr.getValue("Implementation-Version");
+					if (v != null && !v.isEmpty()) return v;
+				}
+			}
+		} catch (IOException e) {
+			// fall through to default
+		}
+		return "dev";
+	}
 	public static void main(String[] args) throws ParseException {
 		Options optionsApache = createOptions();
 		CommandLineParser parser = new DefaultParser();
@@ -232,7 +256,12 @@ public class SV_Analyzer {
 				.desc("the search space used to call templated insertions around junctions in forward and reverse complement orientation (Default is 100bp).")
 				.build();
 				o.addOption(search);
-		
+
+		Option noDelinsFilter = Option.builder("noDelinsFilter")
+				.desc("Disable the filter that removes DELINS events likely caused by multiple independent editing events (filter is on by default).")
+				.build();
+				o.addOption(noDelinsFilter);
+
 		return o;
 	}
 
