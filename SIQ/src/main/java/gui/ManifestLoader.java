@@ -27,6 +27,7 @@ public class ManifestLoader {
         try {
             String json = readAll(manifest);
             List<Map<String, String>> samples = parseSamples(json);
+            model.removeAll();
             for (Map<String, String> s : samples) {
                 NGS ngs = new NGS();
                 model.addNGS(ngs);
