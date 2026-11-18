@@ -248,6 +248,10 @@ public class SequenceControllerThread implements Runnable{
 				fw.write("      \"alias\": \"" + escapeJson(n.getAlias()) + "\",\n");
 				fw.write("      \"r1\": \"" + escapeJson(n.getR1() != null ? n.getR1().getAbsolutePath() : "") + "\",\n");
 				fw.write("      \"reference\": \"" + escapeJson(n.getSubject()) + "\",\n");
+				fw.write("      \"left_flank\": \"" + escapeJson(n.getLeftFlank()) + "\",\n");
+				fw.write("      \"right_flank\": \"" + escapeJson(n.getRightFlank()) + "\",\n");
+				fw.write("      \"left_primer\": \"" + escapeJson(n.getLeftPrimer()) + "\",\n");
+				fw.write("      \"right_primer\": \"" + escapeJson(n.getRightPrimer()) + "\",\n");
 				fw.write("      \"hdr\": \"" + escapeJson(n.getHDR() != null ? n.getHDR().getAbsolutePath() : "") + "\",\n");
 				fw.write("      \"output\": \"" + escapeJson(n.getOutput() != null ? n.getOutput().getAbsolutePath() : "") + "\"\n");
 				fw.write("    }" + (i < v.size()-1 ? "," : "") + "\n");

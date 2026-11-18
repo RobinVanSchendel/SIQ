@@ -34,11 +34,27 @@ final class FileDropHandler extends TransferHandler {
             // should never happen (or JDK is buggy)
             return false;
         }
+        JTable jt = (JTable)support.getComponent();
+        NGSTableModel ngsmodel = (NGSTableModel)jt.getModel();
+
+        // if a single manifest.json is dropped, reload samples from it
+        if (files.size() == 1 && ManifestLoader.isManifest(files.get(0))) {
+            int loaded = ManifestLoader.load(files.get(0), ngsmodel);
+            if (loaded < 0) {
+                javax.swing.JOptionPane.showMessageDialog(jt,
+                    "Could not parse manifest.json.", "Manifest error",
+                    javax.swing.JOptionPane.ERROR_MESSAGE);
+                return false;
+            }
+            javax.swing.JOptionPane.showMessageDialog(jt,
+                loaded + " sample(s) loaded from manifest.", "Manifest loaded",
+                javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return true;
+        }
+
         JTable.DropLocation dl = (JTable.DropLocation) support.getDropLocation();
         int row = dl.getRow();
         int column = dl.getColumn();
-        JTable jt = (JTable)support.getComponent();
-        NGSTableModel ngsmodel = (NGSTableModel)jt.getModel();
         for(File f: files) {
         	//add row if required
         	if(row>=ngsmodel.getRowCount()) {
