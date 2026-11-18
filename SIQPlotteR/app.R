@@ -4363,13 +4363,14 @@ server <- function(input, output, session) {
         selected = selected
     )
 
-    ## Only offer grouping columns whose number of unique values is <= the
-    ## number of unique values in the sample (Alias) column.  Columns with
-    ## more distinct values would split samples rather than aggregate them,
-    ## which is not a meaningful grouping (e.g. Barcode > Alias).
+    ## Offer all columns (character and numeric) whose number of unique values
+    ## is <= the number of unique values in the sample (Alias) column.
+    ## Columns with more distinct values would split samples rather than
+    ## aggregate them, which is not a meaningful grouping (e.g. Barcode > Alias).
     nAlias = n_distinct(df[[selected]])
-    validGroupCols = colNamesAll[
-      sapply(colNamesAll, function(col) n_distinct(df[[col]]) <= nAlias)
+    allCols = colnames(df)
+    validGroupCols = allCols[
+      sapply(allCols, function(col) n_distinct(df[[col]]) <= nAlias)
     ]
     validGroupCols = c("-", validGroupCols)
 
@@ -4377,21 +4378,7 @@ server <- function(input, output, session) {
     currentGroup = if(is.null(input$GroupColumn)) "-" else input$GroupColumn
     if(!currentGroup %in% validGroupCols) currentGroup = "-"
 
-    groupLabel = tags$span(
-      "Select Grouping/Replicate Column:",
-      tags$i(
-        class = "fa fa-info-circle",
-        title = paste0(
-          "Only columns with ≤ ", nAlias, " unique value(s) are shown ",
-          "(", selected, " has ", nAlias, "). ",
-          "Columns with more distinct values would split samples rather than aggregate them."
-        ),
-        style = "cursor:help; color:#aaa; margin-left:4px;"
-      )
-    )
-
     updateSelectInput(session,"GroupColumn",
-                      label = groupLabel,
                       choices = validGroupCols,
                       selected = currentGroup
     )
