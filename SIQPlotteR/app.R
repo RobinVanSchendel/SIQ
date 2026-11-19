@@ -4395,6 +4395,23 @@ server <- function(input, output, session) {
     }
   )
   
+  ## Auto-configure for MUSIC screen exports
+  observeEvent(in_data(), {
+    df = in_data()
+    if(!"music_screen" %in% colnames(df)) return()
+
+    if("barcode_and_replicate" %in% colnames(df))
+      updateSelectInput(session, "AliasColumn", selected = "barcode_and_replicate")
+    if("barcode" %in% colnames(df))
+      updateSelectInput(session, "GroupColumn", selected = "barcode")
+    updateRadioButtons(session, "colorPalette", selected = "Beach")
+    showNotification(
+      tags$span(icon("dna"), " MUSIC screen output detected — Alias set to barcode_and_replicate, Grouping set to barcode, palette set to Beach."),
+      type = "message",
+      duration = 10
+    )
+  })
+
   observe({
     req(in_data())
     req(hardcodedTypesDF())
