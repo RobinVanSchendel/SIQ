@@ -1080,7 +1080,8 @@ ui <- fluidPage(
 									         DT::dataTableOutput("plot_1bp_data",width = 8)
 									),
 									tabPanel("Table",
-									         h3("Note: to download all data, please select Show 'All' entries (slow on large sets)", style="color:red"),
+									         downloadButton("downloadAllData", "Download all data", icon = icon("download")),
+									         br(), br(),
 									         DT::dataTableOutput("datatable",width = "100%"),
 									),
                   if(siq_db_available) tabPanel("Database",
@@ -1349,7 +1350,19 @@ server <- function(input, output, session) {
                        ))
     dt
   })
-  
+
+  output$downloadAllData <- downloadHandler(
+    filename = function() paste0("SIQPlotteR_data_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv"),
+    content  = function(file) {
+      req(filter_in_data())
+      el = filter_in_data()
+      if(!input$tableReference) el = el %>% filter(Type != "Reference")
+      if(input$tableFraction == "Relative")
+        el = el %>% group_by(Subject, Alias) %>% mutate(fraction = fraction / sum(fraction))
+      write.csv(el, file, row.names = FALSE)
+    }
+  )
+
   d_xminmaxRange <- reactive({
     input$xminmaxRange
   }) %>% debounce(1000)
