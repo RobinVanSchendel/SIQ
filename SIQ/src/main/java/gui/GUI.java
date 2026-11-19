@@ -41,6 +41,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
+import javax.swing.SwingWorker;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
@@ -85,32 +86,12 @@ import utils.AlphanumComparator;
 import utils.AnalyzedFileController;
 import utils.CompareSequence;
 import utils.NGSPair;
+import utils.ReferenceAutoDetector;
+import utils.StreamGobbler;
 import utils.Subject;
 
 public class GUI implements ActionListener, MouseListener {
-	//JFileChooser chooser = new JFileChooser(new File("C:\\Users\\rvanschendel\\Documents\\Project_Joost"));
-	JFileChooser chooser = new JFileChooser() {
-	    @Override
-	    public void approveSelection(){
-	        File f = getSelectedFile();
-	        if(f.exists() && getDialogType() == SAVE_DIALOG){
-	            int result = JOptionPane.showConfirmDialog(this,"The file exists, overwrite?","Existing file",JOptionPane.YES_NO_CANCEL_OPTION);
-	            switch(result){
-	                case JOptionPane.YES_OPTION:
-	                    super.approveSelection();
-	                    return;
-	                case JOptionPane.NO_OPTION:
-	                    return;
-	                case JOptionPane.CLOSED_OPTION:
-	                    return;
-	                case JOptionPane.CANCEL_OPTION:
-	                    cancelSelection();
-	                    return;
-	            }
-	        }
-	        super.approveSelection();
-	    }        
-	};
+	JFileChooser chooser = new PathAwareFileChooser();
 	public JFrame guiFrame = new JFrame();
 	DefaultListModel<File> model = new DefaultListModel<File>();
 	JList<File> jFiles = new JList<File>(model);
@@ -565,9 +546,12 @@ public class GUI implements ActionListener, MouseListener {
 		else if(e.getActionCommand().contentEquals("exampleData")) {
 			//copy data to right location
 			HashMap<String,File> files = copyExampleData();
-			
+
 			//load Input Table
 			loadExampleTable(files,"dataTable.txt");
+		}
+		else if(e.getActionCommand().contentEquals("autoDetectRef")) {
+			runAutoDetectReference();
 		}
 		System.out.println("ActionCommand: "+e.getActionCommand());
 	}
@@ -1682,7 +1666,15 @@ public class GUI implements ActionListener, MouseListener {
         exampleData.setActionCommand("exampleData");
         exampleData.addActionListener(this);
         placeComp(exampleData,guiFrame,1,2,1,1);
-        
+
+        JButton autoDetectRef = new JButton("Auto-detect reference");
+        autoDetectRef.setToolTipText("<html>Automatically detect the most common read sequence from R1 (and optionally R2)<br>"
+        		+ "and use it as the reference. Left and right flanks will be placed in the middle<br>"
+        		+ "of the detected sequence. Works on selected rows (or all rows if none are selected).</html>");
+        autoDetectRef.setActionCommand("autoDetectRef");
+        autoDetectRef.addActionListener(this);
+        placeComp(autoDetectRef,guiFrame,2,2,1,1);
+
         JLabel copyPaste = new JLabel("You can copy & paste your table below:");
         placeComp(copyPaste,guiFrame,0,3,1,1);
         
@@ -1890,6 +1882,200 @@ public class GUI implements ActionListener, MouseListener {
 		ExcelAdapter myAd = new ExcelAdapter(ngs);
 		addFilesToNGSModel();
 	}
+	private void runAutoDetectReference() {
+		if (ngsModel.getRowCount() == 0) {
+			JOptionPane.showMessageDialog(guiFrame, "Please add rows to the table first.", "No rows", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+
+		// Collect target rows: selected rows, or all rows if nothing is selected
+		int[] selectedViewRows = ngs.getSelectedRows();
+		List<Integer> targetModelRows = new ArrayList<>();
+		if (selectedViewRows.length > 0) {
+			for (int vr : selectedViewRows) {
+				targetModelRows.add(ngs.convertRowIndexToModel(vr));
+			}
+		} else {
+			for (int i = 0; i < ngsModel.getRowCount(); i++) {
+				targetModelRows.add(i);
+			}
+		}
+
+		// Validate that R1 is set for each target row
+		for (int modelRow : targetModelRows) {
+			NGS n = (NGS) ngsModel.getValueAtRow(modelRow);
+			if (!n.R1OK()) {
+				JOptionPane.showMessageDialog(guiFrame,
+						"Row " + (modelRow + 1) + " has no valid R1 file. Please set R1 before auto-detecting.",
+						"Missing R1", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+		}
+
+		// Determine which rows need FLASH merging (R2 present, assembled file absent)
+		String flashExec = pm.getProperty("flash");
+		boolean anyNeedsMerging = targetModelRows.stream().anyMatch(modelRow -> {
+			NGS n = (NGS) ngsModel.getValueAtRow(modelRow);
+			return n.getR2() != null && n.R2OK() && !n.assembledOK();
+		});
+
+		if (anyNeedsMerging) {
+			if (flashExec == null || flashExec.isEmpty() || !new File(flashExec).exists()) {
+				JOptionPane.showMessageDialog(guiFrame,
+						"One or more rows have R1+R2 files that need to be merged first,\n"
+						+ "but the FLASH executable is not set.\n\n"
+						+ "Please set the FLASH executable using the \"Set FLASH executable\" button\n"
+						+ "and try again, or remove R2 to detect from R1 only.",
+						"FLASH not configured", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+
+			int choice = JOptionPane.showConfirmDialog(guiFrame,
+					"<html>One or more rows have R1+R2 files that need to be merged with FLASH<br>"
+					+ "before the reference can be detected. This may take a while.<br><br>"
+					+ "Already-merged files will be reused and not re-merged.<br><br>"
+					+ "Do you want to continue?</html>",
+					"Merging required", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+			if (choice != JOptionPane.YES_OPTION) return;
+		}
+
+		// Ask how many reads to sample
+		SpinnerModel sampleModel = new SpinnerNumberModel(10000, 1000, 1000000, 1000);
+		JSpinner sampleSpinner = new JSpinner(sampleModel);
+		sampleSpinner.setPreferredSize(new Dimension(100, 25));
+		JPanel panel = new JPanel();
+		panel.add(new JLabel("Reads to sample per file:"));
+		panel.add(sampleSpinner);
+		int res = JOptionPane.showConfirmDialog(guiFrame, panel, "Auto-detect reference", JOptionPane.OK_CANCEL_OPTION);
+		if (res != JOptionPane.OK_OPTION) return;
+		int maxReads = ((Integer) sampleSpinner.getValue()).intValue();
+
+		final String flashExecFinal = flashExec;
+		final int coresValue = ((Integer) cpus.getValue()).intValue();
+
+		new SwingWorker<Void, Void>() {
+			@Override
+			protected Void doInBackground() {
+				for (int modelRow : targetModelRows) {
+					NGS n = (NGS) ngsModel.getValueAtRow(modelRow);
+					try {
+						// --- Step 1: merge with FLASH if needed ---
+						boolean needsMerge = n.getR2() != null && n.R2OK() && !n.assembledOK();
+						if (needsMerge) {
+							ngsModel.setTextStatus(n, "Merging R1+R2 with FLASH...");
+							boolean mergeOK = runFlashForRow(n, flashExecFinal, coresValue);
+							if (!mergeOK) {
+								ngsModel.setTextStatus(n, "Auto-detect failed: FLASH merging error");
+								continue;
+							}
+						}
+
+						// --- Step 2: choose input file (merged > R1-only) ---
+						File inputFile = n.assembledOK() ? n.getAssembledFile() : n.getR1();
+						String sourceLabel = n.assembledOK() ? "merged" : "R1";
+
+						// --- Step 3: detect most common sequence ---
+						ngsModel.setTextStatus(n, "Detecting reference from " + sourceLabel + "...");
+						ReferenceAutoDetector.Result result = ReferenceAutoDetector.detect(inputFile, maxReads);
+						if (result == null) {
+							ngsModel.setTextStatus(n, "Auto-detect failed: no dominant sequence found");
+							continue;
+						}
+
+						// --- Step 4: write FASTA and update table ---
+						File fasta = ReferenceAutoDetector.writeFasta(n.getR1(), result.sequence);
+						final int row = modelRow;
+						final ReferenceAutoDetector.Result r = result;
+						final File fastaFile = fasta;
+						javax.swing.SwingUtilities.invokeLater(() -> {
+							ngsModel.setValueAt(fastaFile.getAbsolutePath(), row, 2);  // reference
+							ngsModel.setValueAt(r.leftFlank, row, 4);                  // left flank
+							ngsModel.setValueAt(r.rightFlank, row, 5);                 // right flank
+							ngsModel.setTextStatus(n, "Reference detected from " + sourceLabel
+									+ " (" + r.getFrequencyString() + " of " + r.totalSampled + " reads)");
+						});
+					} catch (Exception ex) {
+						ngsModel.setTextStatus(n, "Auto-detect error: " + ex.getMessage());
+						ex.printStackTrace();
+					}
+				}
+				return null;
+			}
+
+			@Override
+			protected void done() {
+				JOptionPane.showMessageDialog(guiFrame,
+						"Auto-detection complete. Please verify the reference and flanks in the table,\n"
+						+ "and adjust the left/right flanks to match your cut site if needed.",
+						"Auto-detect complete", JOptionPane.INFORMATION_MESSAGE);
+			}
+		}.execute();
+	}
+
+	/**
+	 * Run FLASH to merge R1+R2 for a single NGS row.
+	 * Mirrors the logic in SequenceFileThread.runFlash().
+	 * @return true if the assembled file was produced successfully
+	 */
+	private boolean runFlashForRow(NGS n, String flashExec, int cores) {
+		try {
+			ArrayList<String> commandParts = new ArrayList<>();
+			commandParts.add(flashExec);
+			commandParts.add(n.getR1().getAbsolutePath());
+			commandParts.add(n.getR2().getAbsolutePath());
+			commandParts.add("-M");
+			commandParts.add("5000");
+			commandParts.add("-O");
+			commandParts.add("-z");
+			commandParts.add("-t");
+			commandParts.add("" + cores);
+			commandParts.add("-o");
+			commandParts.add(n.getAssembledFileDerived().getName());
+			System.out.println("Auto-detect FLASH: " + String.join(" ", commandParts));
+
+			Process p = new ProcessBuilder(commandParts).start();
+			StreamGobbler outputGobbler = new StreamGobbler(p.getInputStream(), "OUTPUT", false);
+			StreamGobbler errorGobbler  = new StreamGobbler(p.getErrorStream(),  "ERROR",  false);
+			errorGobbler.start();
+			outputGobbler.start();
+			int exitVal = p.waitFor();
+
+			// FLASH writes output to the current working directory
+			String currentDir = System.getProperty("user.dir");
+			File flashOutput   = new File(currentDir + File.separator + n.getAssembledFileDerived().getName() + ".extendedFrags.fastq.gz");
+			File flashUnassF   = new File(currentDir + File.separator + n.getAssembledFileDerived().getName() + ".notCombined_1.fastq.gz");
+			File flashUnassR   = new File(currentDir + File.separator + n.getAssembledFileDerived().getName() + ".notCombined_2.fastq.gz");
+
+			if (flashOutput.exists()) {
+				if (n.getAssembledFileDerived().exists()) n.getAssembledFileDerived().delete();
+				flashOutput.renameTo(n.getAssembledFileDerived());
+			} else {
+				System.err.println("FLASH did not produce the expected output: " + flashOutput.getAbsolutePath());
+				return false;
+			}
+			// Move unassembled files (best-effort)
+			if (flashUnassF.exists()) {
+				if (n.getUnassembledFFileDerived().exists()) n.getUnassembledFFileDerived().delete();
+				flashUnassF.renameTo(n.getUnassembledFFileDerived());
+			}
+			if (flashUnassR.exists()) {
+				if (n.getUnassembledRFileDerived().exists()) n.getUnassembledRFileDerived().delete();
+				flashUnassR.renameTo(n.getUnassembledRFileDerived());
+			}
+			// Clean up FLASH histogram files
+			String base = n.getAssembledFileDerived().getName();
+			new File(currentDir + File.separator + base + ".hist").delete();
+			new File(currentDir + File.separator + base + ".hist.innie").delete();
+			new File(currentDir + File.separator + base + ".hist.outie").delete();
+
+			return n.assembledOK();
+		} catch (IOException | InterruptedException e) {
+			System.err.println("FLASH error: " + e.getMessage());
+			e.printStackTrace();
+			return false;
+		}
+	}
+
 	//TODO fix to incorporate R1 and R2 pairs
 	private void addFilesToNGSModel() {
 		this.ngsModel.removeAll();

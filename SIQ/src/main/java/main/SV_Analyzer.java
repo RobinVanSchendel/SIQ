@@ -61,16 +61,11 @@ public class SV_Analyzer {
 		
 		if(!options.hasOptions() || options.startGUI()) {
 			try {
-				UIManager.setLookAndFeel(
-				        UIManager.getSystemLookAndFeelClassName());
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			} catch (InstantiationException e) {
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
-				e.printStackTrace();
-			} catch (UnsupportedLookAndFeelException e) {
-				e.printStackTrace();
+				com.formdev.flatlaf.FlatIntelliJLaf.setup();
+			} catch (Exception e) {
+				// fall back to system look and feel
+				try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); }
+				catch (Exception ignored) {}
 			}
 			PropertiesManager pm = new PropertiesManager();
 			new GUI(VERSION, pm);
