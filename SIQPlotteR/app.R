@@ -4373,9 +4373,10 @@ server <- function(input, output, session) {
     dataChanged  = !identical(currentCols, isolate(lastDataCols()))
     lastDataCols(currentCols)   # update the tracker (no reactive dependency added)
 
-    isMusicScreen = dataChanged && "music_screen" %in% currentCols
+    isMusicScreen    = "music_screen" %in% currentCols
+    musicDataChanged = dataChanged && isMusicScreen
 
-    if(isMusicScreen && "barcode_and_replicate" %in% currentCols){
+    if(musicDataChanged && "barcode_and_replicate" %in% currentCols){
       selected = "barcode_and_replicate"
     } else if(is.null(input$AliasColumn)){
       selected = "Alias"
@@ -4401,19 +4402,27 @@ server <- function(input, output, session) {
     ]
     validGroupCols = c("-", validGroupCols)
 
-    if(isMusicScreen && "barcode" %in% validGroupCols){
-      currentGroup = "barcode"
-    } else {
-      g = if(is.null(input$GroupColumn)) "-" else input$GroupColumn
-      currentGroup = if(g %in% validGroupCols) g else "-"
+    ## When AliasColumn was just set to "barcode_and_replicate" by this observer
+    ## (musicDataChanged), that update echoes back and re-fires this observer
+    ## with dataChanged=FALSE. At that point input$GroupColumn hasn't reflected
+    ## the "barcode" we set yet, so skip the GroupColumn update to avoid
+    ## overwriting it with the stale "-".  For all other cases update normally.
+    isAliasEcho = !dataChanged && isMusicScreen && selected == "barcode_and_replicate"
+
+    if(!isAliasEcho){
+      if(musicDataChanged && "barcode" %in% validGroupCols){
+        currentGroup = "barcode"
+      } else {
+        g = if(is.null(input$GroupColumn)) "-" else input$GroupColumn
+        currentGroup = if(g %in% validGroupCols) g else "-"
+      }
+      updateSelectInput(session,"GroupColumn",
+                        choices = validGroupCols,
+                        selected = currentGroup
+      )
     }
 
-    updateSelectInput(session,"GroupColumn",
-                      choices = validGroupCols,
-                      selected = currentGroup
-    )
-
-    if(isMusicScreen){
+    if(musicDataChanged){
       updateRadioButtons(session, "colorPalette", selected = "Beach")
       showNotification(
         tags$span(icon("dna"), " MUSIC screen output detected — Alias set to barcode_and_replicate, Grouping set to barcode, palette set to Beach."),
