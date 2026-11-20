@@ -136,6 +136,22 @@ public class GUI implements ActionListener, MouseListener {
 		return new PathAwareFileChooser();
 	}
 
+	/** Shows the file chooser with a wait cursor during the slow initial directory scan. */
+	private void showChooser(Runnable onApprove) {
+		guiFrame.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
+		// Double-invokeLater: first pass lets the cursor repaint, second opens the blocking dialog
+		javax.swing.SwingUtilities.invokeLater(() -> javax.swing.SwingUtilities.invokeLater(() -> {
+			try {
+				if (chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION) {
+					onApprove.run();
+				}
+			} finally {
+				chooser.setMultiSelectionEnabled(false);
+				guiFrame.setCursor(java.awt.Cursor.getDefaultCursor());
+			}
+		}));
+	}
+
 	@SuppressWarnings("serial")
 	public GUI(String version, PropertiesManager pm)
     {
@@ -229,48 +245,38 @@ public class GUI implements ActionListener, MouseListener {
 		else if(e.getActionCommand().equals("dirChooser")){
 			chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 			chooser.setMultiSelectionEnabled(true);
-			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+			showChooser(() -> {
 				File dir = chooser.getSelectedFile();
-				if(dir.isDirectory()) {
-					pm.setProperty("lastDir", dir.getAbsolutePath());
-				}
+				if(dir.isDirectory()) pm.setProperty("lastDir", dir.getAbsolutePath());
 				fillTable();
-			}
-			chooser.setMultiSelectionEnabled(false);
+			});
 		}
 		else if(e.getActionCommand().equals("dirChooserNGS")){
 			chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 			chooser.setMultiSelectionEnabled(true);
-			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+			showChooser(() -> {
 				File dir = chooser.getSelectedFile();
-				if(dir.isDirectory()) {
-					pm.setProperty("lastDir", dir.getAbsolutePath());
-				}
+				if(dir.isDirectory()) pm.setProperty("lastDir", dir.getAbsolutePath());
 				this.addFilesToNGSModel();
-			}
-			chooser.setMultiSelectionEnabled(false);
+			});
 		}
 		else if(e.getActionCommand().equals("fileChooserNGS")){
 			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 			chooser.setMultiSelectionEnabled(true);
-			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+			showChooser(() -> {
 				this.addFilesToNGSModel();
 				File dir = chooser.getSelectedFile().getParentFile();
-				if(dir.isDirectory()) {
-					pm.setProperty("lastDir", dir.getAbsolutePath());
-				}
-			}
+				if(dir.isDirectory()) pm.setProperty("lastDir", dir.getAbsolutePath());
+			});
 		}
 		else if(e.getActionCommand().equals("fileChooser")){
 			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 			chooser.setMultiSelectionEnabled(true);
-			if(chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION){
+			showChooser(() -> {
 				File dir = chooser.getSelectedFile().getParentFile();
-				if(dir.isDirectory()) {
-					pm.setProperty("lastDir", dir.getAbsolutePath());
-				}
+				if(dir.isDirectory()) pm.setProperty("lastDir", dir.getAbsolutePath());
 				fillTable();
-			}
+			});
 		}
 		else if(e.getActionCommand().equals("Start")){
 			if(subject == null || subject.getName().equals("<Reference File>")){
