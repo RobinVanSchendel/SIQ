@@ -136,16 +136,11 @@ public class GUI implements ActionListener, MouseListener {
 		return new PathAwareFileChooser();
 	}
 
-	/** Shows the file chooser starting in a local directory so the initial scan is fast.
-	 *  The path bar is pre-filled with the last-used directory so the user can navigate there quickly. */
+	/** Shows the file chooser, resuming from the last used directory. */
 	private void showChooser(Runnable onApprove) {
-		// Start in a local dir to avoid scanning the network drive on open
-		File localStart = new File(System.getProperty("user.home"));
-		chooser.setCurrentDirectory(localStart);
-		// Pre-fill the path bar with the last used directory
 		String lastDir = pm.getProperty("lastDir");
 		if (lastDir != null && !lastDir.isEmpty()) {
-			((PathAwareFileChooser) chooser).setPathBarText(lastDir);
+			chooser.setCurrentDirectory(new File(lastDir));
 		}
 		if (chooser.showOpenDialog(guiFrame) == JFileChooser.APPROVE_OPTION) {
 			onApprove.run();
