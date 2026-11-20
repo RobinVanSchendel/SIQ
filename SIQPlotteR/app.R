@@ -4357,16 +4357,47 @@ server <- function(input, output, session) {
   })
   
   
+  ## One-shot defaults injected by the MUSIC-screen detector below.
+  ## Read with isolate() in the observe so it doesn't create a dependency.
+  musicDefaults <- reactiveVal(NULL)
+
+  ## Auto-configure for MUSIC screen exports.
+  ## Defined BEFORE the AliasColumn/GroupColumn observe so it fires first
+  ## when in_data() changes, depositing defaults the observe will pick up.
+  observeEvent(in_data(), {
+    df = in_data()
+    if(!"music_screen" %in% colnames(df)){
+      musicDefaults(NULL)
+      return()
+    }
+    musicDefaults(list(
+      alias = if("barcode_and_replicate" %in% colnames(df)) "barcode_and_replicate" else NULL,
+      group = if("barcode"               %in% colnames(df)) "barcode"               else NULL
+    ))
+    updateRadioButtons(session, "colorPalette", selected = "Beach")
+    showNotification(
+      tags$span(icon("dna"), " MUSIC screen output detected — Alias set to barcode_and_replicate, Grouping set to barcode, palette set to Beach."),
+      type = "message",
+      duration = 10
+    )
+  })
+
   observe({
     req(in_data())
     if(debug){
       print(paste("updateSelectInput","GroupColumn"))
     }
     df = in_data()
-    if(is.null(input$AliasColumn)){
+
+    ## Consume any pending MUSIC defaults atomically (isolate avoids dependency).
+    defaults = isolate(musicDefaults())
+    isolate(musicDefaults(NULL))
+
+    if(!is.null(defaults) && !is.null(defaults$alias)){
+      selected = defaults$alias
+    } else if(is.null(input$AliasColumn)){
       selected = "Alias"
-    }
-    else{
+    } else {
       selected = input$AliasColumn
     }
     colNamesChar <- df[,sapply(df, is.character)]
@@ -4387,9 +4418,14 @@ server <- function(input, output, session) {
     ]
     validGroupCols = c("-", validGroupCols)
 
-    ## Reset to "-" if the current selection is no longer valid
-    currentGroup = if(is.null(input$GroupColumn)) "-" else input$GroupColumn
-    if(!currentGroup %in% validGroupCols) currentGroup = "-"
+    ## Use the MUSIC default group if provided and valid, otherwise keep current.
+    pendingGroup = if(!is.null(defaults)) defaults$group else NULL
+    currentGroup = if(!is.null(pendingGroup) && pendingGroup %in% validGroupCols) {
+      pendingGroup
+    } else {
+      g = if(is.null(input$GroupColumn)) "-" else input$GroupColumn
+      if(!g %in% validGroupCols) "-" else g
+    }
 
     updateSelectInput(session,"GroupColumn",
                       choices = validGroupCols,
@@ -4397,7 +4433,7 @@ server <- function(input, output, session) {
     )
 
   })
-  
+
   observeEvent(
     rv$types,
     {
@@ -4408,23 +4444,6 @@ server <- function(input, output, session) {
     }
   )
   
-  ## Auto-configure for MUSIC screen exports
-  observeEvent(in_data(), {
-    df = in_data()
-    if(!"music_screen" %in% colnames(df)) return()
-
-    if("barcode_and_replicate" %in% colnames(df))
-      updateSelectInput(session, "AliasColumn", selected = "barcode_and_replicate")
-    if("barcode" %in% colnames(df))
-      updateSelectInput(session, "GroupColumn", selected = "barcode")
-    updateRadioButtons(session, "colorPalette", selected = "Beach")
-    showNotification(
-      tags$span(icon("dna"), " MUSIC screen output detected — Alias set to barcode_and_replicate, Grouping set to barcode, palette set to Beach."),
-      type = "message",
-      duration = 10
-    )
-  })
-
   observe({
     req(in_data())
     req(hardcodedTypesDF())
