@@ -4357,10 +4357,6 @@ server <- function(input, output, session) {
   })
   
   
-  ## Set to TRUE by the data-load observer when it sets AliasColumn, so the
-  ## AliasColumn-change observer can skip the GroupColumn update on that echo.
-  skipGroupEcho <- reactiveVal(FALSE)
-
   ## ── Fires only when new data loads ──────────────────────────────────────────
   observeEvent(in_data(), {
     if(debug) print(paste("updateSelectInput","AliasColumn+GroupColumn on data load"))
@@ -4393,7 +4389,6 @@ server <- function(input, output, session) {
     updateSelectInput(session, "GroupColumn", choices = validGroupCols, selected = groupSelected)
 
     if(isMusicScreen){
-      skipGroupEcho(TRUE)   # suppress the upcoming AliasColumn echo
       updateRadioButtons(session, "colorPalette", selected = "Beach")
       showNotification(
         tags$span(icon("dna"), " MUSIC screen output detected — Alias set to barcode_and_replicate, Grouping set to barcode, palette set to Beach."),
@@ -4402,25 +4397,28 @@ server <- function(input, output, session) {
     }
   }, ignoreNULL = TRUE)
 
-  ## ── Fires only when the user changes AliasColumn ────────────────────────────
+  ## ── Fires when AliasColumn changes (user action OR echo after data load) ─────
+  ## The echo from a data load always arrives with the correct MUSIC defaults
+  ## already set by the data-load observer, so we don't need to suppress it —
+  ## we simply re-apply MUSIC defaults here too when appropriate.
   observeEvent(input$AliasColumn, {
-    ## If this is the echo from the data-load observer, skip to avoid overwriting
-    ## the GroupColumn that was just set (input$GroupColumn hasn't reflected it yet).
-    if(isolate(skipGroupEcho())){
-      skipGroupEcho(FALSE)
-      return()
-    }
     req(in_data())
     if(debug) print(paste("updateSelectInput","GroupColumn on AliasColumn change"))
     df = isolate(in_data())
+    isMusicScreen = "music_screen" %in% colnames(df)
     nAlias = n_distinct(df[[input$AliasColumn]])
     validGroupCols = c("-", colnames(df)[
       sapply(colnames(df), function(col) n_distinct(df[[col]]) <= nAlias)
     ])
-    g = if(is.null(input$GroupColumn)) "-" else input$GroupColumn
+    g = isolate(if(is.null(input$GroupColumn)) "-" else input$GroupColumn)
+    if(isMusicScreen && input$AliasColumn == "barcode_and_replicate" && "barcode" %in% validGroupCols){
+      groupSelected = "barcode"
+    } else {
+      groupSelected = if(g %in% validGroupCols) g else "-"
+    }
     updateSelectInput(session, "GroupColumn",
                       choices  = validGroupCols,
-                      selected = if(g %in% validGroupCols) g else "-")
+                      selected = groupSelected)
   }, ignoreInit = TRUE)
 
   observeEvent(
