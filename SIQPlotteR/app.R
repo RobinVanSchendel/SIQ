@@ -4357,6 +4357,12 @@ server <- function(input, output, session) {
   })
   
   
+  ## actual column name matching `name` ignoring case (MUSIC exports use Barcode / Barcode_And_Replicate)
+  findColumn <- function(cols, name){
+    hit = cols[tolower(cols) == tolower(name)]
+    if(length(hit) > 0) hit[1] else NA_character_
+  }
+
   ## ── Fires only when new data loads ──────────────────────────────────────────
   observeEvent(in_data(), {
     if(debug) print(paste("updateSelectInput","AliasColumn+GroupColumn on data load"))
@@ -4366,8 +4372,9 @@ server <- function(input, output, session) {
     colNamesChar  = colnames(df[, sapply(df, is.character)])
 
     ## AliasColumn default
-    if(isMusicScreen && "barcode_and_replicate" %in% currentCols){
-      aliasSelected = "barcode_and_replicate"
+    musicAlias = findColumn(currentCols, "barcode_and_replicate")
+    if(isMusicScreen && !is.na(musicAlias)){
+      aliasSelected = musicAlias
     } else {
       prev = isolate(input$AliasColumn)
       aliasSelected = if(!is.null(prev) && prev %in% colNamesChar) prev else "Alias"
@@ -4380,8 +4387,9 @@ server <- function(input, output, session) {
     validGroupCols = c("-", colnames(df)[
       sapply(colnames(df), function(col) n_distinct(df[[col]]) <= nAlias)
     ])
-    if(isMusicScreen && "barcode" %in% validGroupCols){
-      groupSelected = "barcode"
+    musicGroup = findColumn(validGroupCols, "barcode")
+    if(isMusicScreen && !is.na(musicGroup)){
+      groupSelected = musicGroup
     } else {
       prev = isolate(input$GroupColumn)
       groupSelected = if(!is.null(prev) && prev %in% validGroupCols) prev else "-"
@@ -4391,7 +4399,7 @@ server <- function(input, output, session) {
     if(isMusicScreen){
       updateRadioButtons(session, "colorPalette", selected = "Beach")
       showNotification(
-        tags$span(icon("dna"), " MUSIC screen output detected — Alias set to barcode_and_replicate, Grouping set to barcode, palette set to Beach."),
+        tags$span(icon("dna"), " MUSIC screen output detected — Sample column set to Barcode_And_Replicate, Grouping set to Barcode, palette set to Beach."),
         type = "message", duration = 10
       )
     }
@@ -4411,8 +4419,9 @@ server <- function(input, output, session) {
       sapply(colnames(df), function(col) n_distinct(df[[col]]) <= nAlias)
     ])
     g = isolate(if(is.null(input$GroupColumn)) "-" else input$GroupColumn)
-    if(isMusicScreen && input$AliasColumn == "barcode_and_replicate" && "barcode" %in% validGroupCols){
-      groupSelected = "barcode"
+    musicGroup = findColumn(validGroupCols, "barcode")
+    if(isMusicScreen && tolower(input$AliasColumn) == "barcode_and_replicate" && !is.na(musicGroup)){
+      groupSelected = musicGroup
     } else {
       groupSelected = if(g %in% validGroupCols) g else "-"
     }
