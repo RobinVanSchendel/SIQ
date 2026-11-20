@@ -91,7 +91,7 @@ import utils.StreamGobbler;
 import utils.Subject;
 
 public class GUI implements ActionListener, MouseListener {
-	JFileChooser chooser = new PathAwareFileChooser();
+	JFileChooser chooser = createFileChooser();
 	public JFrame guiFrame = new JFrame();
 	DefaultListModel<File> model = new DefaultListModel<File>();
 	JList<File> jFiles = new JList<File>(model);
@@ -130,8 +130,12 @@ public class GUI implements ActionListener, MouseListener {
 	private JButton dirChooserPanel;
 	private JCheckBox longReadSeq;
 	private JCheckBox delinsFilter, remerge;
-	
-	
+	private static JFileChooser createFileChooser() {
+		// Prevents Windows Shell folder integration, which is very slow on network drives
+		javax.swing.UIManager.put("FileChooser.useShellFolder", false);
+		return new PathAwareFileChooser();
+	}
+
 	@SuppressWarnings("serial")
 	public GUI(String version, PropertiesManager pm)
     {
@@ -1673,7 +1677,7 @@ public class GUI implements ActionListener, MouseListener {
         		+ "of the detected sequence. Works on selected rows (or all rows if none are selected).</html>");
         autoDetectRef.setActionCommand("autoDetectRef");
         autoDetectRef.addActionListener(this);
-        autoDetectRef.setEnabled(false);
+        autoDetectRef.setVisible(false);
         placeComp(autoDetectRef,guiFrame,2,2,1,1);
 
         JLabel copyPaste = new JLabel("You can copy & paste your table below:");
