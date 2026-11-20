@@ -1,6 +1,7 @@
 package gui;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileView;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -23,6 +24,11 @@ public class PathAwareFileChooser extends JFileChooser {
     }
 
     private void setup() {
+        // Skip per-file icon loading — the main cause of slowness on network drives
+        setFileView(new FileView() {
+            @Override public Icon getIcon(File f) { return null; }
+        });
+
         // keep the path field in sync when the user browses normally
         addPropertyChangeListener(DIRECTORY_CHANGED_PROPERTY, e -> {
             File dir = getCurrentDirectory();
