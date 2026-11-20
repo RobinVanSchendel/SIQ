@@ -1457,7 +1457,7 @@ public class GUI implements ActionListener, MouseListener {
         JPanel jpanel = new JPanel();
         SpinnerModel model = new SpinnerNumberModel(0.05, 0, 1.0, 0.01);
         maxError = new JSpinner(model);
-        maxError.setPreferredSize(new Dimension(50,20));
+        maxError.setPreferredSize(new Dimension(80, 26));
         //maxError.setBounds(684, 40, 47, 22);
         //guiFrame.add(maxError);
         //placeComp(maxError,guiFrame,5,2,1,1);
@@ -1601,7 +1601,7 @@ public class GUI implements ActionListener, MouseListener {
         
         SpinnerModel model = new SpinnerNumberModel(0, 0, Double.MAX_VALUE, 100000);
         maxReads = new JSpinner(model);
-        maxReads.setPreferredSize(new Dimension(80, 16));
+        maxReads.setPreferredSize(new Dimension(80, 26));
         //maxReads.setBounds(400, 22, 100, 25);
         placeComp(maxReads,guiFrame,6,1,1,1);
         placeComp(new JLabel("           "), guiFrame,9,0,1,1);
@@ -1611,7 +1611,7 @@ public class GUI implements ActionListener, MouseListener {
         placeComp(minNumberReadstoCallEvent,guiFrame,5,2,1,1);
         SpinnerModel model2 = new SpinnerNumberModel(2, 0, Integer.MAX_VALUE, 1);
         minSupport = new JSpinner(model2);
-        minSupport.setPreferredSize(new Dimension(80, 16));
+        minSupport.setPreferredSize(new Dimension(80, 26));
         placeComp(minSupport,guiFrame,6,2,1,1);
         
         
@@ -1620,7 +1620,7 @@ public class GUI implements ActionListener, MouseListener {
         placeComp(maxBaseErrro,guiFrame,5,3,1,1);
         SpinnerModel model3 = new SpinnerNumberModel(0.08, 0, 1, 0.01);
         baseError = new JSpinner(model3);
-        baseError.setPreferredSize(new Dimension(80, 16));
+        baseError.setPreferredSize(new Dimension(80, 26));
         placeComp(baseError,guiFrame,6,3,1,1);
         
         //CPUs
@@ -1630,7 +1630,7 @@ public class GUI implements ActionListener, MouseListener {
         int cores = Runtime.getRuntime().availableProcessors(); 
         SpinnerModel model4 = new SpinnerNumberModel(cores, 1, cores, 1);
         cpus = new JSpinner(model4);
-        cpus.setPreferredSize(new Dimension(80, 16));
+        cpus.setPreferredSize(new Dimension(80, 26));
         placeComp(cpus,guiFrame,8,1,1,1);
         
         //TINS search space
@@ -1643,7 +1643,7 @@ public class GUI implements ActionListener, MouseListener {
         placeComp(tins,guiFrame,7,2,1,1);
         SpinnerModel model5 = new SpinnerNumberModel(100, 10, 10000, 1);
         tinsDist = new JSpinner(model5);
-        tinsDist.setPreferredSize(new Dimension(80, 16));
+        tinsDist.setPreferredSize(new Dimension(80, 26));
         placeComp(tinsDist,guiFrame,8,2,1,1);
         
         //long reads
@@ -1673,6 +1673,7 @@ public class GUI implements ActionListener, MouseListener {
         		+ "of the detected sequence. Works on selected rows (or all rows if none are selected).</html>");
         autoDetectRef.setActionCommand("autoDetectRef");
         autoDetectRef.addActionListener(this);
+        autoDetectRef.setEnabled(false);
         placeComp(autoDetectRef,guiFrame,2,2,1,1);
 
         JLabel copyPaste = new JLabel("You can copy & paste your table below:");
