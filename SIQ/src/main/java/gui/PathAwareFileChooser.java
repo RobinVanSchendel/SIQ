@@ -62,6 +62,10 @@ public class PathAwareFileChooser extends JFileChooser {
         add(bar, BorderLayout.NORTH);
     }
 
+    public void setPathBarText(String text) {
+        pathField.setText(text);
+    }
+
     private void navigateTo(String text) {
         if (text.isEmpty()) return;
         File f = new File(text);
