@@ -81,6 +81,30 @@
         </resource>
     </resources>
     <plugins>
+        <!-- Writes siq.version into ../SIQPlotteR/VERSION so SIQPlotteR shows the same version as SIQ -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-resources-plugin</artifactId>
+            <version>3.3.1</version>
+            <executions>
+                <execution>
+                    <id>generate-siqplotter-version</id>
+                    <phase>generate-resources</phase>
+                    <goals>
+                        <goal>copy-resources</goal>
+                    </goals>
+                    <configuration>
+                        <outputDirectory>${project.basedir}/../SIQPlotteR</outputDirectory>
+                        <resources>
+                            <resource>
+                                <directory>src/main/siqplotter</directory>
+                                <filtering>true</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>

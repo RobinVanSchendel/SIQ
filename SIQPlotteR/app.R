@@ -120,6 +120,14 @@ if(!require(sodium)){
 
 source("user_base.R")
 
+## SIQPlotteR is released together with SIQ, so it reports SIQ's version. The VERSION file is
+## generated from siq.version in SIQ/pom.xml by the Maven build (the server only receives this folder).
+siq_version <- function(version_file = "VERSION"){
+  v <- tryCatch(trimws(readLines(version_file, n = 1, warn = FALSE)), error = function(e) character(0))
+  if(length(v) == 0 || is.na(v) || !nzchar(v)) "unknown" else v
+}
+SIQ_VERSION <- siq_version()
+
 ## SIQ Amplicon DB
 ## Where the database lives is set per operating system in config.yml, which is not in git
 ## because it holds internal paths (see config.example.yml). Without it there is no Database tab.
@@ -1172,7 +1180,7 @@ ui <- fluidPage(
                              explore data from the SIQ paper."),
                            p("You can find more information on SIQ and SIQPlotter, including a detailed ",shiny::tags$b("user guide")," and ",
                              shiny::tags$b("video tutorials "), a(href="https://github.com/RobinVanSchendel/SIQ", "here", target="_blank")),
-                           p("SIQPlotteR Version - 1.0 created by Robin van Schendel"),
+                           p(paste0("SIQPlotteR Version - ", SIQ_VERSION, " (same as SIQ) created by Robin van Schendel")),
                            a(href="https://github.com/RobinVanSchendel/SIQ/releases","Download SIQ here", target="_blank")),
                   tabPanel(
                     id = 'login_tab',
