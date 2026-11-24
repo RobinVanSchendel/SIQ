@@ -93,16 +93,6 @@ public class SV_Analyzer {
 
 	private static Options createOptions() {
 		Options o = new Options();
-		//threads
-		Option threads   = Option.builder( "t" )
-				.longOpt("threads")
-                .hasArg()
-                .argName("NUMBER")
-                .type(Number.class)
-                .desc(  "number of threads to use concurrently. If not specified the maximum number of available threads will be used" )
-                .build();
-		o.addOption(threads);
-		
 		Option out = Option.builder("o")
 				.longOpt("output")
 				.hasArg()
