@@ -4,9 +4,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -128,7 +131,7 @@ public class SequenceController {
 			}
 			File stats = new File(output.getAbsoluteFile()+"_stats.txt");
 			File topStats = new File(output.getAbsoluteFile()+"_top_stats.txt");
-			sft = new SequenceFileThread(seqs, true, subjectObject, output, stats, options.getMaxError(), hmAdditional,topStats, false, true, false);
+			sft = new SequenceFileThread(seqs, true, subjectObject, output, stats, options.getMaxError(), hmAdditional,topStats, false, options.getDelinsFilter(), false);
 			sft.setMinimalCount(options.getMinNumber());
 			sft.setCollapseStartEnd(includeStartEnd);
 			sft.setMaximumReads(options.getMaxReads());
@@ -143,6 +146,50 @@ public class SequenceController {
 			fileNr++;
 		}
 		sft.runReal();
+		writeManifest(options);
+	}
+
+	private void writeManifest(MyOptions options) {
+		File output = new File(options.getOutput());
+		String base = output.getName();
+		// strip extension if present
+		int dot = base.lastIndexOf('.');
+		if (dot > 0) base = base.substring(0, dot);
+		File manifestFile = new File(output.getParentFile(), base + "_manifest.json");
+		try (FileWriter fw = new FileWriter(manifestFile)) {
+			fw.write("{\n");
+			fw.write("  \"siq_version\": \"" + main.SV_Analyzer.VERSION + "\",\n");
+			fw.write("  \"run_timestamp\": \"" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\",\n");
+			fw.write("  \"settings\": {\n");
+			fw.write("    \"max_reads\": " + options.getMaxReads() + ",\n");
+			fw.write("    \"min_support\": " + options.getMinNumber() + ",\n");
+			fw.write("    \"max_error\": " + options.getMaxError() + ",\n");
+			fw.write("    \"tins_distance\": " + options.getSearchSpace() + ",\n");
+			fw.write("    \"delins_filter\": " + options.getDelinsFilter() + "\n");
+			fw.write("  },\n");
+			fw.write("  \"samples\": [\n");
+			fw.write("    {\n");
+			fw.write("      \"alias\": \"" + escapeJson(options.getAlias()) + "\",\n");
+			fw.write("      \"r1\": \"" + escapeJson(options.getSingleFile()) + "\",\n");
+			fw.write("      \"reference\": \"" + escapeJson(options.getSubject()) + "\",\n");
+			fw.write("      \"left_flank\": \"" + escapeJson(options.getLeftFlank()) + "\",\n");
+			fw.write("      \"right_flank\": \"" + escapeJson(options.getRightFlank()) + "\",\n");
+			fw.write("      \"left_primer\": \"" + escapeJson(options.getLeftPrimer()) + "\",\n");
+			fw.write("      \"right_primer\": \"" + escapeJson(options.getRightPrimer()) + "\",\n");
+			fw.write("      \"hdr\": \"" + escapeJson(options.getHDR() != null ? options.getHDR().getAbsolutePath() : "") + "\",\n");
+			fw.write("      \"output\": \"" + escapeJson(output.getAbsolutePath()) + "\"\n");
+			fw.write("    }\n");
+			fw.write("  ]\n");
+			fw.write("}\n");
+			System.out.println("Manifest written to: " + manifestFile.getAbsolutePath());
+		} catch (IOException e) {
+			System.err.println("Could not write manifest: " + e.getMessage());
+		}
+	}
+
+	private static String escapeJson(String s) {
+		if (s == null) return "";
+		return s.replace("\\", "\\\\").replace("\"", "\\\"");
 	}
 	private boolean isDNA(String subjectFile) {
 		return subjectFile.matches("[agctAGCT]*");
